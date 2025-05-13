@@ -1,3 +1,4 @@
+
 'use client';
 
 import type { SubmitHandler } from 'react-hook-form';
@@ -8,10 +9,10 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
-import { importZonesFromXml } from '@/app/import-xml/actions';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { useState } from 'react';
 import { Loader2 } from 'lucide-react';
+import type { ReactNode } from 'react';
 
 const MAX_FILE_SIZE_MB = 5;
 const MAX_FILE_SIZE_BYTES = MAX_FILE_SIZE_MB * 1024 * 1024;
@@ -25,14 +26,20 @@ const schema = z.object({
       `File size should be less than ${MAX_FILE_SIZE_MB}MB.`
     )
     .refine(
-      (files) => files && files[0]?.type === 'text/xml' || files && files[0]?.type === 'application/xml',
+      (files) => files && (files[0]?.type === 'text/xml' || files[0]?.type === 'application/xml'),
       'File must be an XML.'
     ),
 });
 
 type ImportXmlFormValues = z.infer<typeof schema>;
 
-export function ImportXmlForm() {
+interface ImportXmlFormProps {
+  formTitle: string;
+  formDescription: ReactNode;
+  importAction: (xmlContent: string) => Promise<{ success: boolean; message: string; error?: string }>;
+}
+
+export function ImportXmlForm({ formTitle, formDescription, importAction }: ImportXmlFormProps) {
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -72,7 +79,7 @@ export function ImportXmlForm() {
       }
 
       try {
-        const result = await importZonesFromXml(xmlContent);
+        const result = await importAction(xmlContent);
         if (result.success) {
           toast({
             title: 'Success',
@@ -86,10 +93,10 @@ export function ImportXmlForm() {
             variant: 'destructive',
           });
         }
-      } catch (error) {
+      } catch (error: any) {
         toast({
           title: 'Error',
-          description: 'An unexpected error occurred during import.',
+          description: error.message || 'An unexpected error occurred during import.',
           variant: 'destructive',
         });
       } finally {
@@ -110,10 +117,9 @@ export function ImportXmlForm() {
   return (
     <Card className="w-full max-w-lg mx-auto">
       <CardHeader>
-        <CardTitle>Import Zone Data from XML</CardTitle>
+        <CardTitle>{formTitle}</CardTitle>
         <CardDescription>
-          Upload an XML file to import or update zone branch information. Ensure the XML format is correct.
-          The expected root tag is &lt;DirectoryData&gt;, containing &lt;Zone&gt; tags.
+          {formDescription}
         </CardDescription>
       </CardHeader>
       <form onSubmit={handleSubmit(onSubmit)}>

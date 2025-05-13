@@ -1,3 +1,4 @@
+
 import { ImportXmlForm } from '@/components/import/ImportXmlForm';
 import { Breadcrumbs } from '@/components/layout/Breadcrumbs';
 import type { Metadata } from 'next';
@@ -5,6 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Alert, AlertDescription }
 from '@/components/ui/alert';
 import { InfoIcon, UploadCloud } from 'lucide-react';
+import { importZonesFromXml } from './actions'; // For global import
 
 export const metadata: Metadata = {
   title: 'Import & Setup - TelDirectory',
@@ -12,21 +14,34 @@ export const metadata: Metadata = {
 };
 
 export default function ImportXmlPage() {
-  // This value should ideally come from an environment variable or configuration
-  // For now, it reflects the placeholder used in the API routes.
-  const appBaseUrlPlaceholder = 'http://YOUR_DEVICE_IP:9002';
-  const mainmenuUrl = `${appBaseUrlPlaceholder}/ivoxsdir/mainmenu.xml`; // Updated path
+  const appBaseUrlPlaceholder = 'http://YOUR_DEVICE_IP:9002'; // Consider making this configurable
+  const mainmenuUrl = `${appBaseUrlPlaceholder}/ivoxsdir/mainmenu.xml`;
+
+  const globalImportDescription = (
+    <>
+      Upload an XML file to import or update the entire directory structure. 
+      The expected root tag is <code>&lt;directorydata&gt;</code>, containing <code>&lt;zone&gt;</code> elements.
+    </>
+  );
 
   return (
     <div>
       <Breadcrumbs items={[{ label: 'Import & Setup' }]} />
       <div className="space-y-8">
         <div>
-          <div className="flex items-center gap-3 mb-8">
+          <div className="flex items-center gap-3 mb-4">
             <UploadCloud className="h-8 w-8 text-primary" />
-            <h1 className="text-3xl font-bold text-foreground">Import Zone Data</h1>
+            <h1 className="text-3xl font-bold text-foreground">Global Directory Import</h1>
           </div>
-          <ImportXmlForm />
+          <p className="mb-6 text-muted-foreground">
+            Use this form to import or update the entire phone directory from a single XML file.
+            This is typically used for initial setup or large-scale updates.
+          </p>
+          <ImportXmlForm
+            formTitle="Import Full Directory Structure"
+            formDescription={globalImportDescription}
+            importAction={importZonesFromXml}
+          />
         </div>
 
         <Card>

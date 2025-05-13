@@ -87,76 +87,88 @@ let mockDirectory: DirectoryData = {
   ],
 };
 
-// Simulate API delay
-// const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+// Function to add or update localities and their extensions within a specific zone
+export async function addOrUpdateLocalitiesForZone(zoneId: string, localitiesToImport: Locality[], newZoneName?: string): Promise<void> {
+  const zoneIndex = mockDirectory.zones.findIndex(z => z.id === zoneId);
+  if (zoneIndex === -1) {
+    // Optionally, create the zone if it doesn't exist, or throw an error.
+    // For now, let's assume the zone must exist for this specific import type.
+    console.error(`Zone with id ${zoneId} not found. Cannot import localities.`);
+    throw new Error(`Zone with id ${zoneId} not found.`);
+  }
 
-// Function to add or update zones from imported data
-// In a real app, this would interact with a database or persistent storage.
+  const existingZone = mockDirectory.zones[zoneIndex];
+  
+  // Update zone name if provided and different
+  if (newZoneName && existingZone.name !== newZoneName) {
+    existingZone.name = newZoneName;
+  }
+
+  localitiesToImport.forEach(newLocality => {
+    const existingLocalityIndex = existingZone.localities.findIndex(l => l.id === newLocality.id);
+    if (existingLocalityIndex > -1) {
+      // Update existing locality
+      const existingLocality = existingZone.localities[existingLocalityIndex];
+      existingLocality.name = newLocality.name; // Update name
+
+      // Merge extensions: update existing ones, add new ones
+      newLocality.extensions.forEach(newExtension => {
+        const existingExtensionIndex = existingLocality.extensions.findIndex(e => e.id === newExtension.id);
+        if (existingExtensionIndex > -1) {
+          existingLocality.extensions[existingExtensionIndex] = newExtension; // Update
+        } else {
+          existingLocality.extensions.push(newExtension); // Add new
+        }
+      });
+    } else {
+      // Add new locality
+      existingZone.localities.push(newLocality);
+    }
+  });
+  console.log(`Localities for zone ${zoneId} updated (in-memory)`, existingZone);
+}
+
+
+// Function to add or update zones from imported data (full directory import)
 export async function addOrUpdateZones(newZones: Zone[]): Promise<void> {
-  // await delay(100);
   newZones.forEach(newZone => {
     const existingZoneIndex = mockDirectory.zones.findIndex(z => z.id === newZone.id);
     if (existingZoneIndex > -1) {
-      // Merge localities: update existing ones, add new ones
-      const existingZone = mockDirectory.zones[existingZoneIndex];
-      newZone.localities.forEach(newLocality => {
-        const existingLocalityIndex = existingZone.localities.findIndex(l => l.id === newLocality.id);
-        if (existingLocalityIndex > -1) {
-           // Merge extensions: update existing ones, add new ones
-          const existingLocality = existingZone.localities[existingLocalityIndex];
-          newLocality.extensions.forEach(newExtension => {
-            const existingExtensionIndex = existingLocality.extensions.findIndex(e => e.id === newExtension.id);
-            if (existingExtensionIndex > -1) {
-              existingLocality.extensions[existingExtensionIndex] = newExtension; // Update
-            } else {
-              existingLocality.extensions.push(newExtension); // Add new
-            }
-          });
-          // Update locality name if changed
-          existingLocality.name = newLocality.name;
-
-        } else {
-          existingZone.localities.push(newLocality); // Add new locality
-        }
-      });
-      // Update zone name if changed
-      existingZone.name = newZone.name;
-
+      // Zone exists, update its name and localities
+      mockDirectory.zones[existingZoneIndex].name = newZone.name;
+      // Delegate locality and extension merging to the specialized function
+      // This assumes newZone.localities contains all localities for this zone from the import
+      addOrUpdateLocalitiesForZone(newZone.id, newZone.localities, newZone.name);
     } else {
-      mockDirectory.zones.push(newZone); // Add new zone
+      // Zone does not exist, add it
+      // Ensure all localities and extensions are properly structured if it's a new zone.
+      // The `newZone` object should already be in the correct domain format.
+      mockDirectory.zones.push(newZone); 
     }
   });
-  console.log("Directory data updated via XML import (in-memory)", mockDirectory);
+  console.log("Directory data updated via full XML import (in-memory)", mockDirectory);
 }
 
 
 export async function getZones(): Promise<Zone[]> {
-  // await delay(100); // Simulate API call
   return mockDirectory.zones;
 }
 
 export async function getZoneById(zoneId: string): Promise<Zone | undefined> {
-  // await delay(100);
-  // Normalize zoneId comparison if needed, e.g. to match 'ZonaEste' with 'este'
-  // For now, assumes zoneId matches the 'id' property in mockDirectory.zones
   return mockDirectory.zones.find(zone => zone.id === zoneId || zone.name === zoneId || toUrlFriendlyId(zone.name) === zoneId);
 }
 
 export async function getLocalitiesByZoneId(zoneId: string): Promise<Locality[] | undefined> {
-  // await delay(100);
   const zone = await getZoneById(zoneId);
   return zone?.localities;
 }
 
-// This function is kept for internal UI use if needed, but API will use findLocalityByIdGlobally
 export async function getLocalityById(zoneId: string, localityId: string): Promise<Locality | undefined> {
-  // await delay(100);
   const localities = await getLocalitiesByZoneId(zoneId);
   return localities?.find(locality => locality.id === localityId);
 }
 
 export async function findLocalityByIdGlobally(localityId: string): Promise<Locality | undefined> {
-  // await delay(100);
   const zones = await getZones();
   for (const zone of zones) {
     const locality = zone.localities.find(l => l.id === localityId);
@@ -169,13 +181,11 @@ export async function findLocalityByIdGlobally(localityId: string): Promise<Loca
 
 
 export async function getExtensionsByLocalityId(zoneId: string, localityId: string): Promise<Extension[] | undefined> {
-  // await delay(100);
-  const locality = await getLocalityById(zoneId, localityId); // This might need to change if zoneId isn't available
+  const locality = await getLocalityById(zoneId, localityId); 
   return locality?.extensions;
 }
 
 export async function getExtensionsByGlobalLocalityId(localityId: string): Promise<Extension[] | undefined> {
-  // await delay(100);
   const locality = await findLocalityByIdGlobally(localityId);
   return locality?.extensions;
 }
