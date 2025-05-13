@@ -1,40 +1,70 @@
 
+'use client'; // This page now uses client-side hooks (useTranslation)
+
 import { Breadcrumbs } from '@/components/layout/Breadcrumbs';
 import type { Metadata } from 'next';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { InfoIcon, UploadCloud, Palette } from 'lucide-react';
+import { InfoIcon, UploadCloud, Palette, Languages, Settings as SettingsIcon } from 'lucide-react'; // Added Languages and SettingsIcon
 import { FileUploadForm } from '@/components/import/FileUploadForm';
 import { saveZoneBranchXmlAction, saveDepartmentXmlAction } from '@/lib/actions';
 import { ThemeToggle } from '@/components/settings/ThemeToggle';
+import { LanguageToggle } from '@/components/settings/LanguageToggle'; // Added
 import { Separator } from '@/components/ui/separator';
+import { useTranslation } from '@/hooks/useTranslation'; // Added
 
-export const metadata: Metadata = {
-  title: 'Settings - TelDirectory',
-  description: 'Manage application settings, import XML files, and configure appearance.',
-};
+// Metadata should be static or generated in a generateMetadata function if dynamic parts are needed.
+// For client components, you might need to set title via useEffect or a different approach if dynamic.
+// export const metadata: Metadata = {
+//   title: 'Settings - TelDirectory', // This will be overridden by t('settings') for the h1
+//   description: 'Manage application settings, import XML files, and configure appearance.',
+// };
 
-export default function SettingsPage() { // Renamed component for clarity
+export default function SettingsPage() {
+  const { t } = useTranslation();
   const appBaseUrlPlaceholder = 'http://YOUR_DEVICE_IP:9002'; 
   const mainmenuUrl = `${appBaseUrlPlaceholder}/ivoxsdir/mainmenu.xml`;
 
+  // Dynamic title setting for client components
+  useEffect(() => {
+    document.title = `${t('settings')} - ${t('appTitle')}`;
+  }, [t]);
+
+
   return (
     <div>
-      <Breadcrumbs items={[{ label: 'Settings' }]} />
+      <Breadcrumbs items={[{ label: t('settings') }]} />
       <div className="space-y-8">
 
         <Card>
           <CardHeader>
             <div className="flex items-center gap-3">
-              <Palette className="h-6 w-6 text-primary" />
-              <CardTitle className="text-2xl">Appearance Settings</CardTitle>
+              <SettingsIcon className="h-6 w-6 text-primary" />
+              <CardTitle className="text-2xl">{t('settings')}</CardTitle>
             </div>
             <CardDescription>
-              Customize the look and feel of the application.
+              {t('settingsDescription')}
             </CardDescription>
           </CardHeader>
-          <CardContent>
-            <ThemeToggle />
+          <CardContent className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div>
+                 <h3 className="text-lg font-semibold mb-2 flex items-center gap-2">
+                    <Palette className="h-5 w-5 text-muted-foreground" />
+                    {t('appearanceSettings')}
+                </h3>
+                <p className="text-sm text-muted-foreground mb-3">{t('appearanceDescription')}</p>
+                <ThemeToggle />
+              </div>
+              <div>
+                <h3 className="text-lg font-semibold mb-2 flex items-center gap-2">
+                    <Languages className="h-5 w-5 text-muted-foreground" />
+                    {t('languageSettings')}
+                </h3>
+                <p className="text-sm text-muted-foreground mb-3">{t('languageDescription')}</p>
+                <LanguageToggle />
+              </div>
+            </div>
           </CardContent>
         </Card>
 
@@ -44,25 +74,24 @@ export default function SettingsPage() { // Renamed component for clarity
           <CardHeader>
             <div className="flex items-center gap-3">
               <InfoIcon className="h-6 w-6 text-primary" />
-              <CardTitle className="text-2xl">IP Phone Directory Access</CardTitle>
+              <CardTitle className="text-2xl">{t('ipPhoneDirectoryAccess')}</CardTitle>
             </div>
             <CardDescription>
-              To allow your Cisco IP phones to access the directory, configure them to use the following URL for the main menu service:
+              {t('ipPhoneDirectoryAccessDescription')}
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="bg-muted p-4 rounded-md">
-              <p className="text-sm text-muted-foreground">Service URL:</p>
+              <p className="text-sm text-muted-foreground">{t('serviceUrl')}</p>
               <code className="block text-lg font-mono text-foreground break-all p-2 bg-background rounded">
                 {mainmenuUrl}
               </code>
             </div>
             <Alert>
               <InfoIcon className="h-4 w-4" />
+              <AlertTitle>{t('importantNotice')}</AlertTitle>
               <AlertDescription>
-                <strong>Important:</strong> Replace <code>YOUR_DEVICE_IP</code> with the actual IP address or hostname of the server running this application. 
-                This server must be accessible from your IP phones' network. The port (e.g., <code>9002</code> for development) must also match your application's running configuration.
-                The XML files for the directory should be placed in the <code>IVOXS</code> folder in the project root. The <code>MAINMENU.xml</code> file is managed by the application and should not typically be manually uploaded here.
+                {t('ipAddressPlaceholderNotice')}
               </AlertDescription>
             </Alert>
           </CardContent>
@@ -74,32 +103,32 @@ export default function SettingsPage() { // Renamed component for clarity
           <CardHeader>
             <div className="flex items-center gap-3">
                 <UploadCloud className="h-6 w-6 text-primary" />
-                <CardTitle className="text-2xl">Import XML Files</CardTitle>
+                <CardTitle className="text-2xl">{t('importXmlFiles')}</CardTitle>
             </div>
             <CardDescription>
-                Upload XML files directly to their respective locations within the <code>IVOXS</code> directory. 
-                Ensure files are correctly formatted Cisco IP Phone XML. The filename (without <code>.xml</code>) will be used as its ID.
+                {t('importXmlFilesDescription')}
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">
             <Alert variant="destructive">
               <InfoIcon className="h-4 w-4" />
-              <AlertTitle>Caution</AlertTitle>
+              <AlertTitle>{t('caution')}</AlertTitle>
               <AlertDescription>
-                Importing files will overwrite existing files with the same name in the target directory. Please ensure you are uploading the correct files.
+                {t('importOverwriteWarning')}
               </AlertDescription>
             </Alert>
 
             <FileUploadForm
-              formTitle="Import Zone Branch XML"
-              formDescription={<>Upload an XML file for a specific zone (e.g., <code>ZonaEste.xml</code>). It will be saved in <code>IVOXS/ZoneBranch/</code>.</>}
+              formTitle={t('importZoneBranchXml')}
+              formDescription={<>{t('importZoneBranchXmlDescription')}</>}
               importAction={saveZoneBranchXmlAction}
               requiresId={false} 
+              allowMultipleFiles={true} // Allow multiple for zones as well, if desired
             />
 
             <FileUploadForm
-              formTitle="Import Department XML Files"
-              formDescription={<>Upload one or more XML files for specific departments/localities. Files will be saved in <code>IVOXS/Department/</code>.</>}
+              formTitle={t('importDepartmentXml')}
+              formDescription={<>{t('importDepartmentXmlDescription')}</>}
               importAction={saveDepartmentXmlAction}
               allowMultipleFiles={true}
               requiresId={false}
@@ -110,3 +139,7 @@ export default function SettingsPage() { // Renamed component for clarity
     </div>
   );
 }
+
+// Need to import useEffect for dynamic title
+import { useEffect } from 'react';
+

@@ -5,6 +5,7 @@ import { AppHeader } from '@/components/layout/AppHeader';
 import { PageWrapper } from '@/components/layout/PageWrapper';
 import { Toaster } from "@/components/ui/toaster";
 import { ThemeInitializer } from '@/components/settings/ThemeInitializer';
+import { LanguageProvider } from '@/context/LanguageContext';
 
 
 const geistSans = Geist({ // Corrected: Geist_Sans to Geist
@@ -30,13 +31,16 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className={`${geistSans.variable} ${geistMono.variable} antialiased flex flex-col min-h-screen`}>
-        <ThemeInitializer />
-        <AppHeader />
-        <PageWrapper>
-          {children}
-        </PageWrapper>
-        <Toaster />
+        <LanguageProvider>
+          <ThemeInitializer />
+          <AppHeader />
+          <PageWrapper>
+            {children}
+          </PageWrapper>
+          <Toaster />
+        </LanguageProvider>
       </body>
     </html>
   );
 }
+

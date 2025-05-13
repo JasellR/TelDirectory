@@ -1,0 +1,28 @@
+
+{
+  "appTitle": "TelDirectory",
+  "appSubtitle": "Corporate Phone Directory",
+  "settings": "Settings",
+  "settingsDescription": "Manage application settings, import XML files, and configure appearance.",
+  "appearanceSettings": "Appearance Settings",
+  "appearanceDescription": "Customize the look and feel of the application.",
+  "darkMode": "Dark Mode",
+  "languageSettings": "Language Settings",
+  "languageDescription": "Choose your preferred language for the application interface.",
+  "english": "English",
+  "spanish": "Español",
+  "ipPhoneDirectoryAccess": "IP Phone Directory Access",
+  "ipPhoneDirectoryAccessDescription": "To allow your Cisco IP phones to access the directory, configure them to use the following URL for the main menu service:",
+  "serviceUrl": "Service URL:",
+  "importantNotice": "Important:",
+  "ipAddressPlaceholderNotice": "Replace YOUR_DEVICE_IP with the actual IP address or hostname of the server running this application. This server must be accessible from your IP phones' network. The port (e.g., 9002 for development) must also match your application's running configuration. The XML files for the directory should be placed in the IVOXS folder in the project root. The MAINMENU.xml file is managed by the application and should not typically be manually uploaded here.",
+  "importXmlFiles": "Import XML Files",
+  "importXmlFilesDescription": "Upload XML files directly to their respective locations within the IVOXS directory. Ensure files are correctly formatted Cisco IP Phone XML. The filename (without .xml) will be used as its ID.",
+  "caution": "Caution",
+  "importOverwriteWarning": "Importing files will overwrite existing files with the same name in the target directory. Please ensure you are uploading the correct files.",
+  "importZoneBranchXml": "Import Zone Branch XML",
+  "importZoneBranchXmlDescription": "Upload an XML file for a specific zone (e.g., ZonaEste.xml). It will be saved in IVOXS/ZoneBranch/.",
+  "importDepartmentXml": "Import Department XML Files",
+  "importDepartmentXmlDescription": "Upload one or more XML files for specific departments/localities. Files will be saved in IVOXS/Department/.",
+  "home": "Home"
+}
