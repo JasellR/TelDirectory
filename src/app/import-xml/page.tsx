@@ -2,7 +2,7 @@
 'use client'; // This page now uses client-side hooks (useTranslation)
 
 import { Breadcrumbs } from '@/components/layout/Breadcrumbs';
-import type { Metadata } from 'next';
+// import type { Metadata } from 'next'; // Metadata removed as title is set dynamically
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { InfoIcon, UploadCloud, Palette, Languages, Settings as SettingsIcon } from 'lucide-react'; // Added Languages and SettingsIcon
@@ -12,6 +12,7 @@ import { ThemeToggle } from '@/components/settings/ThemeToggle';
 import { LanguageToggle } from '@/components/settings/LanguageToggle'; // Added
 import { Separator } from '@/components/ui/separator';
 import { useTranslation } from '@/hooks/useTranslation'; // Added
+import { useEffect } from 'react'; // Added useEffect
 
 // Metadata should be static or generated in a generateMetadata function if dynamic parts are needed.
 // For client components, you might need to set title via useEffect or a different approach if dynamic.
@@ -27,7 +28,7 @@ export default function SettingsPage() {
 
   // Dynamic title setting for client components
   useEffect(() => {
-    document.title = `${t('settings')} - ${t('appTitle')}`;
+    document.title = `${t('settings')} - TelDirectory`; // Changed from t('appTitle') to hardcoded "TelDirectory"
   }, [t]);
 
 
@@ -123,7 +124,7 @@ export default function SettingsPage() {
               formDescription={<>{t('importZoneBranchXmlDescription')}</>}
               importAction={saveZoneBranchXmlAction}
               requiresId={false} 
-              allowMultipleFiles={true} // Allow multiple for zones as well, if desired
+              allowMultipleFiles={true}
             />
 
             <FileUploadForm
@@ -139,7 +140,4 @@ export default function SettingsPage() {
     </div>
   );
 }
-
-// Need to import useEffect for dynamic title
-import { useEffect } from 'react';
 
