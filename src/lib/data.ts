@@ -218,3 +218,67 @@ export async function getLocalityWithExtensions(localityId: string): Promise<Loc
   };
 }
 
+export interface SearchableExtension {
+  id: string; // Unique ID for React key
+  extensionName: string;
+  extensionNumber: string;
+  localityName: string;
+  localityId: string;
+  zoneName: string;
+  zoneId: string;
+  branchName?: string;
+  branchId?: string;
+  path: string; // URL path to the locality page
+}
+
+export async function getAllExtensionsForSearch(): Promise<SearchableExtension[]> {
+  const allSearchableExtensions: SearchableExtension[] = [];
+  const zones = await getZones(); 
+
+  for (const zone of zones) {
+    const zoneItems = await getZoneItems(zone.id); 
+
+    for (const zoneItem of zoneItems) {
+      if (zoneItem.type === 'locality') {
+        const localityData = await getLocalityWithExtensions(zoneItem.id);
+        if (localityData && localityData.extensions) {
+          for (const ext of localityData.extensions) {
+            allSearchableExtensions.push({
+              id: `${zone.id}-${zoneItem.id}-${ext.id}`,
+              extensionName: ext.department, 
+              extensionNumber: ext.number,   
+              localityName: localityData.name,
+              localityId: localityData.id,
+              zoneName: zone.name,
+              zoneId: zone.id,
+              path: `/${zone.id}/localities/${localityData.id}`
+            });
+          }
+        }
+      } else if (zoneItem.type === 'branch') {
+        const branchItems = await getBranchItems(zoneItem.id); 
+        for (const branchItem of branchItems) { 
+          const localityData = await getLocalityWithExtensions(branchItem.id);
+          if (localityData && localityData.extensions) {
+            for (const ext of localityData.extensions) {
+              allSearchableExtensions.push({
+                id: `${zone.id}-${zoneItem.id}-${branchItem.id}-${ext.id}`,
+                extensionName: ext.department,
+                extensionNumber: ext.number,
+                localityName: localityData.name,
+                localityId: localityData.id,
+                zoneName: zone.name,
+                zoneId: zone.id,
+                branchName: zoneItem.name, 
+                branchId: zoneItem.id,     
+                path: `/${zone.id}/branches/${zoneItem.id}/localities/${localityData.id}`
+              });
+            }
+          }
+        }
+      }
+    }
+  }
+  return allSearchableExtensions;
+}
+

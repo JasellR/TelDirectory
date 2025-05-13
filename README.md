@@ -1,6 +1,7 @@
+
 # TelDirectory - Corporate Phone Directory
 
-TelDirectory is a Next.js web application designed to manage and display a corporate phone directory, primarily for use with Cisco IP phones. It reads directory data from XML files, allowing users to navigate through zones, branches (for specific zones like "Zona Metropolitana"), and localities to find phone extensions. The application also provides an interface to import and manage these XML files.
+TelDirectory is a Next.js web application designed to manage and display a corporate phone directory, primarily for use with Cisco IP phones. It reads directory data from XML files, allowing users to navigate through zones, branches (for specific zones like "Zona Metropolitana"), and localities to find phone extensions. The application also provides an interface to import and manage these XML files, and a search feature to quickly find extensions.
 
 ## Core Features:
 
@@ -8,6 +9,7 @@ TelDirectory is a Next.js web application designed to manage and display a corpo
 *   **Extension Listing**: View department/contact names and their phone extensions.
 *   **XML-Based Data**: Directory data is stored in XML files, following Cisco IP Phone standards.
 *   **Web Interface**: Browse the directory through a user-friendly web interface.
+*   **Search Functionality**: A search bar on the homepage allows users to quickly find extensions by searching extension names, numbers, locality names, zone names, or branch names.
 *   **IP Phone Service**: Serves XML data to Cisco IP phones via specific URL endpoints.
 *   **Data Management**:
     *   Import XML files for zones, branches, and departments.
@@ -15,6 +17,7 @@ TelDirectory is a Next.js web application designed to manage and display a corpo
 *   **Customization**:
     *   Dark Mode support.
     *   Language toggle (English/Español).
+    *   Configurable display port for service URL examples.
 
 ## Project Structure
 
@@ -22,7 +25,7 @@ TelDirectory is a Next.js web application designed to manage and display a corpo
     *   `src/app/[zoneId]/...`: Dynamic routes for displaying zone, branch, and locality pages.
     *   `src/app/ivoxsdir/...`: API routes that serve XML content to IP phones.
     *   `src/app/import-xml/`: Page for settings, XML import, and application configuration.
-*   `src/components/`: Reusable React components.
+*   `src/components/`: Reusable React components, including search (`src/components/search/`).
 *   `src/lib/`: Core logic, data fetching utilities (`data.ts`), and server actions (`actions.ts`).
 *   `src/context/`: React context for language management.
 *   `src/hooks/`: Custom React hooks.
@@ -84,7 +87,7 @@ The application relies on XML files located in the `IVOXS` directory at the root
       <!-- Add other zones similarly -->
     </CiscoIPPhoneMenu>
     ```
-    **Important**: Replace `YOUR_DEVICE_IP:PORT` in your XML files with the actual IP address and port where the TelDirectory application will be running and accessible to your IP phones.
+    **Important**: Replace `YOUR_DEVICE_IP:PORT` in your XML files with the actual IP address and port where the TelDirectory application will be running and accessible to your IP phones. The port should match the one configured in the application's "Settings" page for display purposes, and more importantly, the port your server is actually running on.
 
     *The application includes sample XML files in the `IVOXS` directory. You should replace these with your actual directory data.*
 
@@ -100,7 +103,7 @@ The application relies on XML files located in the `IVOXS` directory at the root
 
 2.  **Accessing the App:**
     *   Web UI: Open `http://localhost:9002` in your browser.
-    *   IP Phone Service URL: `http://YOUR_COMPUTER_IP:9002/ivoxsdir/mainmenu.xml` (replace `YOUR_COMPUTER_IP` with your computer's actual IP address on the network accessible by the IP phones).
+    *   IP Phone Service URL: `http://YOUR_COMPUTER_IP:9002/ivoxsdir/mainmenu.xml` (replace `YOUR_COMPUTER_IP` with your computer's actual IP address on the network accessible by the IP phones). The port `9002` is the default for `npm run dev`.
 
 3.  **Data Management:**
     *   In development, the application reads XML files directly from the `IVOXS` directory. Any changes made via the UI (adding/editing/deleting items) will directly modify these local XML files.
@@ -122,12 +125,13 @@ The application relies on XML files located in the `IVOXS` directory at the root
 
 3.  **Deployment Considerations:**
     *   **IVOXS Directory**: The `IVOXS` directory (with all its XML files) **must be present in the same location as the `.next` folder and `package.json`** on your production server. The application reads these files at runtime when serving requests or performing actions.
-    *   **IP Address/Hostname**: Ensure that the URLs within your `MAINMENU.xml` and other XML files (especially those in `IVOXS/ZoneBranch/` and `IVOXS/Branch/`) point to the correct public IP address or hostname and port of your production server. For example, if your server's IP is `192.168.1.100` and it's running on port `3000`, the URL in `MAINMENU.xml` should be `http://192.168.1.100:3000/ivoxsdir/mainmenu.xml`.
+    *   **IP Address/Hostname & Port**: Ensure that the URLs within your `MAINMENU.xml` and other XML files (especially those in `IVOXS/ZoneBranch/` and `IVOXS/Branch/`) point to the correct public IP address or hostname and port of your production server. For example, if your server's IP is `192.168.1.100` and it's running on port `3000`, the URL in `MAINMENU.xml` should be `http://192.168.1.100:3000/ivoxsdir/mainmenu.xml`. This port must match the actual port your application is listening on.
     *   **Firewall**: Make sure your server's firewall allows incoming connections on the port the application is running on (e.g., port 3000) from the network where your IP phones are located.
     *   **Process Manager**: For long-running production deployments, use a process manager like PM2 to manage the Next.js application.
         ```bash
         pm2 start npm --name "teldirectory" -- run start
         ```
+        (Adjust `-- run start` if your start script uses a different port, e.g., `npm run start -- -p YOUR_PORT`)
 
 4.  **Accessing in Production:**
     *   Web UI: `http://YOUR_SERVER_IP:PORT`
@@ -141,6 +145,18 @@ The "Settings" page (`/import-xml`) allows you to upload XML files directly:
 *   **Import Department XML Files**: Upload XML files for departments/localities (e.g., `Bavaro.xml`). These will be saved to `IVOXS/Department/`. The filename (without `.xml`) is used as the ID.
 
 **Caution**: Importing files will overwrite existing files with the same name in the target directory.
+
+## Search Functionality
+
+The homepage features a prominent search bar that allows users to quickly find phone extensions.
+*   **How it works**: The search operates on data pre-fetched from all department XML files when the homepage loads. Filtering is done client-side.
+*   **Searched Fields**: Users can search by:
+    *   Extension Name (Department/Role name in the XML)
+    *   Extension Number
+    *   Locality Name
+    *   Zone Name
+    *   Branch Name (if applicable, like in Zona Metropolitana)
+*   **Results**: Search results display the matching extension's details, its locality, branch (if any), and zone, with a direct link to the locality's page.
 
 ## XML Structure for IP Phones
 
