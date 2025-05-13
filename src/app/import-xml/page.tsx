@@ -71,7 +71,7 @@ export default function ImportXmlPage() {
             <FileUploadForm
               formTitle="Import Main Menu XML"
               formDescription={<>Upload the <code>MAINMENU.xml</code> file. This file defines the top-level zones. It will be saved as <code>IVOXS/MAINMENU.xml</code>.</>}
-              importAction={async (id, xmlContent) => saveMainMenuXmlAction(xmlContent)}
+              importAction={saveMainMenuXmlAction}
               requiresId={false}
             />
 

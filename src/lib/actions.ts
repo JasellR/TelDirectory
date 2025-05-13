@@ -140,7 +140,8 @@ export async function deleteExtensionAction(localityId: string, extensionDepartm
 
 // --- New XML Import Actions ---
 
-export async function saveMainMenuXmlAction(xmlContent: string): Promise<{ success: boolean; message: string; error?: string }> {
+export async function saveMainMenuXmlAction(id: string | null, xmlContent: string): Promise<{ success: boolean; message: string; error?: string }> {
+  // id parameter is present to match the FileUploadForm prop signature, but it's not used for MAINMENU.xml
   try {
     const parsedContent = await parseStringPromise(xmlContent, { explicitArray: false, trim: true });
     const validationResult = CiscoIPPhoneMenuSchema.safeParse(parsedContent.CiscoIPPhoneMenu);
@@ -227,3 +228,4 @@ export async function saveDepartmentXmlAction(departmentFilenameBase: string | n
     return { success: false, message: `Failed to save Department file ${filename}.`, error: error.message };
   }
 }
+
