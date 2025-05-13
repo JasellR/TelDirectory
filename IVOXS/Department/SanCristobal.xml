@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<CiscoIPPhoneDirectory>
+  <Title>San Cristobal</Title>
+  <Prompt>Select a contact</Prompt>
+  <DirectoryEntry>
+    <Name>Farmacia SC</Name>
+    <Telephone>4001</Telephone>
+  </DirectoryEntry>
+</CiscoIPPhoneDirectory>

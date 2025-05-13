@@ -1,47 +1,40 @@
 
 import { NextResponse } from 'next/server';
-import { getZoneById } from '@/lib/data';
-import type { Locality, Zone } from '@/types';
+import fs from 'fs/promises';
+import path from 'path';
 
-// IMPORTANT: Replace 'YOUR_DEVICE_IP' with the actual IP address of your server accessible by the IP phones.
-const APP_BASE_URL = `http://YOUR_DEVICE_IP:9002`; // Or your server's actual IP and port
+const ZONE_BRANCH_DIR = path.join(process.cwd(), 'IVOXS', 'ZoneBranch');
 
 export async function GET(request: Request, { params }: { params: { zoneId: string } }) {
-  // The zoneId from the URL might be 'ZonaEste', 'este', etc.
-  // Ensure getZoneById can handle this.
-  const { zoneId } = params; 
-  const zone: Zone | undefined = await getZoneById(zoneId);
-
-  if (!zone) {
-    return new NextResponse(
-      '<CiscoIPPhoneText><Title>Error</Title><Text>Zone not found</Text></CiscoIPPhoneText>',
-      { 
-        status: 404,
-        headers: { 'Content-Type': 'text/xml' }
-      }
-    );
+  const { zoneId } = params; // e.g., "este", "norte" (filename without .xml)
+  
+  if (!zoneId || !/^[a-zA-Z0-9_-]+$/.test(zoneId)) {
+    const errorXml = `<CiscoIPPhoneText><Title>Error</Title><Text>Invalid zone identifier.</Text></CiscoIPPhoneText>`;
+    return new NextResponse(errorXml, { status: 400, headers: { 'Content-Type': 'text/xml' }});
   }
 
-  const xmlContent = `
-<CiscoIPPhoneMenu>
-  <Title>${zone.name.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')}</Title>
-  <Prompt>Select a Branch</Prompt>
-  ${zone.localities.map((locality: Locality) => {
-    // locality.id should be URL-friendly, e.g., "Bavaro", "BlueMallPuntaCana"
-    const localityUrlId = encodeURIComponent(locality.id);
-    return `
-  <MenuItem>
-    <Name>${locality.name.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')}</Name>
-    <URL>${APP_BASE_URL}/ivoxsdir/department/${localityUrlId}.xml</URL>
-  </MenuItem>`;
-    }).join('')}
-</CiscoIPPhoneMenu>
-  `.trim();
+  const zoneFilePath = path.join(ZONE_BRANCH_DIR, `${zoneId}.xml`);
 
-  return new NextResponse(xmlContent, {
-    status: 200,
-    headers: {
-      'Content-Type': 'text/xml',
-    },
-  });
+  try {
+    const xmlContent = await fs.readFile(zoneFilePath, 'utf-8');
+    return new NextResponse(xmlContent.trim(), {
+      status: 200,
+      headers: {
+        'Content-Type': 'text/xml',
+      },
+    });
+  } catch (error: any) {
+    console.error(`Error reading zone file ${zoneId}.xml:`, error);
+    const errorTitle = zoneId.charAt(0).toUpperCase() + zoneId.slice(1); // Basic capitalization
+    const errorXml = `
+<CiscoIPPhoneText>
+  <Title>Error</Title>
+  <Text>Zone configuration for ${errorTitle} not found or unreadable.</Text>
+</CiscoIPPhoneText>
+    `.trim();
+    return new NextResponse(errorXml, { 
+        status: 404, // Or 500 if it's a server read error rather than not found
+        headers: { 'Content-Type': 'text/xml' }
+    });
+  }
 }

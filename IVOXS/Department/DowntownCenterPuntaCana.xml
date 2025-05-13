@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<CiscoIPPhoneDirectory>
+  <Title>Downtown Center Punta Cana</Title>
+  <Prompt>Select a contact</Prompt>
+  <DirectoryEntry>
+    <Name>Información</Name>
+    <Telephone>7771</Telephone>
+  </DirectoryEntry>
+</CiscoIPPhoneDirectory>

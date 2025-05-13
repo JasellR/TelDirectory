@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<CiscoIPPhoneDirectory>
+  <Title>Higuey</Title>
+  <Prompt>Select a contact</Prompt>
+  <DirectoryEntry>
+    <Name>Oficina Central Higuey</Name>
+    <Telephone>8881</Telephone>
+  </DirectoryEntry>
+</CiscoIPPhoneDirectory>

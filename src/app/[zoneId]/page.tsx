@@ -4,13 +4,9 @@ import { Breadcrumbs } from '@/components/layout/Breadcrumbs';
 import { notFound } from 'next/navigation';
 import type { Metadata } from 'next';
 import Link from 'next/link';
-import { ImportXmlForm } from '@/components/import/ImportXmlForm';
-import { importZoneBranchMenuItemsXml } from '@/app/import-xml/actions'; 
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { UploadCloud, MapPin } from 'lucide-react';
+import { Card, CardContent } from '@/components/ui/card';
+import { MapPin } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
-import { DeleteLocalityButton } from '@/components/directory/DeleteLocalityButton';
-
 
 interface ZonePageProps {
   params: {
@@ -27,36 +23,19 @@ export async function generateMetadata({ params }: ZonePageProps): Promise<Metad
   }
   return {
     title: `Localities in ${zone.name} - TelDirectory`,
-    description: `Browse localities and manage data for the ${zone.name} zone.`,
+    description: `Browse localities for the ${zone.name} zone. Data is read from XML files.`,
   };
 }
-
-function ZoneImportFormWrapper({ zoneId, zoneName }: { zoneId: string, zoneName: string }) {
-  const zoneSpecificImportDescription = (
-    <>
-      Upload an XML file to import or update localities specifically for the <strong>{zoneName}</strong> zone.
-      The expected root tag in the XML file is <code>&lt;CiscoIPPhoneMenu&gt;</code>, containing <code>&lt;MenuItem&gt;</code> elements, where each <code>&lt;Name&gt;</code> tag represents a locality.
-    </>
-  );
-
-  const boundImportAction = importZoneBranchMenuItemsXml.bind(null, zoneId);
-
-  return (
-    <ImportXmlForm
-      formTitle={`Import Localities for ${zoneName}`}
-      formDescription={zoneSpecificImportDescription}
-      importAction={boundImportAction}
-    />
-  );
-}
-
 
 export default async function ZonePage({ params }: ZonePageProps) {
   const { zoneId } = params;
   const zone = await getZoneById(zoneId);
-  const localities = await getLocalitiesByZoneId(zoneId);
+  
+  // getLocalitiesByZoneId is now indirectly called by getZoneById in the new data.ts
+  // So, localities should be part of the zone object if zone is found.
+  const localities = zone?.localities || [];
 
-  if (!zone || !localities) { 
+  if (!zone) { 
     notFound();
   }
 
@@ -83,34 +62,26 @@ export default async function ZonePage({ params }: ZonePageProps) {
                       View extensions and details for {locality.name}. (ID: {locality.id})
                     </p>
                   </div>
-                  <div className="shrink-0 mt-2 sm:mt-0">
-                    <DeleteLocalityButton
-                      zoneId={zone.id}
-                      localityId={locality.id}
-                      localityName={locality.name}
-                    />
-                  </div>
+                  {/* DeleteLocalityButton was removed as file system manipulation is out of scope for now */}
                 </CardContent>
               </Card>
             ))}
           </div>
         ) : (
-          <p className="text-muted-foreground">No localities found in this zone. You can import them using the form below.</p>
+          <p className="text-muted-foreground">
+            No localities found in the XML file for this zone (<code>IVOXS/ZoneBranch/{zone.id}.xml</code>).
+          </p>
         )}
       </div>
 
       <Separator />
 
       <div>
-        <div className="flex items-center gap-3 mb-4">
-          <UploadCloud className="h-8 w-8 text-primary" />
-          <h2 className="text-2xl font-bold text-foreground">Import Localities for {zone.name}</h2>
-        </div>
-        <p className="mb-6 text-muted-foreground">
-          Use this form to import or update the list of localities specifically for the <strong>{zone.name}</strong> zone.
-          Ensure the XML file contains a <code>&lt;CiscoIPPhoneMenu&gt;</code> root element with <code>&lt;MenuItem&gt;</code> tags representing each locality.
+        <h2 className="text-2xl font-bold text-foreground mb-2">Data Management</h2>
+        <p className="text-muted-foreground">
+          Localities for the <strong>{zone.name}</strong> zone are managed by editing the XML file at <code>IVOXS/ZoneBranch/{zone.id}.xml</code>.
+          Ensure this file contains <code>&lt;MenuItem&gt;</code> tags representing each locality.
         </p>
-        <ZoneImportFormWrapper zoneId={zone.id} zoneName={zone.name} />
       </div>
     </div>
   );

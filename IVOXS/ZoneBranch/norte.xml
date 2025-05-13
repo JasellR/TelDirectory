@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<CiscoIPPhoneMenu>
+  <Title>Zona Norte</Title>
+  <Prompt>Select a Branch</Prompt>
+  <MenuItem>
+    <Name>Santiago Centro</Name>
+    <URL>http://YOUR_DEVICE_IP:9002/ivoxsdir/department/SantiagoCentro.xml</URL>
+  </MenuItem>
+  <MenuItem>
+    <Name>Puerto Plata</Name>
+    <URL>http://YOUR_DEVICE_IP:9002/ivoxsdir/department/PuertoPlata.xml</URL>
+  </MenuItem>
+</CiscoIPPhoneMenu>

@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<CiscoIPPhoneMenu>
+  <Title>Zona Este</Title>
+  <Prompt>Select a Branch</Prompt>
+  <MenuItem>
+    <Name>Bavaro</Name>
+    <URL>http://YOUR_DEVICE_IP:9002/ivoxsdir/department/Bavaro.xml</URL>
+  </MenuItem>
+  <MenuItem>
+    <Name>Blue Mall Punta Cana</Name>
+    <URL>http://YOUR_DEVICE_IP:9002/ivoxsdir/department/BlueMallPuntaCana.xml</URL>
+  </MenuItem>
+  <MenuItem>
+    <Name>Casa de Campo</Name>
+    <URL>http://YOUR_DEVICE_IP:9002/ivoxsdir/department/CasadeCampo.xml</URL>
+  </MenuItem>
+  <MenuItem>
+    <Name>Downtown Center Punta Cana</Name>
+    <URL>http://YOUR_DEVICE_IP:9002/ivoxsdir/department/DowntownCenterPuntaCana.xml</URL>
+  </MenuItem>
+  <MenuItem>
+    <Name>Higuey</Name>
+    <URL>http://YOUR_DEVICE_IP:9002/ivoxsdir/department/Higuey.xml</URL>
+  </MenuItem>
+</CiscoIPPhoneMenu>

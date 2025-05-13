@@ -1,38 +1,32 @@
 
 import { NextResponse } from 'next/server';
-import { getZones } from '@/lib/data';
-import type { Zone } from '@/types';
+import fs from 'fs/promises';
+import path from 'path';
 
-// IMPORTANT: Replace 'YOUR_DEVICE_IP' with the actual IP address of your server accessible by the IP phones.
-// The port should match where your Next.js app is running (default 9002 for dev).
-const APP_BASE_URL = `http://YOUR_DEVICE_IP:9002`; // Or your server's actual IP and port
+const IVOXS_DIR = path.join(process.cwd(), 'IVOXS');
+const MAINMENU_FILE_PATH = path.join(IVOXS_DIR, 'MAINMENU.xml');
 
 export async function GET() {
-  const zones: Zone[] = await getZones();
-
-  const xmlContent = `
-<CiscoIPPhoneMenu>
-  <Title>Farmacia Carol</Title>
-  <Prompt>Select a Zone Branch</Prompt>
-  ${zones.map(zone => {
-    // Use zone.id for the URL, assuming it's URL-friendly (e.g., "este", "norte")
-    // Or use a URL-friendly version of zone.name if IDs are not suitable for URLs directly.
-    // For example, if zone.name is "Zona Este", zone.id could be "ZonaEste" or "este".
-    // The getZoneById function in data.ts should be able to resolve this ID.
-    const zoneUrlId = encodeURIComponent(zone.id); // Ensure this ID matches what [zoneId].xml expects
-    return `
-  <MenuItem>
-    <Name>${zone.name.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')}</Name>
-    <URL>${APP_BASE_URL}/ivoxsdir/zonebranch/${zoneUrlId}.xml</URL>
-  </MenuItem>`;
-  }).join('')}
-</CiscoIPPhoneMenu>
-  `.trim();
-
-  return new NextResponse(xmlContent, {
-    status: 200,
-    headers: {
-      'Content-Type': 'text/xml',
-    },
-  });
+  try {
+    const xmlContent = await fs.readFile(MAINMENU_FILE_PATH, 'utf-8');
+    return new NextResponse(xmlContent.trim(), {
+      status: 200,
+      headers: {
+        'Content-Type': 'text/xml',
+      },
+    });
+  } catch (error: any) {
+    console.error("Error reading MAINMENU.xml:", error);
+    // Provide a valid, minimal XML error response for the IP phone
+    const errorXml = `
+<CiscoIPPhoneText>
+  <Title>Error</Title>
+  <Text>Main directory configuration file not found or unreadable.</Text>
+</CiscoIPPhoneText>
+    `.trim();
+    return new NextResponse(errorXml, { 
+        status: 500,
+        headers: { 'Content-Type': 'text/xml' }
+    });
+  }
 }

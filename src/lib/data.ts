@@ -1,243 +1,198 @@
 
-import type { DirectoryData, Zone, Locality, Extension } from '@/types';
+import type { Zone, Locality, Extension } from '@/types';
+import fs from 'fs/promises';
+import path from 'path';
+import { parseStringPromise } from 'xml2js';
+import { z } from 'zod';
 
-// Helper to generate URL-friendly IDs
+// Helper to ensure an element is an array, useful for xml2js when explicitArray: false
+const ensureArray = <T,>(item: T | T[] | undefined | null): T[] => {
+  if (!item) return [];
+  return Array.isArray(item) ? item : [item];
+};
+
+// Helper to generate URL-friendly IDs from names, also used for extension IDs from their names
 const toUrlFriendlyId = (name: string): string => {
-  if (!name) return 'unknown';
-  return name.trim().replace(/\s+/g, '').replace(/[^a-zA-Z0-9-]/g, '').toLowerCase();
+  if (!name) return `unnamed-${Date.now()}`; // Handle cases where name might be undefined or empty
+  return name.trim().replace(/\s+/g, '-').replace(/[^a-zA-Z0-9-]/g, '').toLowerCase();
 };
 
+const IVOXS_DIR = path.join(process.cwd(), 'IVOXS');
+const MAINMENU_PATH = path.join(IVOXS_DIR, 'MAINMENU.xml');
+const ZONE_BRANCH_DIR = path.join(IVOXS_DIR, 'ZoneBranch');
+const DEPARTMENT_DIR = path.join(IVOXS_DIR, 'Department');
 
-// Updated localities for Zona Este based on the user's XML example
-const zonaEsteLocalitiesFromXml: Locality[] = [
-  { id: "Bavaro", name: "Bavaro", extensions: [] },
-  { id: "BlueMallPuntaCana", name: "Blue Mall Punta Cana", extensions: [] },
-  { id: "CasadeCampo", name: "Casa de Campo", extensions: [] },
-  { id: "DowntownCenterPuntaCana", name: "Downtown Center Punta Cana", extensions: [] },
-  { id: "Hemingway", name: "Hemingway", extensions: [] },
-  { id: "Higuey", name: "Higuey", extensions: [] },
-  { id: "JuanDolio", name: "Juan Dolio", extensions: [] },
-  { id: "JumboLaRomana", name: "Jumbo La Romana", extensions: [] },
-  { id: "JumboSanPedrodeMacoris", name: "Jumbo San Pedro de Macoris", extensions: [] },
-  { id: "MUSASPM", name: "MUSA SPM", extensions: [] },
-  { id: "Restauracion", name: "Restauracion", extensions: [] },
-  { id: "Romana", name: "Romana", extensions: [] },
-  { id: "RomanaMultiplaza", name: "Romana Multiplaza", extensions: [] },
-  { id: "SPM", name: "SPM", extensions: [] },
-  { id: "Veron", name: "Veron", extensions: [] },
-  { id: "VillaHermosa", name: "Villa Hermosa", extensions: [] },
-];
+// Schemas for parsing XML (adapted from import-xml/actions.ts)
+const MenuItemSchema = z.object({
+  Name: z.string().min(1),
+  URL: z.string(),
+});
 
-// Changed from const to let to allow modification for demo purposes
-let mockDirectory: DirectoryData = {
-  zones: [
-    {
-      name: "Zona Este",
-      id: "este", 
-      localities: zonaEsteLocalitiesFromXml,
-    },
-    {
-      name: "Zona Norte",
-      id: "norte",
-      localities: [
-        // Initially populated by populateZonaNorteLocalities
-      ],
-    },
-    {
-      name: "Zona Sur",
-      id: "sur",
-      localities: [
-        {
-          id: toUrlFriendlyId("Usulután"), // Example
-          name: "Usulután",
-          extensions: [] 
-        }
-      ]
-    },
-    {
-      name: "Zona Metropolitana",
-      id: "metropolitana",
-      localities: [
-        {
-          id: toUrlFriendlyId("San Salvador"), // Example
-          name: "San Salvador",
-          extensions: []
-        }
-      ]
+const CiscoIPPhoneMenuSchema = z.object({
+  Title: z.string().optional(),
+  Prompt: z.string().optional(),
+  MenuItem: z.preprocess(ensureArray, z.array(MenuItemSchema).optional()),
+});
+
+const CiscoIPPhoneDirectoryEntrySchema = z.object({
+  Name: z.string().min(1),
+  Telephone: z.string().min(1),
+});
+
+const CiscoIPPhoneDirectorySchema = z.object({
+  Title: z.string().optional(),
+  Prompt: z.string().optional(),
+  DirectoryEntry: z.preprocess(ensureArray, z.array(CiscoIPPhoneDirectoryEntrySchema).optional()),
+});
+
+
+async function readFileContent(filePath: string): Promise<string> {
+  try {
+    return await fs.readFile(filePath, 'utf-8');
+  } catch (error: any) {
+    if (error.code === 'ENOENT') {
+      console.warn(`File not found: ${filePath}`);
+      return ''; // Return empty string if file not found, so parsing can handle it
     }
-  ],
-};
-
-// Function to add or update localities and their extensions within a specific zone
-export async function addOrUpdateLocalitiesForZone(zoneId: string, localitiesToImport: Locality[], newZoneName?: string): Promise<void> {
-  const zoneIndex = mockDirectory.zones.findIndex(z => z.id === zoneId);
-  if (zoneIndex === -1) {
-    console.error(`Zone with id ${zoneId} not found. Cannot import localities.`);
-    throw new Error(`Zone with id ${zoneId} not found.`);
+    console.error(`Error reading file ${filePath}:`, error);
+    throw error; // Re-throw other errors
   }
-
-  const existingZone = mockDirectory.zones[zoneIndex];
-  
-  if (newZoneName && existingZone.name !== newZoneName) {
-    existingZone.name = newZoneName;
-  }
-
-  localitiesToImport.forEach(newLocality => {
-    const existingLocalityIndex = existingZone.localities.findIndex(l => l.id === newLocality.id);
-    if (existingLocalityIndex > -1) {
-      const existingLocality = existingZone.localities[existingLocalityIndex];
-      existingLocality.name = newLocality.name; 
-      existingLocality.extensions = newLocality.extensions || existingLocality.extensions || [];
-
-
-    } else {
-      // Ensure new locality also has an extensions array, even if empty.
-      existingZone.localities.push({ ...newLocality, extensions: newLocality.extensions || [] });
-    }
-  });
-  console.log(`Localities for zone ${zoneId} updated (in-memory).`);
 }
 
-
-// Function to add or update zones from imported data (full directory import)
-export async function addOrUpdateZones(newZones: Zone[]): Promise<void> {
-  newZones.forEach(newZone => {
-    const existingZoneIndex = mockDirectory.zones.findIndex(z => z.id === newZone.id);
-    if (existingZoneIndex > -1) {
-      mockDirectory.zones[existingZoneIndex].name = newZone.name;
-      addOrUpdateLocalitiesForZone(newZone.id, newZone.localities, newZone.name);
-
-    } else {
-      const zoneToAdd: Zone = {
-        ...newZone,
-        localities: newZone.localities.map(loc => ({
-          ...loc,
-          extensions: loc.extensions || []
-        }))
-      };
-      mockDirectory.zones.push(zoneToAdd); 
-    }
-  });
-  console.log("Directory data updated via full XML import (in-memory).");
+function extractIdFromUrl(url: string): string {
+  const parts = url.split('/');
+  const fileName = parts.pop() || '';
+  return fileName.replace('.xml', '');
 }
-
-// Function to specifically update extensions for a given locality
-export async function addOrUpdateExtensionsForLocality(zoneId: string, localityId: string, newExtensions: Extension[]): Promise<void> {
-  const zone = mockDirectory.zones.find(z => z.id === zoneId);
-  if (!zone) {
-    console.error(`Zone with id ${zoneId} not found. Cannot update extensions for locality ${localityId}.`);
-    throw new Error(`Zone with id ${zoneId} not found.`);
-  }
-
-  const locality = zone.localities.find(l => l.id === localityId || toUrlFriendlyId(l.name) === localityId);
-  if (!locality) {
-    console.error(`Locality with id ${localityId} in zone ${zoneId} not found. Cannot update extensions.`);
-    throw new Error(`Locality with id ${localityId} in zone ${zoneId} not found.`);
-  }
-
-  locality.extensions = newExtensions;
-  console.log(`Extensions for locality ${localityId} (or ${toUrlFriendlyId(locality.name)}) in zone ${zoneId} updated (in-memory).`);
-}
-
 
 export async function getZones(): Promise<Zone[]> {
-  return mockDirectory.zones;
+  const xmlContent = await readFileContent(MAINMENU_PATH);
+  if (!xmlContent) return [];
+
+  const parsedXml = await parseStringPromise(xmlContent, { explicitArray: false, trim: true });
+  const validated = CiscoIPPhoneMenuSchema.safeParse(parsedXml.CiscoIPPhoneMenu);
+
+  if (!validated.success) {
+    console.error("Failed to parse MAINMENU.xml:", validated.error.issues);
+    return [];
+  }
+
+  const menuItems = validated.data.MenuItem || [];
+  return menuItems.map(item => ({
+    id: extractIdFromUrl(item.URL),
+    name: item.Name,
+    localities: [], // Localities will be fetched on demand by getZoneById
+  }));
 }
 
 export async function getZoneById(zoneId: string): Promise<Zone | undefined> {
-  return mockDirectory.zones.find(zone => zone.id === zoneId || toUrlFriendlyId(zone.name) === zoneId);
+  const zones = await getZones(); // This gets names and IDs from MAINMENU.xml
+  const zoneInfo = zones.find(z => z.id === zoneId);
+
+  if (!zoneInfo) return undefined;
+
+  const zoneFilePath = path.join(ZONE_BRANCH_DIR, `${zoneId}.xml`);
+  const xmlContent = await readFileContent(zoneFilePath);
+  if (!xmlContent) return { ...zoneInfo, localities: [] }; // Return zone with empty localities if file is missing
+
+  const parsedXml = await parseStringPromise(xmlContent, { explicitArray: false, trim: true });
+  const validated = CiscoIPPhoneMenuSchema.safeParse(parsedXml.CiscoIPPhoneMenu);
+
+  if (!validated.success) {
+    console.error(`Failed to parse ZoneBranch XML for ${zoneId}:`, validated.error.issues);
+    return { ...zoneInfo, localities: [] };
+  }
+  
+  const title = validated.data.Title || zoneInfo.name; // Prefer title from XML, fallback to name from MAINMENU
+
+  const menuItems = validated.data.MenuItem || [];
+  const localities: Locality[] = menuItems.map(item => ({
+    id: extractIdFromUrl(item.URL),
+    name: item.Name,
+    extensions: [], // Extensions will be fetched on demand by getLocalityById
+  }));
+
+  return {
+    id: zoneId,
+    name: title,
+    localities,
+  };
 }
 
-export async function getLocalitiesByZoneId(zoneId: string): Promise<Locality[] | undefined> {
+export async function getLocalitiesByZoneId(zoneId: string): Promise<Locality[]> {
   const zone = await getZoneById(zoneId);
-  return zone?.localities;
+  return zone?.localities || [];
 }
 
 export async function getLocalityById(zoneId: string, localityId: string): Promise<Locality | undefined> {
-  const localities = await getLocalitiesByZoneId(zoneId);
-  return localities?.find(locality => locality.id === localityId || toUrlFriendlyId(locality.name) === localityId);
+  const zone = await getZoneById(zoneId); // This gets locality names and IDs from ZoneBranch/[zoneId].xml
+  const localityInfo = zone?.localities.find(l => l.id === localityId);
+
+  if (!localityInfo) return undefined;
+
+  const departmentFilePath = path.join(DEPARTMENT_DIR, `${localityId}.xml`);
+  const xmlContent = await readFileContent(departmentFilePath);
+  if (!xmlContent) return { ...localityInfo, extensions: [] };
+
+  const parsedXml = await parseStringPromise(xmlContent, { explicitArray: false, trim: true });
+  const validated = CiscoIPPhoneDirectorySchema.safeParse(parsedXml.CiscoIPPhoneDirectory);
+
+  if (!validated.success) {
+    console.error(`Failed to parse Department XML for ${localityId}:`, validated.error.issues);
+    return { ...localityInfo, extensions: [] };
+  }
+  
+  const title = validated.data.Title || localityInfo.name; // Prefer title from XML
+
+  const directoryEntries = validated.data.DirectoryEntry || [];
+  const extensions: Extension[] = directoryEntries.map(entry => ({
+    id: toUrlFriendlyId(`${entry.Name}-${entry.Telephone}`), // Generate an ID
+    department: entry.Name,
+    number: entry.Telephone,
+    // name field (contact person) is not in this XML structure
+  }));
+
+  return {
+    id: localityId,
+    name: title,
+    extensions,
+  };
 }
 
+export async function getExtensionsByLocalityId(zoneId: string, localityId: string): Promise<Extension[]> {
+  const locality = await getLocalityById(zoneId, localityId);
+  return locality?.extensions || [];
+}
+
+// findLocalityByIdGlobally might be inefficient as it has to read multiple zone files
+// For now, it relies on the API routes to serve specific department XMLs directly
 export async function findLocalityByIdGlobally(localityId: string): Promise<Locality | undefined> {
-  const zones = await getZones();
-  for (const zone of zones) {
-    const locality = zone.localities.find(l => l.id === localityId || toUrlFriendlyId(l.name) === localityId);
-    if (locality) {
-      return locality;
-    }
-  }
-  return undefined;
-}
+  // This function would need to know which zone a localityId belongs to,
+  // or iterate through all zone XMLs, then all department XMLs.
+  // Given the new file structure, the department XML is directly accessible if localityId is known.
+  const departmentFilePath = path.join(DEPARTMENT_DIR, `${localityId}.xml`);
+  const xmlContent = await readFileContent(departmentFilePath);
+  if (!xmlContent) return undefined;
 
+  const parsedXml = await parseStringPromise(xmlContent, { explicitArray: false, trim: true });
+  const validated = CiscoIPPhoneDirectorySchema.safeParse(parsedXml.CiscoIPPhoneDirectory);
 
-export async function getExtensionsByLocalityId(zoneId: string, localityId: string): Promise<Extension[] | undefined> {
-  const locality = await getLocalityById(zoneId, localityId); 
-  return locality?.extensions;
-}
-
-export async function getExtensionsByGlobalLocalityId(localityId: string): Promise<Extension[] | undefined> {
-  const locality = await findLocalityByIdGlobally(localityId);
-  return locality?.extensions;
-}
-
-// Function to delete a locality from a specific zone
-export async function deleteLocality(zoneId: string, localityId: string): Promise<void> {
-  const zone = mockDirectory.zones.find(z => z.id === zoneId);
-  if (!zone) {
-    console.error(`Zone with id ${zoneId} not found. Cannot delete locality.`);
-    throw new Error(`Zone with id ${zoneId} not found.`);
+  if (!validated.success) {
+    console.error(`Failed to parse Department XML for ${localityId} (globally):`, validated.error.issues);
+    return undefined;
   }
 
-  const localityIndex = zone.localities.findIndex(l => l.id === localityId);
-  if (localityIndex === -1) {
-    console.warn(`Locality with id ${localityId} not found in zone ${zoneId}. No action taken.`);
-    return; // Or throw an error if preferred
-  }
+  const title = validated.data.Title || localityId; // Fallback to ID if title missing
+  const directoryEntries = validated.data.DirectoryEntry || [];
+  const extensions: Extension[] = directoryEntries.map(entry => ({
+    id: toUrlFriendlyId(`${entry.Name}-${entry.Telephone}`),
+    department: entry.Name,
+    number: entry.Telephone,
+  }));
 
-  zone.localities.splice(localityIndex, 1);
-  console.log(`Locality with id ${localityId} deleted from zone ${zoneId} (in-memory).`);
+  return {
+    id: localityId,
+    name: title,
+    extensions,
+  };
 }
-
-
-function populateZonaNorteLocalities() {
-  const zonaNorte = mockDirectory.zones.find(z => z.id === 'norte');
-  if (zonaNorte) {
-    const norteLocalities: Locality[] = [
-      { id: toUrlFriendlyId("Bibbia HOMS"), name: "Bibbia HOMS", extensions: [] },
-      { id: toUrlFriendlyId("Bonao"), name: "Bonao", extensions: [] },
-      { id: toUrlFriendlyId("Bravo Santiago"), name: "Bravo Santiago", extensions: [] },
-      { id: toUrlFriendlyId("Colinas Mall"), name: "Colinas Mall", extensions: [] },
-      { id: toUrlFriendlyId("El Encanto"), name: "El Encanto", extensions: [] },
-      { id: toUrlFriendlyId("Embrujo"), name: "Embrujo", extensions: [] },
-      { id: toUrlFriendlyId("Estrella Sadhala"), name: "Estrella Sadhala", extensions: [] },
-      { id: toUrlFriendlyId("Galerias Del Atlantico"), name: "Galerias Del Atlantico", extensions: [] },
-      { id: toUrlFriendlyId("Gurabito"), name: "Gurabito", extensions: [] },
-      { id: toUrlFriendlyId("Gurabo"), name: "Gurabo", extensions: [] },
-      { id: toUrlFriendlyId("La Normal"), name: "La Normal", extensions: [] },
-      { id: toUrlFriendlyId("La Rinconada"), name: "La Rinconada", extensions: [] },
-      { id: toUrlFriendlyId("Las Terrenas"), name: "Las Terrenas", extensions: [] },
-      { id: toUrlFriendlyId("Los Jardines"), name: "Los Jardines", extensions: [] },
-      { id: toUrlFriendlyId("Los Jazmines"), name: "Los Jazmines", extensions: [] },
-      { id: toUrlFriendlyId("LS Bartolome Colon"), name: "LS Bartolome Colon", extensions: [] },
-      { id: toUrlFriendlyId("LS del Sol"), name: "LS del Sol", extensions: [] },
-      { id: toUrlFriendlyId("LS San Francisco de Macoris"), name: "LS San Francisco de Macoris", extensions: [] },
-      { id: toUrlFriendlyId("Moca"), name: "Moca", extensions: [] },
-      { id: toUrlFriendlyId("Plaza Porvenir"), name: "Plaza Porvenir", extensions: [] },
-      { id: toUrlFriendlyId("Portal del Norte"), name: "Portal del Norte", extensions: [] },
-      { id: toUrlFriendlyId("Samana"), name: "Samana", extensions: [] },
-      { id: toUrlFriendlyId("San Francisco de Macoris"), name: "San Francisco de Macoris", extensions: [] },
-      { id: toUrlFriendlyId("SN EMBRUJO"), name: "SN EMBRUJO", extensions: [] },
-      { id: toUrlFriendlyId("SN Estrella Sadhala"), name: "SN Estrella Sadhala", extensions: [] },
-      { id: toUrlFriendlyId("SN Villa Olga"), name: "SN Villa Olga", extensions: [] },
-      { id: toUrlFriendlyId("Sosua"), name: "Sosua", extensions: [] },
-    ];
-    
-    // Clear existing localities if any (e.g. placeholders) and add the new list
-    zonaNorte.localities = [];
-    norteLocalities.forEach(newLoc => {
-        zonaNorte.localities.push(newLoc);
-    });
-  }
-}
-
-populateZonaNorteLocalities();
