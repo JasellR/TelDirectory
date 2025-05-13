@@ -1,8 +1,9 @@
 import type { DirectoryData, Zone, Locality, Extension } from '@/types';
 
 // Helper to generate URL-friendly IDs
-const toUrlFriendlyId = (name: string) => {
-  return name.replace(/\s+/g, '').replace(/[^a-zA-Z0-9-]/g, '');
+const toUrlFriendlyId = (name: string): string => {
+  if (!name) return 'unknown';
+  return name.trim().replace(/\s+/g, '').replace(/[^a-zA-Z0-9-]/g, '');
 };
 
 
@@ -91,15 +92,12 @@ let mockDirectory: DirectoryData = {
 export async function addOrUpdateLocalitiesForZone(zoneId: string, localitiesToImport: Locality[], newZoneName?: string): Promise<void> {
   const zoneIndex = mockDirectory.zones.findIndex(z => z.id === zoneId);
   if (zoneIndex === -1) {
-    // Optionally, create the zone if it doesn't exist, or throw an error.
-    // For now, let's assume the zone must exist for this specific import type.
     console.error(`Zone with id ${zoneId} not found. Cannot import localities.`);
     throw new Error(`Zone with id ${zoneId} not found.`);
   }
 
   const existingZone = mockDirectory.zones[zoneIndex];
   
-  // Update zone name if provided and different
   if (newZoneName && existingZone.name !== newZoneName) {
     existingZone.name = newZoneName;
   }
@@ -107,25 +105,22 @@ export async function addOrUpdateLocalitiesForZone(zoneId: string, localitiesToI
   localitiesToImport.forEach(newLocality => {
     const existingLocalityIndex = existingZone.localities.findIndex(l => l.id === newLocality.id);
     if (existingLocalityIndex > -1) {
-      // Update existing locality
       const existingLocality = existingZone.localities[existingLocalityIndex];
-      existingLocality.name = newLocality.name; // Update name
+      existingLocality.name = newLocality.name; 
 
-      // Merge extensions: update existing ones, add new ones
       newLocality.extensions.forEach(newExtension => {
         const existingExtensionIndex = existingLocality.extensions.findIndex(e => e.id === newExtension.id);
         if (existingExtensionIndex > -1) {
-          existingLocality.extensions[existingExtensionIndex] = newExtension; // Update
+          existingLocality.extensions[existingExtensionIndex] = newExtension; 
         } else {
-          existingLocality.extensions.push(newExtension); // Add new
+          existingLocality.extensions.push(newExtension); 
         }
       });
     } else {
-      // Add new locality
       existingZone.localities.push(newLocality);
     }
   });
-  console.log(`Localities for zone ${zoneId} updated (in-memory)`, existingZone);
+  console.log(`Localities for zone ${zoneId} updated (in-memory).`);
 }
 
 
@@ -134,19 +129,32 @@ export async function addOrUpdateZones(newZones: Zone[]): Promise<void> {
   newZones.forEach(newZone => {
     const existingZoneIndex = mockDirectory.zones.findIndex(z => z.id === newZone.id);
     if (existingZoneIndex > -1) {
-      // Zone exists, update its name and localities
       mockDirectory.zones[existingZoneIndex].name = newZone.name;
-      // Delegate locality and extension merging to the specialized function
-      // This assumes newZone.localities contains all localities for this zone from the import
       addOrUpdateLocalitiesForZone(newZone.id, newZone.localities, newZone.name);
     } else {
-      // Zone does not exist, add it
-      // Ensure all localities and extensions are properly structured if it's a new zone.
-      // The `newZone` object should already be in the correct domain format.
       mockDirectory.zones.push(newZone); 
     }
   });
-  console.log("Directory data updated via full XML import (in-memory)", mockDirectory);
+  console.log("Directory data updated via full XML import (in-memory).");
+}
+
+// Function to specifically update extensions for a given locality
+export async function addOrUpdateExtensionsForLocality(zoneId: string, localityId: string, newExtensions: Extension[]): Promise<void> {
+  const zone = mockDirectory.zones.find(z => z.id === zoneId);
+  if (!zone) {
+    console.error(`Zone with id ${zoneId} not found. Cannot update extensions for locality ${localityId}.`);
+    throw new Error(`Zone with id ${zoneId} not found.`);
+  }
+
+  const locality = zone.localities.find(l => l.id === localityId);
+  if (!locality) {
+    console.error(`Locality with id ${localityId} in zone ${zoneId} not found. Cannot update extensions.`);
+    throw new Error(`Locality with id ${localityId} in zone ${zoneId} not found.`);
+  }
+
+  // Replace all existing extensions with the new ones
+  locality.extensions = newExtensions;
+  console.log(`Extensions for locality ${localityId} in zone ${zoneId} updated (in-memory).`);
 }
 
 
@@ -165,13 +173,14 @@ export async function getLocalitiesByZoneId(zoneId: string): Promise<Locality[] 
 
 export async function getLocalityById(zoneId: string, localityId: string): Promise<Locality | undefined> {
   const localities = await getLocalitiesByZoneId(zoneId);
-  return localities?.find(locality => locality.id === localityId);
+  return localities?.find(locality => locality.id === localityId || toUrlFriendlyId(locality.name) === localityId);
 }
 
 export async function findLocalityByIdGlobally(localityId: string): Promise<Locality | undefined> {
   const zones = await getZones();
   for (const zone of zones) {
-    const locality = zone.localities.find(l => l.id === localityId);
+    // Check against both original ID and URL-friendly ID
+    const locality = zone.localities.find(l => l.id === localityId || toUrlFriendlyId(l.name) === localityId);
     if (locality) {
       return locality;
     }
