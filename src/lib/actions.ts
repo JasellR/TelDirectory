@@ -157,7 +157,6 @@ export async function editLocalityOrBranchAction(args: EditItemArgs): Promise<{ 
   const sanitizedOldItemId = sanitizeFilenamePart(oldItemId);
   const newItemId = generateIdFromName(newItemName);
   
-  // TODO: Get current host and port
   const currentHost = 'YOUR_DEVICE_IP';
   const currentPort = '9002';
 
@@ -459,12 +458,11 @@ export async function saveDepartmentXmlAction(departmentFilenameBase: string | n
   }
 }
 
-async function processSingleXmlFileForHostUpdate(filePath: string, newHost: string, newPort: string): Promise<{ success: boolean; error?: string }> {
+async function processSingleXmlFileForHostUpdate(filePath: string, newHost: string, newPort: string): Promise<{ success: boolean; error?: string; RfilePath: string }> {
   try {
     const parsedXml = await readAndParseXML(filePath);
     if (!parsedXml || !parsedXml.CiscoIPPhoneMenu) {
-      // Not a menu file or unreadable, skip or log
-      return { success: true }; // No error if not a menu file we intend to process
+      return { success: true, RfilePath: filePath }; 
     }
 
     let changed = false;
@@ -496,10 +494,10 @@ async function processSingleXmlFileForHostUpdate(filePath: string, newHost: stri
     if (changed) {
       await buildAndWriteXML(filePath, parsedXml);
     }
-    return { success: true };
+    return { success: true, RfilePath: filePath };
   } catch (error: any) {
     console.error(`Error processing file ${filePath} for host update:`, error);
-    return { success: false, error: error.message };
+    return { success: false, error: error.message, RfilePath: filePath };
   }
 }
 
@@ -514,20 +512,26 @@ export async function updateXmlUrlsAction(newHost: string, newPort: string): Pro
 
   let filesProcessed = 0;
   let filesFailed = 0;
-  const directoriesToScan = [ZONE_BRANCH_DIR, BRANCH_DIR];
-  const mainMenuPath = path.join(IVOXS_DIR, MAINMENU_FILENAME);
+  const filesToRevalidate: string[] = [];
 
   // Process MAINMENU.xml
+  const mainMenuPath = path.join(IVOXS_DIR, MAINMENU_FILENAME);
   const mainMenuResult = await processSingleXmlFileForHostUpdate(mainMenuPath, newHost.trim(), newPort.trim());
   if (mainMenuResult.success) {
     filesProcessed++;
+    filesToRevalidate.push(`/ivoxsdir/${path.basename(mainMenuResult.RfilePath)}`);
   } else {
     filesFailed++;
     console.error(`Failed to update ${MAINMENU_FILENAME}: ${mainMenuResult.error}`);
   }
 
   // Process files in ZoneBranch and Branch directories
-  for (const dirPath of directoriesToScan) {
+  const directoriesToScan = [
+    { dirPath: ZONE_BRANCH_DIR, routePrefix: '/ivoxsdir/zonebranch/' },
+    { dirPath: BRANCH_DIR, routePrefix: '/ivoxsdir/branch/' }
+  ];
+
+  for (const { dirPath, routePrefix } of directoriesToScan) {
     try {
       const files = await fs.readdir(dirPath);
       for (const file of files) {
@@ -536,6 +540,7 @@ export async function updateXmlUrlsAction(newHost: string, newPort: string): Pro
           const result = await processSingleXmlFileForHostUpdate(filePath, newHost.trim(), newPort.trim());
           if (result.success) {
             filesProcessed++;
+            filesToRevalidate.push(`${routePrefix}${path.basename(result.RfilePath)}`);
           } else {
             filesFailed++;
             console.error(`Failed to update ${file}: ${result.error}`);
@@ -544,26 +549,37 @@ export async function updateXmlUrlsAction(newHost: string, newPort: string): Pro
       }
     } catch (dirError: any) {
       console.error(`Error reading directory ${dirPath}:`, dirError);
-      // Depending on desired behavior, might count all potential files in dir as failed or just log.
     }
   }
   
-  // Revalidate all relevant paths since URLs could have changed everywhere
-  revalidatePath('/', 'layout');
+  // Revalidate web pages
+  revalidatePath('/', 'layout'); // Revalidates all pages including home, zone pages, branch pages, locality pages.
+
+  // Revalidate specific API routes for XML files
+  for (const routePath of filesToRevalidate) {
+    try {
+      revalidatePath(routePath, 'route');
+    } catch (e) {
+        console.warn(`Failed to revalidate route ${routePath}: `, e)
+    }
+  }
 
 
   if (filesFailed > 0) {
     return { 
       success: false, 
-      message: 'Some XML files failed to update.', 
+      message: `XML URL update partially failed. ${filesFailed} file(s) could not be updated.`, 
       filesProcessed, 
       filesFailed 
     };
   }
   return { 
     success: true, 
-    message: 'XML URLs updated successfully.', 
+    message: `XML URLs updated successfully in ${filesProcessed} file(s).`, 
     filesProcessed, 
     filesFailed 
   };
 }
+
+
+    
