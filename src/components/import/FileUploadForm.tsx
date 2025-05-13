@@ -17,14 +17,6 @@ import type { ReactNode } from 'react';
 const MAX_FILE_SIZE_MB = 5;
 const MAX_FILE_SIZE_BYTES = MAX_FILE_SIZE_MB * 1024 * 1024;
 
-// Helper function, assuming it's available or define it if not
-// For this example, we'll assume it's similar to the one in actions.ts
-// If not, it should be imported or defined.
-const sanitizeFilenamePart = (filenamePart: string): string => {
-  return filenamePart.replace(/[^a-zA-Z0-9_-]/g, '');
-};
-
-
 const createSchema = (requiresId?: boolean, idFieldLabel?: string, allowMultipleFiles?: boolean) => {
   let baseSchemaObject = {
     xmlFile: z
@@ -55,6 +47,7 @@ const createSchema = (requiresId?: boolean, idFieldLabel?: string, allowMultiple
   if (!allowMultipleFiles && requiresId) {
     baseSchemaObject = {
       ...baseSchemaObject,
+      // idField is only part of schema if explicitly required and not multiple files
       idField: z.string().min(1, `${idFieldLabel || 'ID'} is required.`).regex(/^[a-zA-Z0-9_-]+$/, 'Filename must be alphanumeric, underscore, or hyphen, without .xml extension.'),
     };
   }
@@ -65,7 +58,7 @@ interface BaseFormValues {
   xmlFile: FileList;
 }
 interface FormValuesWithId extends BaseFormValues {
-  idField: string;
+  idField: string; // This field is optional in the actual data if requiresId is false
 }
 
 interface FileUploadFormProps {
@@ -111,19 +104,25 @@ export function FileUploadForm({
 
       for (const file of Array.from(files)) {
         const originalFilename = file.name;
-        const idValue = originalFilename.replace(/\.xml$/i, ''); // Case-insensitive .xml removal
+        let idValue = originalFilename.replace(/\.xml$/i, '').trim(); // Case-insensitive .xml removal and trim
         
-        // Server-side action (importAction) already sanitizes the filename part.
-        // We pass the base name (without .xml) to the action.
-
         if (!idValue) {
             toast({
                 title: 'Skipped File',
-                description: `Could not derive a valid ID from filename: ${originalFilename}. It must not be empty and should contain valid characters before the .xml extension.`,
+                description: `Could not derive a valid ID from filename: ${originalFilename}. Filename (before .xml) cannot be empty.`,
                 variant: 'destructive',
             });
             continue;
         }
+        if (!/^[a-zA-Z0-9_-]+$/.test(idValue)) {
+            toast({
+                title: 'Skipped File',
+                description: `Derived filename ID "${idValue}" for ${originalFilename} contains invalid characters. Only alphanumeric, underscore, or hyphen are allowed.`,
+                variant: 'destructive',
+            });
+            continue;
+        }
+
 
         try {
           const xmlContent = await new Promise<string>((resolve, reject) => {
@@ -148,7 +147,6 @@ export function FileUploadForm({
             continue;
           }
           
-          // The importAction will handle individual toasts
           await importAction(idValue, xmlContent);
           filesProcessed++;
 
@@ -161,7 +159,7 @@ export function FileUploadForm({
         }
       }
       setIsSubmitting(false);
-      if (filesProcessed > 0 || files.length > 0) { // Reset if any file was attempted or selected
+      if (filesProcessed > 0 || (files && files.length > 0)) { 
         reset();
       }
 
@@ -177,7 +175,43 @@ export function FileUploadForm({
         return;
       }
 
-      const idValue = requiresId ? (data as FormValuesWithId).idField : null;
+      let idForAction: string | null = null;
+
+      if (requiresId && 'idField' in data && typeof (data as FormValuesWithId).idField === 'string') {
+        idForAction = (data as FormValuesWithId).idField;
+      } else if (!requiresId) { // If ID is not required from a field, derive from filename
+        const originalFilename = file.name;
+        const derivedId = originalFilename.replace(/\.xml$/i, '').trim(); 
+        if (!derivedId) {
+          toast({
+            title: 'Error',
+            description: `Could not derive a valid ID from filename: ${originalFilename}. Filename (before .xml) cannot be empty.`,
+            variant: 'destructive',
+          });
+          setIsSubmitting(false);
+          return;
+        }
+        if (!/^[a-zA-Z0-9_-]+$/.test(derivedId)) {
+            toast({
+                title: 'Error',
+                description: `Derived filename ID "${derivedId}" contains invalid characters. Only alphanumeric, underscore, or hyphen are allowed.`,
+                variant: 'destructive',
+            });
+            setIsSubmitting(false);
+            return;
+        }
+        idForAction = derivedId;
+      } else {
+        // This case implies requiresId is true but idField is missing/invalid
+        // Zod schema should ideally catch this if idField is marked as required by schema
+        toast({
+          title: 'Configuration Error',
+          description: idFieldLabel ? `${idFieldLabel} is required but not provided correctly.` : 'ID field is required but not found.',
+          variant: 'destructive',
+        });
+        setIsSubmitting(false);
+        return;
+      }
 
       const reader = new FileReader();
       reader.onload = async (e) => {
@@ -193,7 +227,7 @@ export function FileUploadForm({
         }
 
         try {
-          const result = await importAction(idValue, xmlContent);
+          const result = await importAction(idForAction, xmlContent);
           if (result.success) {
             toast({
               title: 'Success',
@@ -237,7 +271,7 @@ export function FileUploadForm({
       </CardHeader>
       <form onSubmit={handleSubmit(onSubmit)}>
         <CardContent className="space-y-4">
-          {!allowMultipleFiles && requiresId && (
+          {!allowMultipleFiles && requiresId && ( // Only show idField if single file AND requiresId
             <div className="space-y-2">
               <Label htmlFor="idField">{idFieldLabel}</Label>
               <Input
@@ -262,6 +296,11 @@ export function FileUploadForm({
               multiple={allowMultipleFiles}
               {...register('xmlFile')}
               disabled={isSubmitting}
+              onChange={() => { // Reset field-specific error on change if needed, though Zod handles re-validation
+                if (errors.xmlFile) {
+                  // Consider manually clearing error if Zod doesn't do it fast enough for UX
+                }
+              }}
             />
             {errors.xmlFile && (
               // @ts-ignore

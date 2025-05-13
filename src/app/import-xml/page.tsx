@@ -70,11 +70,9 @@ export default function ImportXmlPage() {
 
             <FileUploadForm
               formTitle="Import Zone Branch XML"
-              formDescription={<>Upload an XML file for a specific zone (e.g., Zona Este). This file lists the localities within that zone. It will be saved in <code>IVOXS/ZoneBranch/</code>.</>}
+              formDescription={<>Upload an XML file for a specific zone (e.g., <code>ZonaEste.xml</code>). The filename (without the <code>.xml</code> extension) will be used as its ID. It will be saved in <code>IVOXS/ZoneBranch/</code>.</>}
               importAction={saveZoneBranchXmlAction}
-              requiresId={true}
-              idFieldLabel="Zone Filename (e.g., ZonaEste, ZonaNorte)"
-              idFieldPlaceholder="Enter zone filename without .xml"
+              requiresId={false} // ID will be derived from filename
             />
 
             <FileUploadForm
