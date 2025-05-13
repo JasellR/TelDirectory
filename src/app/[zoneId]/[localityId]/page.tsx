@@ -5,6 +5,7 @@ import { Breadcrumbs } from '@/components/layout/Breadcrumbs';
 import { notFound } from 'next/navigation';
 import type { Metadata } from 'next';
 import { Separator } from '@/components/ui/separator';
+import { AddExtensionButton } from '@/components/actions/AddExtensionButton'; // Added
 
 interface LocalityPageProps {
   params: {
@@ -46,6 +47,14 @@ export default async function LocalityPage({ params }: LocalityPageProps) {
             { label: locality.name }
           ]} 
         />
+        <div className="flex justify-between items-center mb-6">
+          <h1 className="text-3xl font-bold text-foreground">Extensions in {locality.name}</h1>
+          <AddExtensionButton 
+            localityId={localityId} 
+            localityName={locality.name} 
+            zoneId={zoneId} 
+          />
+        </div>
         <ExtensionTable 
           extensions={extensions} 
           localityName={locality.name} 

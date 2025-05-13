@@ -289,6 +289,69 @@ export async function deleteLocalityAction(zoneId: string, localityId: string): 
 }
 
 
+export async function addExtensionAction(localityId: string, name: string, telephone: string): Promise<{ success: boolean; message: string; error?: string }> {
+  const sanitizedLocalityId = sanitizeFilenamePart(localityId);
+  if (!sanitizedLocalityId) {
+    return { success: false, message: 'Invalid Locality ID.' };
+  }
+  if (!name.trim()) {
+    return { success: false, message: 'Extension name cannot be empty.' };
+  }
+  if (!telephone.trim()) {
+    return { success: false, message: 'Extension telephone cannot be empty.' };
+  }
+  if (!/^\d+$/.test(telephone.trim())) {
+     return { success: false, message: 'Extension telephone must be a valid number.' };
+  }
+
+
+  const departmentFilePath = path.join(DEPARTMENT_DIR, `${sanitizedLocalityId}.xml`);
+
+  try {
+    const parsedDepartmentXml = await readAndParseXML(departmentFilePath);
+    if (!parsedDepartmentXml || !parsedDepartmentXml.CiscoIPPhoneDirectory) {
+      // If file doesn't exist, create it with a default structure
+      console.warn(`Department file ${sanitizedLocalityId}.xml not found. Creating new file.`);
+      const newDirectory: CiscoIPPhoneDirectory = {
+        Title: sanitizedLocalityId, // Or a more descriptive title if available
+        Prompt: 'Select an extension',
+        DirectoryEntry: [{ Name: name.trim(), Telephone: telephone.trim() }],
+      };
+      await buildAndWriteXML(departmentFilePath, { CiscoIPPhoneDirectory: newDirectory });
+      revalidatePath(`/zoneId/${sanitizedLocalityId}`); // Adjust revalidation as needed
+      revalidatePath(`/ivoxsdir/department/${sanitizedLocalityId}.xml`, 'route');
+      return { success: true, message: `Extension "${name}" added to new locality "${sanitizedLocalityId}".` };
+    }
+    
+    let directoryEntries = ensureArray(parsedDepartmentXml.CiscoIPPhoneDirectory.DirectoryEntry);
+
+    // Check for duplicates
+    if (directoryEntries.some(entry => entry.Name === name.trim() && entry.Telephone === telephone.trim())) {
+      return { success: false, message: `An extension with Name "${name}" and Telephone "${telephone}" already exists.` };
+    }
+
+    directoryEntries.push({ Name: name.trim(), Telephone: telephone.trim() });
+    // Sort by Name, then by Telephone for consistency
+    directoryEntries.sort((a, b) => {
+      const nameComparison = a.Name.localeCompare(b.Name);
+      if (nameComparison !== 0) return nameComparison;
+      return a.Telephone.localeCompare(b.Telephone);
+    });
+
+    parsedDepartmentXml.CiscoIPPhoneDirectory.DirectoryEntry = directoryEntries;
+    await buildAndWriteXML(departmentFilePath, parsedDepartmentXml);
+
+    revalidatePath('/[zoneId]/[localityId]', 'page'); 
+    revalidatePath(`/ivoxsdir/department/${sanitizedLocalityId}.xml`, 'route');
+
+    return { success: true, message: `Extension "${name}" added to locality "${sanitizedLocalityId}".` };
+  } catch (error: any) {
+    console.error(`Error adding extension to ${sanitizedLocalityId}:`, error);
+    return { success: false, message: `Failed to add extension: ${error.message}`, error: error.toString() };
+  }
+}
+
+
 export async function deleteExtensionAction(localityId: string, extensionDepartment: string, extensionNumber: string): Promise<{ success: boolean; message: string }> {
   if (!localityId || !extensionDepartment || !extensionNumber) {
     return { success: false, message: 'Locality ID, extension department, and number are required.' };

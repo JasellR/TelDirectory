@@ -87,12 +87,12 @@
     <URL>http://YOUR_DEVICE_IP:9002/ivoxsdir/department/PlazaPorvenir.xml</URL>
   </MenuItem>
   <MenuItem>
-    <Name>PpalmaresMall</Name>
-    <URL>http://YOUR_DEVICE_IP:9002/ivoxsdir/department/PpalmaresMall.xml</URL>
-  </MenuItem>
-  <MenuItem>
     <Name>Portal del Norte</Name>
     <URL>http://YOUR_DEVICE_IP:9002/ivoxsdir/department/PortaldelNorte.xml</URL>
+  </MenuItem>
+  <MenuItem>
+    <Name>PpalmaresMall</Name>
+    <URL>http://YOUR_DEVICE_IP:9002/ivoxsdir/department/PpalmaresMall.xml</URL>
   </MenuItem>
   <MenuItem>
     <Name>Samana</Name>
@@ -101,6 +101,10 @@
   <MenuItem>
     <Name>San Francisco de Macoris</Name>
     <URL>http://YOUR_DEVICE_IP:9002/ivoxsdir/department/SanFranciscodeMacoris.xml</URL>
+  </MenuItem>
+  <MenuItem>
+    <Name>Santiago Centro</Name>
+    <URL>http://YOUR_DEVICE_IP:9002/ivoxsdir/department/SantiagoCentro.xml</URL>
   </MenuItem>
   <MenuItem>
     <Name>SN EMBRUJO</Name>
