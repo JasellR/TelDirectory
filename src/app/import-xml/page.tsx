@@ -3,23 +3,43 @@ import { Breadcrumbs } from '@/components/layout/Breadcrumbs';
 import type { Metadata } from 'next';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { InfoIcon, UploadCloud } from 'lucide-react';
+import { InfoIcon, UploadCloud, Palette } from 'lucide-react';
 import { FileUploadForm } from '@/components/import/FileUploadForm';
 import { saveZoneBranchXmlAction, saveDepartmentXmlAction } from '@/lib/actions';
+import { ThemeToggle } from '@/components/settings/ThemeToggle';
+import { Separator } from '@/components/ui/separator';
 
 export const metadata: Metadata = {
-  title: 'Import & Setup - TelDirectory',
-  description: 'Manage and import XML configuration files for your IP phone directory.',
+  title: 'Settings - TelDirectory',
+  description: 'Manage application settings, import XML files, and configure appearance.',
 };
 
-export default function ImportXmlPage() {
+export default function SettingsPage() { // Renamed component for clarity
   const appBaseUrlPlaceholder = 'http://YOUR_DEVICE_IP:9002'; 
   const mainmenuUrl = `${appBaseUrlPlaceholder}/ivoxsdir/mainmenu.xml`;
 
   return (
     <div>
-      <Breadcrumbs items={[{ label: 'Import & Setup' }]} />
+      <Breadcrumbs items={[{ label: 'Settings' }]} />
       <div className="space-y-8">
+
+        <Card>
+          <CardHeader>
+            <div className="flex items-center gap-3">
+              <Palette className="h-6 w-6 text-primary" />
+              <CardTitle className="text-2xl">Appearance Settings</CardTitle>
+            </div>
+            <CardDescription>
+              Customize the look and feel of the application.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <ThemeToggle />
+          </CardContent>
+        </Card>
+
+        <Separator />
+
         <Card>
           <CardHeader>
             <div className="flex items-center gap-3">
@@ -48,6 +68,8 @@ export default function ImportXmlPage() {
           </CardContent>
         </Card>
         
+        <Separator />
+
         <Card>
           <CardHeader>
             <div className="flex items-center gap-3">
@@ -56,7 +78,7 @@ export default function ImportXmlPage() {
             </div>
             <CardDescription>
                 Upload XML files directly to their respective locations within the <code>IVOXS</code> directory. 
-                Ensure files are correctly formatted Cisco IP Phone XML.
+                Ensure files are correctly formatted Cisco IP Phone XML. The filename (without <code>.xml</code>) will be used as its ID.
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">
@@ -70,17 +92,17 @@ export default function ImportXmlPage() {
 
             <FileUploadForm
               formTitle="Import Zone Branch XML"
-              formDescription={<>Upload an XML file for a specific zone (e.g., <code>ZonaEste.xml</code>). The filename (without the <code>.xml</code> extension) will be used as its ID. It will be saved in <code>IVOXS/ZoneBranch/</code>.</>}
+              formDescription={<>Upload an XML file for a specific zone (e.g., <code>ZonaEste.xml</code>). It will be saved in <code>IVOXS/ZoneBranch/</code>.</>}
               importAction={saveZoneBranchXmlAction}
-              requiresId={false} // ID will be derived from filename
+              requiresId={false} 
             />
 
             <FileUploadForm
               formTitle="Import Department XML Files"
-              formDescription={<>Upload one or more XML files for specific departments/localities. The filename (without the <code>.xml</code> extension) will be used as its ID. Files will be saved in <code>IVOXS/Department/</code>.</>}
+              formDescription={<>Upload one or more XML files for specific departments/localities. Files will be saved in <code>IVOXS/Department/</code>.</>}
               importAction={saveDepartmentXmlAction}
               allowMultipleFiles={true}
-              requiresId={false} // ID is derived from filename for multiple uploads
+              requiresId={false}
             />
           </CardContent>
         </Card>
@@ -88,4 +110,3 @@ export default function ImportXmlPage() {
     </div>
   );
 }
-
