@@ -100,5 +100,8 @@
   "portUpdatedSuccess": "Puerto de visualización actualizado correctamente.",
   "portNumberInvalidForHostUpdate": "Se requiere un puerto numérico válido para actualizar las URL de host en XML.",
   "filesProcessedLabel": "Archivos procesados",
-  "filesFailedLabel": "Archivos fallidos"
+  "filesFailedLabel": "Archivos fallidos",
+  "generalSettingsTitle": "Configuración General",
+  "generalSettingsDescription": "Administre la configuración general de la aplicación, como la apariencia y el idioma."
 }
+

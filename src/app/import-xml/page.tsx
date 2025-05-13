@@ -4,7 +4,7 @@
 import { Breadcrumbs } from '@/components/layout/Breadcrumbs';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { InfoIcon, UploadCloud, Palette, Languages, Settings as SettingsIcon, RadioTower, Server } from 'lucide-react';
+import { InfoIcon, UploadCloud, Palette, Languages, Settings as SettingsIcon, RadioTower, Server, FileCode } from 'lucide-react';
 import { FileUploadForm } from '@/components/import/FileUploadForm';
 import { saveZoneBranchXmlAction, saveDepartmentXmlAction, updateXmlUrlsAction } from '@/lib/actions';
 import { ThemeToggle } from '@/components/settings/ThemeToggle';
@@ -109,31 +109,37 @@ export default function SettingsPage() {
           <CardHeader>
             <div className="flex items-center gap-3">
               <SettingsIcon className="h-6 w-6 text-primary" />
-              <CardTitle className="text-2xl">{t('settings')}</CardTitle>
+              <CardTitle className="text-2xl">{t('generalSettingsTitle')}</CardTitle>
             </div>
             <CardDescription>
-              {t('settingsDescription')}
+              {t('generalSettingsDescription')}
             </CardDescription>
           </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div>
-                 <h3 className="text-lg font-semibold mb-2 flex items-center gap-2">
-                    <Palette className="h-5 w-5 text-muted-foreground" />
-                    {t('appearanceSettings')}
-                </h3>
-                <p className="text-sm text-muted-foreground mb-3">{t('appearanceDescription')}</p>
-                <ThemeToggle />
-              </div>
-              <div>
-                <h3 className="text-lg font-semibold mb-2 flex items-center gap-2">
-                    <Languages className="h-5 w-5 text-muted-foreground" />
-                    {t('languageSettings')}
-                </h3>
-                <p className="text-sm text-muted-foreground mb-3">{t('languageDescription')}</p>
-                <LanguageToggle />
-              </div>
-            </div>
+          <CardContent className="space-y-6">
+             <Card className="shadow-none border">
+                <CardHeader>
+                    <div className="flex items-center gap-3">
+                        <Palette className="h-5 w-5 text-muted-foreground" />
+                        <CardTitle className="text-xl">{t('appearanceSettings')}</CardTitle>
+                    </div>
+                    <CardDescription>{t('appearanceDescription')}</CardDescription>
+                </CardHeader>
+                <CardContent>
+                    <ThemeToggle />
+                </CardContent>
+            </Card>
+             <Card className="shadow-none border">
+                <CardHeader>
+                    <div className="flex items-center gap-3">
+                        <Languages className="h-5 w-5 text-muted-foreground" />
+                        <CardTitle className="text-xl">{t('languageSettings')}</CardTitle>
+                    </div>
+                    <CardDescription>{t('languageDescription')}</CardDescription>
+                </CardHeader>
+                <CardContent>
+                    <LanguageToggle />
+                </CardContent>
+            </Card>
           </CardContent>
         </Card>
 
@@ -168,13 +174,6 @@ export default function SettingsPage() {
               </div>
                <p className="text-xs text-muted-foreground">{t('hostSettingsNote')}</p>
             </div>
-             <Alert>
-              <InfoIcon className="h-4 w-4" />
-              <AlertTitle>{t('importantNotice')}</AlertTitle>
-              <AlertDescription>
-                {t('serviceUrlPlaceholderInfo')}
-              </AlertDescription>
-            </Alert>
           </CardContent>
         </Card>
 
@@ -205,18 +204,11 @@ export default function SettingsPage() {
                 <Button onClick={handlePortUpdate}>{t('updatePortButton')}</Button>
               </div>
             </div>
-             <Alert>
-              <InfoIcon className="h-4 w-4" />
-              <AlertTitle>{t('importantNotice')}</AlertTitle>
-              <AlertDescription>
-                {t('serviceUrlPlaceholderInfo')}
-              </AlertDescription>
-            </Alert>
           </CardContent>
         </Card>
-
-        <Separator />
         
+        <Separator />
+
         <Card>
           <CardHeader>
             <div className="flex items-center gap-3">
@@ -258,28 +250,40 @@ export default function SettingsPage() {
           </CardHeader>
           <CardContent className="space-y-6">
             <Alert variant="destructive">
-              <InfoIcon className="h-4 w-4" />
+              <FileCode className="h-4 w-4" />
               <AlertTitle>{t('caution')}</AlertTitle>
               <AlertDescription>
                 {t('importOverwriteWarning')}
               </AlertDescription>
             </Alert>
+            
+            <Card className="shadow-none border">
+                <CardHeader>
+                    <CardTitle className="text-xl">{t('importZoneBranchXml')}</CardTitle>
+                    <CardDescription>{t('importZoneBranchXmlDescription')}</CardDescription>
+                </CardHeader>
+                <CardContent>
+                    <FileUploadForm
+                      importAction={saveZoneBranchXmlAction}
+                      requiresId={false} 
+                      allowMultipleFiles={true}
+                    />
+                </CardContent>
+            </Card>
 
-            <FileUploadForm
-              formTitle={t('importZoneBranchXml')}
-              formDescription={<>{t('importZoneBranchXmlDescription')}</>}
-              importAction={saveZoneBranchXmlAction}
-              requiresId={false} 
-              allowMultipleFiles={true}
-            />
-
-            <FileUploadForm
-              formTitle={t('importDepartmentXml')}
-              formDescription={<>{t('importDepartmentXmlDescription')}</>}
-              importAction={saveDepartmentXmlAction}
-              allowMultipleFiles={true}
-              requiresId={false}
-            />
+            <Card className="shadow-none border">
+                <CardHeader>
+                    <CardTitle className="text-xl">{t('importDepartmentXml')}</CardTitle>
+                    <CardDescription>{t('importDepartmentXmlDescription')}</CardDescription>
+                </CardHeader>
+                <CardContent>
+                    <FileUploadForm
+                      importAction={saveDepartmentXmlAction}
+                      allowMultipleFiles={true}
+                      requiresId={false}
+                    />
+                </CardContent>
+            </Card>
           </CardContent>
         </Card>
       </div>

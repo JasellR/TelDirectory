@@ -100,5 +100,8 @@
   "portUpdatedSuccess": "Display port updated successfully.",
   "portNumberInvalidForHostUpdate": "A valid numeric port is required to update XML host URLs.",
   "filesProcessedLabel": "Files processed",
-  "filesFailedLabel": "Files failed"
+  "filesFailedLabel": "Files failed",
+  "generalSettingsTitle": "General Settings",
+  "generalSettingsDescription": "Manage general application settings like appearance and language."
 }
+

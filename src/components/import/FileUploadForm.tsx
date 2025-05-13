@@ -62,8 +62,6 @@ interface FormValuesWithId extends BaseFormValues {
 }
 
 interface FileUploadFormProps {
-  formTitle: string;
-  formDescription: ReactNode;
   importAction: (id: string | null, xmlContent: string) => Promise<{ success: boolean; message: string; error?: string }>;
   requiresId?: boolean;
   idFieldLabel?: string;
@@ -72,8 +70,6 @@ interface FileUploadFormProps {
 }
 
 export function FileUploadForm({
-  formTitle,
-  formDescription,
   importAction,
   requiresId = false,
   idFieldLabel = 'Filename ID',
@@ -264,57 +260,48 @@ export function FileUploadForm({
   };
 
   return (
-    <Card className="w-full">
-      <CardHeader>
-        <CardTitle>{formTitle}</CardTitle>
-        {typeof formDescription === 'string' ? <CardDescription>{formDescription}</CardDescription> : formDescription}
-      </CardHeader>
-      <form onSubmit={handleSubmit(onSubmit)}>
-        <CardContent className="space-y-4">
-          {!allowMultipleFiles && requiresId && ( // Only show idField if single file AND requiresId
-            <div className="space-y-2">
-              <Label htmlFor="idField">{idFieldLabel}</Label>
-              <Input
-                id="idField"
-                type="text"
-                placeholder={idFieldPlaceholder}
-                {...register('idField' as any)} 
-                disabled={isSubmitting}
-              />
-              {errors.idField && (
-                // @ts-ignore
-                <p className="text-sm text-destructive">{errors.idField.message}</p>
-              )}
-            </div>
-          )}
-          <div className="space-y-2">
-            <Label htmlFor="xmlFile">XML File(s)</Label>
+    <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+        {!allowMultipleFiles && requiresId && ( // Only show idField if single file AND requiresId
+        <div className="space-y-2">
+            <Label htmlFor="idField">{idFieldLabel}</Label>
             <Input
-              id="xmlFile"
-              type="file"
-              accept=".xml,text/xml,application/xml"
-              multiple={allowMultipleFiles}
-              {...register('xmlFile')}
-              disabled={isSubmitting}
-              onChange={() => { // Reset field-specific error on change if needed, though Zod handles re-validation
-                if (errors.xmlFile) {
-                  // Consider manually clearing error if Zod doesn't do it fast enough for UX
-                }
-              }}
+            id="idField"
+            type="text"
+            placeholder={idFieldPlaceholder}
+            {...register('idField' as any)} 
+            disabled={isSubmitting}
             />
-            {errors.xmlFile && (
-              // @ts-ignore
-              <p className="text-sm text-destructive">{errors.xmlFile.message}</p>
+            {errors.idField && (
+            // @ts-ignore
+            <p className="text-sm text-destructive">{errors.idField.message}</p>
             )}
-          </div>
-        </CardContent>
-        <CardFooter>
-          <Button type="submit" className="w-full" disabled={isSubmitting}>
-            {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-            Import XML
-          </Button>
-        </CardFooter>
-      </form>
-    </Card>
+        </div>
+        )}
+        <div className="space-y-2">
+        <Label htmlFor="xmlFile">XML File(s)</Label>
+        <Input
+            id="xmlFile"
+            type="file"
+            accept=".xml,text/xml,application/xml"
+            multiple={allowMultipleFiles}
+            {...register('xmlFile')}
+            disabled={isSubmitting}
+            onChange={() => { // Reset field-specific error on change if needed, though Zod handles re-validation
+            if (errors.xmlFile) {
+                // Consider manually clearing error if Zod doesn't do it fast enough for UX
+            }
+            }}
+        />
+        {errors.xmlFile && (
+            // @ts-ignore
+            <p className="text-sm text-destructive">{errors.xmlFile.message}</p>
+        )}
+        </div>
+        <Button type="submit" className="w-full" disabled={isSubmitting}>
+        {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+        Import XML
+        </Button>
+    </form>
   );
 }
+
