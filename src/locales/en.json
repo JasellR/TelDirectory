@@ -1,4 +1,5 @@
 
+
 {
   "appTitle": "TelDirectory",
   "appSubtitle": "Corporate Phone Directory",
@@ -102,6 +103,12 @@
   "filesProcessedLabel": "Files processed",
   "filesFailedLabel": "Files failed",
   "generalSettingsTitle": "General Settings",
-  "generalSettingsDescription": "Manage general application settings like appearance and language."
+  "generalSettingsDescription": "Manage general application settings like appearance and language.",
+  "networkServiceConfigTitle": "Network & Service URL Configuration",
+  "networkServiceConfigDescription": "Configure the host and port used in the XML service URLs and for display purposes.",
+  "serviceHostTooltip": "Set the IP address or hostname that will be written into your XML file URLs. This directly affects what your IP phones try to connect to.",
+  "servicePortTooltip": "Set the port number that will be written into your XML file URLs. This also affects what your IP phones try to connect to.",
+  "hostSettingsNoteShort": "Updates URLs in MAINMENU, ZoneBranch, and Branch XMLs."
 }
+
 

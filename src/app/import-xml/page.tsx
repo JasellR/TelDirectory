@@ -1,10 +1,11 @@
 
+
 'use client'; 
 
 import { Breadcrumbs } from '@/components/layout/Breadcrumbs';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { InfoIcon, UploadCloud, Palette, Languages, Settings as SettingsIcon, RadioTower, Server, FileCode } from 'lucide-react';
+import { InfoIcon, UploadCloud, Palette, Languages, Settings as SettingsIcon, RadioTower, Server, FileCode, Network } from 'lucide-react';
 import { FileUploadForm } from '@/components/import/FileUploadForm';
 import { saveZoneBranchXmlAction, saveDepartmentXmlAction, updateXmlUrlsAction } from '@/lib/actions';
 import { ThemeToggle } from '@/components/settings/ThemeToggle';
@@ -17,6 +18,7 @@ import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2 } from 'lucide-react';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
 
 export default function SettingsPage() {
@@ -148,63 +150,80 @@ export default function SettingsPage() {
         <Card>
           <CardHeader>
             <div className="flex items-center gap-3">
-              <Server className="h-6 w-6 text-primary" />
-              <CardTitle className="text-2xl">{t('serviceHostSettingsTitle')}</CardTitle>
+              <Network className="h-6 w-6 text-primary" />
+              <CardTitle className="text-2xl">{t('networkServiceConfigTitle')}</CardTitle>
             </div>
             <CardDescription>
-             {t('serviceHostSettingsDescription')}
+             {t('networkServiceConfigDescription')}
             </CardDescription>
           </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="hostInput">{t('configureServiceHostLabel')}</Label>
-              <div className="flex items-center gap-2">
-                <Input
-                  id="hostInput"
-                  type="text"
-                  value={tempHost}
-                  onChange={handleHostChange}
-                  placeholder={t('hostInputPlaceholder')}
-                  className="max-w-xs"
-                  disabled={isPending}
-                />
-                <Button onClick={handleApplyHostToXml} disabled={isPending}>
-                   {isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : t('applyHostToXmlButton')}
-                </Button>
+          <TooltipProvider>
+            <CardContent className="grid md:grid-cols-2 gap-x-8 gap-y-6">
+              {/* Host Settings */}
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <Label htmlFor="hostInput" className="text-base font-semibold">
+                    {t('configureServiceHostLabel')}
+                  </Label>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button variant="ghost" size="icon" className="h-6 w-6 shrink-0 rounded-full p-0">
+                        <InfoIcon className="h-4 w-4 text-muted-foreground" />
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p className="max-w-xs">{t('serviceHostTooltip')}</p>
+                    </TooltipContent>
+                  </Tooltip>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Input
+                    id="hostInput"
+                    type="text"
+                    value={tempHost}
+                    onChange={handleHostChange}
+                    placeholder={t('hostInputPlaceholder')}
+                    className="flex-grow"
+                    disabled={isPending}
+                  />
+                  <Button onClick={handleApplyHostToXml} disabled={isPending} className="shrink-0">
+                     {isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : t('applyHostToXmlButton')}
+                  </Button>
+                </div>
+                 <p className="text-xs text-muted-foreground">{t('hostSettingsNoteShort')}</p>
               </div>
-               <p className="text-xs text-muted-foreground">{t('hostSettingsNote')}</p>
-            </div>
-          </CardContent>
-        </Card>
 
-        <Separator />
-        
-        <Card>
-          <CardHeader>
-            <div className="flex items-center gap-3">
-              <RadioTower className="h-6 w-6 text-primary" />
-              <CardTitle className="text-2xl">{t('servicePortSettings')}</CardTitle>
-            </div>
-            <CardDescription>
-             {t('servicePortDescription')}
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="portInput">{t('configureServicePortLabel')}</Label>
-              <div className="flex items-center gap-2">
-                <Input
-                  id="portInput"
-                  type="text"
-                  value={tempPort}
-                  onChange={handlePortChange}
-                  placeholder={t('portNumberPlaceholder')}
-                  className="max-w-xs"
-                />
-                <Button onClick={handlePortUpdate}>{t('updatePortButton')}</Button>
+              {/* Port Settings */}
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                   <Label htmlFor="portInput" className="text-base font-semibold">
+                    {t('configureServicePortLabel')}
+                  </Label>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button variant="ghost" size="icon" className="h-6 w-6 shrink-0 rounded-full p-0">
+                        <InfoIcon className="h-4 w-4 text-muted-foreground" />
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p className="max-w-xs">{t('servicePortTooltip')}</p>
+                    </TooltipContent>
+                  </Tooltip>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Input
+                    id="portInput"
+                    type="text"
+                    value={tempPort}
+                    onChange={handlePortChange}
+                    placeholder={t('portNumberPlaceholder')}
+                    className="flex-grow"
+                  />
+                  <Button onClick={handlePortUpdate} className="shrink-0">{t('updatePortButton')}</Button>
+                </div>
               </div>
-            </div>
-          </CardContent>
+            </CardContent>
+          </TooltipProvider>
         </Card>
         
         <Separator />
@@ -290,4 +309,5 @@ export default function SettingsPage() {
     </div>
   );
 }
+
 

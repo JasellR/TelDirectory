@@ -1,4 +1,5 @@
 
+
 {
   "appTitle": "TelDirectorio",
   "appSubtitle": "Directorio Telefónico Corporativo",
@@ -102,6 +103,12 @@
   "filesProcessedLabel": "Archivos procesados",
   "filesFailedLabel": "Archivos fallidos",
   "generalSettingsTitle": "Configuración General",
-  "generalSettingsDescription": "Administre la configuración general de la aplicación, como la apariencia y el idioma."
+  "generalSettingsDescription": "Administre la configuración general de la aplicación, como la apariencia y el idioma.",
+  "networkServiceConfigTitle": "Configuración de Red y URL de Servicio",
+  "networkServiceConfigDescription": "Configure el host y el puerto utilizados en las URL de los servicios XML y para fines de visualización.",
+  "serviceHostTooltip": "Establezca la dirección IP o el nombre de host que se escribirá en las URL de sus archivos XML. Esto afecta directamente a qué intentan conectarse sus teléfonos IP.",
+  "servicePortTooltip": "Establezca el número de puerto que se escribirá en las URL de sus archivos XML. Esto también afecta a qué intentan conectarse sus teléfonos IP.",
+  "hostSettingsNoteShort": "Actualiza URLs en XMLs de MAINMENU, ZoneBranch y Branch."
 }
+
 
