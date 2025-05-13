@@ -31,7 +31,6 @@ export default async function LocalityPage({ params }: LocalityPageProps) {
   const zone = await getZoneById(zoneId);
   const locality = await getLocalityById(zoneId, localityId);
   
-  // getExtensionsByLocalityId is now indirectly called by getLocalityById
   const extensions = locality?.extensions || [];
 
   if (!zone || !locality) { 
@@ -47,7 +46,12 @@ export default async function LocalityPage({ params }: LocalityPageProps) {
             { label: locality.name }
           ]} 
         />
-        <ExtensionTable extensions={extensions} localityName={locality.name} />
+        <ExtensionTable 
+          extensions={extensions} 
+          localityName={locality.name} 
+          localityId={localityId}
+          zoneId={zoneId}
+        />
       </div>
 
       <Separator />
@@ -56,7 +60,7 @@ export default async function LocalityPage({ params }: LocalityPageProps) {
         <h2 className="text-2xl font-bold text-foreground mb-2">Data Management for {locality.name}</h2>
         <p className="text-muted-foreground">
           Extensions for the <strong>{locality.name}</strong> locality (within <strong>{zone.name}</strong> zone) are managed by editing the XML file at <code>IVOXS/Department/{locality.id}.xml</code>.
-          Ensure this file has a <code>&lt;CiscoIPPhoneDirectory&gt;</code> root element, containing <code>&lt;DirectoryEntry&gt;</code> items.
+          Ensure this file has a <code>&lt;CiscoIPPhoneDirectory&gt;</code> root element, containing <code>&lt;DirectoryEntry&gt;</code> items. Deleting an extension will remove its entry from this file.
         </p>
       </div>
     </div>

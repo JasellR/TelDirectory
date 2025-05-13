@@ -1,9 +1,0 @@
-<?xml version="1.0" encoding="UTF-8" standalone="no"?>
-<CiscoIPPhoneDirectory>
-  <Title>Casa de Campo</Title>
-  <Prompt>Select a contact</Prompt>
-  <DirectoryEntry>
-    <Name>Recepción Villa</Name>
-    <Telephone>6661</Telephone>
-  </DirectoryEntry>
-</CiscoIPPhoneDirectory>

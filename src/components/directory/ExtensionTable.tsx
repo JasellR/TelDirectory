@@ -1,3 +1,4 @@
+
 import type { Extension } from '@/types';
 import {
   Table,
@@ -9,13 +10,18 @@ import {
   TableCaption,
 } from '@/components/ui/table';
 import { UserCircle, PhoneOutgoing } from 'lucide-react';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { DeleteExtensionButton } from '@/components/actions/DeleteExtensionButton';
+import { EditExtensionButton } from '@/components/actions/EditExtensionButton';
 
 interface ExtensionTableProps {
   extensions: Extension[];
   localityName: string;
+  localityId: string; // Needed for actions
+  zoneId: string; // Needed for actions/revalidation context
 }
 
-export function ExtensionTable({ extensions, localityName }: ExtensionTableProps) {
+export function ExtensionTable({ extensions, localityName, localityId, zoneId }: ExtensionTableProps) {
   if (!extensions || extensions.length === 0) {
     return <p className="text-muted-foreground">No extensions found for {localityName}.</p>;
   }
@@ -30,9 +36,10 @@ export function ExtensionTable({ extensions, localityName }: ExtensionTableProps
           <TableCaption>A list of extensions for {localityName}.</TableCaption>
           <TableHeader>
             <TableRow>
-              <TableHead className="w-[40%]">Department</TableHead>
-              <TableHead className="w-[25%]">Extension</TableHead>
-              <TableHead className="w-[35%]">Contact Name</TableHead>
+              <TableHead className="w-[35%]">Department</TableHead>
+              <TableHead className="w-[20%]">Extension</TableHead>
+              <TableHead className="w-[30%]">Contact Name</TableHead>
+              <TableHead className="w-[15%] text-right">Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -55,6 +62,12 @@ export function ExtensionTable({ extensions, localityName }: ExtensionTableProps
                     <span className="text-muted-foreground italic">N/A</span>
                   )}
                 </TableCell>
+                <TableCell className="text-right">
+                  <div className="flex justify-end space-x-1">
+                    <EditExtensionButton localityId={localityId} extension={ext} />
+                    <DeleteExtensionButton localityId={localityId} zoneId={zoneId} extension={ext} />
+                  </div>
+                </TableCell>
               </TableRow>
             ))}
           </TableBody>
@@ -63,6 +76,3 @@ export function ExtensionTable({ extensions, localityName }: ExtensionTableProps
     </Card>
   );
 }
-
-// Need to import Card components if not globally available
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';

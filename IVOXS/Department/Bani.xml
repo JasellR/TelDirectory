@@ -1,9 +1,0 @@
-<?xml version="1.0" encoding="UTF-8" standalone="no"?>
-<CiscoIPPhoneDirectory>
-  <Title>Bani</Title>
-  <Prompt>Select a contact</Prompt>
-  <DirectoryEntry>
-    <Name>Sucursal Bani</Name>
-    <Telephone>3333</Telephone>
-  </DirectoryEntry>
-</CiscoIPPhoneDirectory>

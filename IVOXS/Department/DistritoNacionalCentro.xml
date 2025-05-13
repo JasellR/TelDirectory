@@ -1,9 +1,0 @@
-<?xml version="1.0" encoding="UTF-8" standalone="no"?>
-<CiscoIPPhoneDirectory>
-  <Title>Distrito Nacional Centro</Title>
-  <Prompt>Select a contact</Prompt>
-  <DirectoryEntry>
-    <Name>Oficina Principal DN</Name>
-    <Telephone>5001</Telephone>
-  </DirectoryEntry>
-</CiscoIPPhoneDirectory>

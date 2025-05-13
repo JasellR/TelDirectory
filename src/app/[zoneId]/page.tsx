@@ -7,6 +7,7 @@ import Link from 'next/link';
 import { Card, CardContent } from '@/components/ui/card';
 import { MapPin } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
+import { DeleteLocalityButton } from '@/components/actions/DeleteLocalityButton';
 
 interface ZonePageProps {
   params: {
@@ -31,8 +32,6 @@ export default async function ZonePage({ params }: ZonePageProps) {
   const { zoneId } = params;
   const zone = await getZoneById(zoneId);
   
-  // getLocalitiesByZoneId is now indirectly called by getZoneById in the new data.ts
-  // So, localities should be part of the zone object if zone is found.
   const localities = zone?.localities || [];
 
   if (!zone) { 
@@ -62,7 +61,9 @@ export default async function ZonePage({ params }: ZonePageProps) {
                       View extensions and details for {locality.name}. (ID: {locality.id})
                     </p>
                   </div>
-                  {/* DeleteLocalityButton was removed as file system manipulation is out of scope for now */}
+                  <div className="flex-shrink-0">
+                    <DeleteLocalityButton zoneId={zoneId} localityId={locality.id} localityName={locality.name} />
+                  </div>
                 </CardContent>
               </Card>
             ))}
@@ -80,7 +81,7 @@ export default async function ZonePage({ params }: ZonePageProps) {
         <h2 className="text-2xl font-bold text-foreground mb-2">Data Management</h2>
         <p className="text-muted-foreground">
           Localities for the <strong>{zone.name}</strong> zone are managed by editing the XML file at <code>IVOXS/ZoneBranch/{zone.id}.xml</code>.
-          Ensure this file contains <code>&lt;MenuItem&gt;</code> tags representing each locality.
+          Ensure this file contains <code>&lt;MenuItem&gt;</code> tags representing each locality. Deleting a locality here will remove it from this list and attempt to delete its department XML.
         </p>
       </div>
     </div>
