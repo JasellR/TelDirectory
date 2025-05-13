@@ -76,6 +76,19 @@
   "configureServicePortLabel": "Configurar Puerto para Visualización de URL:",
   "portNumberPlaceholder": "Ej: 9002 (Ingrese solo números)",
   "updatePortButton": "Actualizar Puerto de Visualización",
-  "serviceUrlPlaceholderInfo": "La URL de servicio a continuación se actualizará según el puerto que ingrese aquí. Recuerde, 'YOUR_DEVICE_IP' también debe reemplazarse con la dirección IP o el nombre de host real de su servidor."
+  "serviceUrlPlaceholderInfo": "La URL de servicio a continuación se actualizará según el puerto que ingrese aquí. Recuerde, 'YOUR_DEVICE_IP' también debe reemplazarse con la dirección IP o el nombre de host real de su servidor.",
+  "searchPlaceholder": "Buscar {itemType} por nombre o ID...",
+  "viewLocalitiesInBranch": "Ver localidades en la rama {branchName}.",
+  "viewExtensionsAndDetails": "Ver extensiones y detalles para {localityName}.",
+  "noItemsMatchSearch": "Ningún/a {itemType} coincide con su búsqueda de \"{searchTerm}\".",
+  "noItemsFoundInZone": "No se encontraron {itemType} en esta zona.",
+  "extensionsForLocality": "Extensiones para {localityName}",
+  "noExtensionsAvailable": "No hay extensiones disponibles para {localityName}.",
+  "extensionListCaption": "Una lista de todas las extensiones para {localityName}.",
+  "departmentColumnHeader": "Departamento",
+  "extensionColumnHeader": "Extensión",
+  "contactNameColumnHeader": "Nombre de Contacto",
+  "actionsColumnHeader": "Acciones",
+  "notApplicable": "N/A"
 }
 

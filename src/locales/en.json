@@ -76,6 +76,19 @@
   "configureServicePortLabel": "Configure Port for URL Display:",
   "portNumberPlaceholder": "e.g., 9002 (Enter numbers only)",
   "updatePortButton": "Update Display Port",
-  "serviceUrlPlaceholderInfo": "The Service URL below will update based on the port you enter here. Remember, 'YOUR_DEVICE_IP' also needs to be replaced with your server's actual IP address or hostname."
+  "serviceUrlPlaceholderInfo": "The Service URL below will update based on the port you enter here. Remember, 'YOUR_DEVICE_IP' also needs to be replaced with your server's actual IP address or hostname.",
+  "searchPlaceholder": "Search {itemType} by name or ID...",
+  "viewLocalitiesInBranch": "View localities in {branchName} branch.",
+  "viewExtensionsAndDetails": "View extensions and details for {localityName}.",
+  "noItemsMatchSearch": "No {itemType} match your search for \"{searchTerm}\".",
+  "noItemsFoundInZone": "No {itemType} found in this zone.",
+  "extensionsForLocality": "Extensions for {localityName}",
+  "noExtensionsAvailable": "No extensions available for {localityName}.",
+  "extensionListCaption": "A list of all extensions for {localityName}.",
+  "departmentColumnHeader": "Department",
+  "extensionColumnHeader": "Extension",
+  "contactNameColumnHeader": "Contact Name",
+  "actionsColumnHeader": "Actions",
+  "notApplicable": "N/A"
 }
 

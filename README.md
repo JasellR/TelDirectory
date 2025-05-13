@@ -1,7 +1,7 @@
 
 # TelDirectory - Corporate Phone Directory
 
-TelDirectory is a Next.js web application designed to manage and display a corporate phone directory, primarily for use with Cisco IP phones. It reads directory data from XML files, allowing users to navigate through zones, branches (for specific zones like "Zona Metropolitana"), and localities to find phone extensions. The application also provides an interface to import and manage these XML files, and a search feature to quickly find extensions.
+TelDirectory is a Next.js web application designed to manage and display a corporate phone directory, primarily for use with Cisco IP phones. It reads directory data from XML files, allowing users to navigate through zones, branches (for specific zones like "Zona Metropolitana"), and localities to find phone extensions. The application also provides an interface to import and manage these XML files, and a search feature to quickly find localities or branches.
 
 ## Core Features:
 
@@ -9,7 +9,7 @@ TelDirectory is a Next.js web application designed to manage and display a corpo
 *   **Extension Listing**: View department/contact names and their phone extensions.
 *   **XML-Based Data**: Directory data is stored in XML files, following Cisco IP Phone standards.
 *   **Web Interface**: Browse the directory through a user-friendly web interface.
-*   **Search Functionality**: A search bar on the homepage allows users to quickly find extensions by searching extension names, numbers, locality names, zone names, or branch names.
+*   **Search Functionality**: A search bar on each zone page allows users to quickly find localities or branches within that zone by name or ID.
 *   **IP Phone Service**: Serves XML data to Cisco IP phones via specific URL endpoints.
 *   **Data Management**:
     *   Import XML files for zones, branches, and departments.
@@ -148,15 +148,12 @@ The "Settings" page (`/import-xml`) allows you to upload XML files directly:
 
 ## Search Functionality
 
-The homepage features a prominent search bar that allows users to quickly find phone extensions.
-*   **How it works**: The search operates on data pre-fetched from all department XML files when the homepage loads. Filtering is done client-side.
+Each zone page features a search bar that allows users to quickly find localities or branches (if applicable, like in Zona Metropolitana) within that specific zone.
+*   **How it works**: The search operates on data pre-fetched from the zone's XML file. Filtering is done client-side.
 *   **Searched Fields**: Users can search by:
-    *   Extension Name (Department/Role name in the XML)
-    *   Extension Number
-    *   Locality Name
-    *   Zone Name
-    *   Branch Name (if applicable, like in Zona Metropolitana)
-*   **Results**: Search results display the matching extension's details, its locality, branch (if any), and zone, with a direct link to the locality's page.
+    *   Locality/Branch Name
+    *   Locality/Branch ID (filename without .xml)
+*   **Results**: Search results display the matching localities or branches, with a direct link to their respective pages.
 
 ## XML Structure for IP Phones
 
@@ -166,4 +163,3 @@ The application serves XML data structured for Cisco IP Phones:
 *   **Directory Structure (`CiscoIPPhoneDirectory`)**: Used for `Department/*.xml`. Contains `<DirectoryEntry>` elements with `<Name>` (department/contact) and `<Telephone>` (extension).
 
 Refer to Cisco IP Phone documentation for detailed XML specifications if needed.
-```

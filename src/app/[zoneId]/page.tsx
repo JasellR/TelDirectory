@@ -3,13 +3,10 @@ import { getZoneDetails, getZoneItems } from '@/lib/data';
 import { Breadcrumbs } from '@/components/layout/Breadcrumbs';
 import { notFound } from 'next/navigation';
 import type { Metadata } from 'next';
-import Link from 'next/link';
-import { Card, CardContent } from '@/components/ui/card';
-import { MapPin, PlusCircle, GitBranch, Building } from 'lucide-react'; // Added GitBranch
 import { Separator } from '@/components/ui/separator';
-import { DeleteLocalityButton } from '@/components/actions/DeleteLocalityButton';
-import { EditLocalityButton } from '@/components/actions/EditLocalityButton';
 import { AddLocalityButton } from '@/components/actions/AddLocalityButton';
+import { LocalityBranchSearch } from '@/components/search/LocalityBranchSearch';
+import { useTranslation } from '@/hooks/useTranslation';
 
 interface ZonePageProps {
   params: {
@@ -27,7 +24,7 @@ export async function generateMetadata({ params }: ZonePageProps): Promise<Metad
   const pageTitle = zone.id === 'ZonaMetropolitana' ? `Branches in ${zone.name}` : `Localities in ${zone.name}`;
   return {
     title: `${pageTitle} - TelDirectory`,
-    description: `Browse items for the ${zone.name} zone. Data is read from XML files.`,
+    description: `Browse and search items for the ${zone.name} zone. Data is read from XML files.`,
   };
 }
 
@@ -49,7 +46,7 @@ export default async function ZonePage({ params }: ZonePageProps) {
     <div className="space-y-8">
       <div>
         <Breadcrumbs items={[{ label: zone.name }]} />
-        <div className="flex justify-between items-center mb-8">
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-8 gap-4">
           <h1 className="text-3xl font-bold text-foreground">{itemTypeNamePlural} in {zone.name}</h1>
           <AddLocalityButton 
             zoneId={zoneId} 
@@ -57,56 +54,9 @@ export default async function ZonePage({ params }: ZonePageProps) {
             itemType={isZonaMetropolitana ? 'branch' : 'locality'}
           />
         </div>
-        {items.length > 0 ? (
-          <div className="space-y-4">
-            {items.map((item) => {
-              const Icon = item.type === 'branch' ? GitBranch : Building;
-              const href = item.type === 'branch' 
-                ? `/${zoneId}/branches/${item.id}` 
-                : `/${zoneId}/localities/${item.id}`;
-              const description = item.type === 'branch' 
-                ? `View localities in ${item.name} branch.`
-                : `View extensions and details for ${item.name}.`;
-
-              return (
-                <Card key={item.id} className="shadow-sm hover:shadow-md transition-shadow duration-200">
-                  <CardContent className="p-4 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-                    <div className="flex-grow">
-                      <div className="flex items-center gap-3 mb-1">
-                        <Icon className="h-5 w-5 text-primary" />
-                        <h3 className="text-lg font-semibold text-foreground">
-                          <Link href={href} className="hover:underline hover:text-primary transition-colors">
-                            {item.name}
-                          </Link>
-                        </h3>
-                      </div>
-                      <p className="text-sm text-muted-foreground ml-8 sm:ml-0">
-                        {description} (ID: {item.id})
-                      </p>
-                    </div>
-                    <div className="flex-shrink-0 flex items-center space-x-1">
-                      <EditLocalityButton 
-                        zoneId={zoneId} 
-                        item={item} 
-                        itemType={item.type} 
-                      />
-                      <DeleteLocalityButton 
-                        zoneId={zoneId} 
-                        itemId={item.id} 
-                        itemName={item.name} 
-                        itemType={item.type} 
-                      />
-                    </div>
-                  </CardContent>
-                </Card>
-              );
-            })}
-          </div>
-        ) : (
-          <p className="text-muted-foreground">
-            No {itemTypeNamePlural.toLowerCase()} found in the XML file for this zone (<code>IVOXS/ZoneBranch/{zone.id}.xml</code>).
-          </p>
-        )}
+        
+        <LocalityBranchSearch items={items} zoneId={zoneId} itemType={itemTypeName} itemTypePlural={itemTypeNamePlural} />
+        
       </div>
 
       <Separator />
@@ -128,3 +78,4 @@ function itemTypeHelpText(isZonaMetropolitana: boolean) {
   }
   return "department XML file (in IVOXS/Department/)";
 }
+
