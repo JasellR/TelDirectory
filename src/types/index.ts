@@ -1,9 +1,9 @@
 
 export interface Extension {
   id: string;
-  department: string;
+  department: string; // This is the 'Name' field from CiscoIPPhoneDirectoryEntry (e.g., "S BAVARO CAJ1")
   number: string;
-  name?: string; // Optional contact person
+  name: string; // This is also derived from 'Name' field. Can be department role or contact.
 }
 
 export interface Locality {

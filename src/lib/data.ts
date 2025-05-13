@@ -206,6 +206,7 @@ export async function getLocalityWithExtensions(localityId: string): Promise<Loc
     id: toUrlFriendlyId(`${entry.Name}-${entry.Telephone}`), 
     department: entry.Name,
     number: entry.Telephone,
+    name: entry.Name, // Assuming the 'Name' in DirectoryEntry can be a contact person name or department role
   }));
 
   return {
@@ -214,62 +215,4 @@ export async function getLocalityWithExtensions(localityId: string): Promise<Loc
     extensions,
   };
 }
-
-export interface SearchableLocality {
-  id: string; // Unique ID for React key, e.g. zoneId-localityId or zoneId-branchId-localityId
-  localityName: string;
-  localityId: string;
-  zoneName: string;
-  zoneId: string;
-  branchName?: string;
-  branchId?: string;
-  path: string; // URL path to the locality page
-}
-
-export async function getAllLocalitiesForSearch(): Promise<SearchableLocality[]> {
-  const allSearchableLocalities: SearchableLocality[] = [];
-  const zones = await getZones(); 
-
-  for (const zone of zones) {
-    const zoneItems = await getZoneItems(zone.id); 
-
-    for (const zoneItem of zoneItems) {
-      if (zoneItem.type === 'locality') {
-        // Fetch full locality details to ensure we get the display name
-        const localityDetails = await getLocalityDetails(zoneItem.id, { zoneId: zone.id });
-        if (localityDetails) {
-            allSearchableLocalities.push({
-              id: `${zone.id}-${localityDetails.id}`,
-              localityName: localityDetails.name,
-              localityId: localityDetails.id,
-              zoneName: zone.name,
-              zoneId: zone.id,
-              path: `/${zone.id}/localities/${localityDetails.id}`
-            });
-        }
-      } else if (zoneItem.type === 'branch') {
-        const branchItems = await getBranchItems(zoneItem.id); 
-        for (const branchItem of branchItems) { 
-          const localityDetails = await getLocalityDetails(branchItem.id, { zoneId: zone.id, branchId: zoneItem.id });
-          if (localityDetails) {
-            allSearchableLocalities.push({
-              id: `${zone.id}-${zoneItem.id}-${localityDetails.id}`,
-              localityName: localityDetails.name,
-              localityId: localityDetails.id,
-              zoneName: zone.name,
-              zoneId: zone.id,
-              branchName: zoneItem.name, 
-              branchId: zoneItem.id,     
-              path: `/${zone.id}/branches/${zoneItem.id}/localities/${localityDetails.id}`
-            });
-          }
-        }
-      }
-    }
-  }
-  // Deduplicate based on the unique ID
-  const uniqueLocalities = Array.from(new Map(allSearchableLocalities.map(item => [item.id, item])).values());
-  return uniqueLocalities;
-}
-
     

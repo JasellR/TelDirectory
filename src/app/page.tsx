@@ -1,23 +1,16 @@
 
-import { getZones, getAllLocalitiesForSearch } from '@/lib/data';
+import { getZones } from '@/lib/data';
 import { NavigationCard } from '@/components/directory/NavigationCard';
 import { Breadcrumbs } from '@/components/layout/Breadcrumbs';
-import { ExtensionSearch } from '@/components/search/ExtensionSearch';
 import { Separator } from '@/components/ui/separator';
 
 export default async function HomePage() {
   const zones = await getZones();
-  const allLocalities = await getAllLocalitiesForSearch();
 
   return (
     <div>
       <Breadcrumbs items={[]} />
-      <h1 className="text-3xl font-bold mb-6 text-foreground">Search Localities/Departments</h1>
-      <ExtensionSearch allLocalities={allLocalities} />
-      
-      <Separator className="my-12" />
-
-      <h2 className="text-3xl font-bold mb-8 text-foreground">Or Browse by Zone</h2>
+      <h1 className="text-3xl font-bold mb-8 text-foreground">Browse by Zone</h1>
       {zones.length > 0 ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {zones.map((zone) => (
@@ -25,7 +18,7 @@ export default async function HomePage() {
               key={zone.id}
               title={zone.name}
               href={`/${zone.id}`}
-              description={`Explore localities in ${zone.name}.`}
+              description={`Explore items in ${zone.name}.`}
               iconType="zone"
             />
           ))}
