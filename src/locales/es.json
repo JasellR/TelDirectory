@@ -70,5 +70,12 @@
   "confirmDeleteTitle": "¿Está seguro?",
   "confirmDeleteDescription": "Esta acción eliminará la {itemType} \"{itemName}\" (ID: {itemId}). Esta acción no se puede deshacer.",
   "deleteButtonConfirmText": "Eliminar {itemType}",
-  "deletingButtonText": "Eliminando..."
+  "deletingButtonText": "Eliminando...",
+  "servicePortSettings": "Configuración del Puerto para URL de Servicio",
+  "servicePortDescription": "Esta configuración actualiza la URL de servicio de ejemplo que se muestra a continuación. NO cambia el puerto en el que se ejecuta el servidor de su aplicación, ni actualiza automáticamente sus archivos XML. Debe asegurarse manualmente de que su servidor se ejecute en el puerto correcto y actualizar sus archivos XML según sea necesario.",
+  "configureServicePortLabel": "Configurar Puerto para Visualización de URL:",
+  "portNumberPlaceholder": "Ej: 9002 (Ingrese solo números)",
+  "updatePortButton": "Actualizar Puerto de Visualización",
+  "serviceUrlPlaceholderInfo": "La URL de servicio a continuación se actualizará según el puerto que ingrese aquí. Recuerde, 'YOUR_DEVICE_IP' también debe reemplazarse con la dirección IP o el nombre de host real de su servidor."
 }
+

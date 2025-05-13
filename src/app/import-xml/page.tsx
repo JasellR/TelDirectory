@@ -1,36 +1,52 @@
 
-'use client'; // This page now uses client-side hooks (useTranslation)
+'use client'; 
 
 import { Breadcrumbs } from '@/components/layout/Breadcrumbs';
-// import type { Metadata } from 'next'; // Metadata removed as title is set dynamically
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { InfoIcon, UploadCloud, Palette, Languages, Settings as SettingsIcon } from 'lucide-react'; // Added Languages and SettingsIcon
+import { InfoIcon, UploadCloud, Palette, Languages, Settings as SettingsIcon, RadioTower } from 'lucide-react';
 import { FileUploadForm } from '@/components/import/FileUploadForm';
 import { saveZoneBranchXmlAction, saveDepartmentXmlAction } from '@/lib/actions';
 import { ThemeToggle } from '@/components/settings/ThemeToggle';
-import { LanguageToggle } from '@/components/settings/LanguageToggle'; // Added
+import { LanguageToggle } from '@/components/settings/LanguageToggle'; 
 import { Separator } from '@/components/ui/separator';
-import { useTranslation } from '@/hooks/useTranslation'; // Added
-import { useEffect } from 'react'; // Added useEffect
+import { useTranslation } from '@/hooks/useTranslation'; 
+import { useEffect, useState } from 'react'; 
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Button } from '@/components/ui/button';
 
-// Metadata should be static or generated in a generateMetadata function if dynamic parts are needed.
-// For client components, you might need to set title via useEffect or a different approach if dynamic.
-// export const metadata: Metadata = {
-//   title: 'Settings - TelDirectory', // This will be overridden by t('settings') for the h1
-//   description: 'Manage application settings, import XML files, and configure appearance.',
-// };
 
 export default function SettingsPage() {
   const { t } = useTranslation();
-  const appBaseUrlPlaceholder = 'http://YOUR_DEVICE_IP:9002'; 
-  const mainmenuUrl = `${appBaseUrlPlaceholder}/ivoxsdir/mainmenu.xml`;
+  const [displayPort, setDisplayPort] = useState<string>('9002'); // Default port for display
+  const [tempPort, setTempPort] = useState<string>(displayPort);
 
-  // Dynamic title setting for client components
   useEffect(() => {
-    document.title = `${t('settings')} - TelDirectory`; // Changed from t('appTitle') to hardcoded "TelDirectory"
+    document.title = `${t('settings')} - TelDirectory`;
+    const storedPort = localStorage.getItem('displayPort');
+    if (storedPort) {
+      setDisplayPort(storedPort);
+      setTempPort(storedPort);
+    }
   }, [t]);
 
+  const handlePortChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setTempPort(e.target.value);
+  };
+
+  const handlePortUpdate = () => {
+    const newPort = tempPort.trim();
+    if (newPort && /^\d+$/.test(newPort)) {
+        setDisplayPort(newPort);
+        localStorage.setItem('displayPort', newPort);
+    } else {
+        alert(t('portNumberPlaceholder')); // Or use a toast
+    }
+  };
+
+  const appBaseUrlPlaceholder = `http://YOUR_DEVICE_IP:${displayPort}`; 
+  const mainmenuUrl = `${appBaseUrlPlaceholder}/ivoxsdir/mainmenu.xml`;
 
   return (
     <div>
@@ -71,6 +87,43 @@ export default function SettingsPage() {
 
         <Separator />
 
+        <Card>
+          <CardHeader>
+            <div className="flex items-center gap-3">
+              <RadioTower className="h-6 w-6 text-primary" />
+              <CardTitle className="text-2xl">{t('servicePortSettings')}</CardTitle>
+            </div>
+            <CardDescription>
+             {t('servicePortDescription')}
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="portInput">{t('configureServicePortLabel')}</Label>
+              <div className="flex items-center gap-2">
+                <Input
+                  id="portInput"
+                  type="text"
+                  value={tempPort}
+                  onChange={handlePortChange}
+                  placeholder={t('portNumberPlaceholder')}
+                  className="max-w-xs"
+                />
+                <Button onClick={handlePortUpdate}>{t('updatePortButton')}</Button>
+              </div>
+            </div>
+             <Alert>
+              <InfoIcon className="h-4 w-4" />
+              <AlertTitle>{t('importantNotice')}</AlertTitle>
+              <AlertDescription>
+                {t('serviceUrlPlaceholderInfo')}
+              </AlertDescription>
+            </Alert>
+          </CardContent>
+        </Card>
+
+        <Separator />
+        
         <Card>
           <CardHeader>
             <div className="flex items-center gap-3">

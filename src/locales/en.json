@@ -70,5 +70,12 @@
   "confirmDeleteTitle": "Are you sure?",
   "confirmDeleteDescription": "This action will delete the {itemType} \"{itemName}\" (ID: {itemId}). This action cannot be undone.",
   "deleteButtonConfirmText": "Delete {itemType}",
-  "deletingButtonText": "Deleting..."
+  "deletingButtonText": "Deleting...",
+  "servicePortSettings": "Service URL Port Setting",
+  "servicePortDescription": "This setting updates the example Service URL displayed below. It does NOT change the port your application server is running on, nor does it automatically update your XML files. You must manually ensure your server runs on the correct port and update your XML files accordingly.",
+  "configureServicePortLabel": "Configure Port for URL Display:",
+  "portNumberPlaceholder": "e.g., 9002 (Enter numbers only)",
+  "updatePortButton": "Update Display Port",
+  "serviceUrlPlaceholderInfo": "The Service URL below will update based on the port you enter here. Remember, 'YOUR_DEVICE_IP' also needs to be replaced with your server's actual IP address or hostname."
 }
+
