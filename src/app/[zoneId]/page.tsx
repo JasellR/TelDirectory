@@ -30,7 +30,7 @@ export async function generateMetadata({ params }: ZonePageProps): Promise<Metad
   };
 }
 
-// Client component wrapper for the form to handle the action binding
+// This is a Server Component.
 function ZoneImportFormWrapper({ zoneId, zoneName }: { zoneId: string, zoneName: string }) {
   const zoneSpecificImportDescription = (
     <>
@@ -39,11 +39,15 @@ function ZoneImportFormWrapper({ zoneId, zoneName }: { zoneId: string, zoneName:
     </>
   );
 
+  // Bind the zoneId to the server action.
+  // The resulting boundImportAction is a server action that takes (xmlContent: string).
+  const boundImportAction = importSingleZoneXml.bind(null, zoneId);
+
   return (
     <ImportXmlForm
       formTitle={`Import Data for ${zoneName}`}
       formDescription={zoneSpecificImportDescription}
-      importAction={(xmlContent) => importSingleZoneXml(zoneId, xmlContent)}
+      importAction={boundImportAction} // Pass the bound server action
     />
   );
 }
@@ -94,10 +98,13 @@ export default async function ZonePage({ params }: ZonePageProps) {
         {/* 
           ImportXmlForm is a client component because it uses react-hook-form and useState.
           The importSingleZoneXml is a server action.
-          We pass zone.id and zone.name (which are available on the server) to the client component wrapper.
+          We pass zone.id and zone.name (which are available on the server) to the ZoneImportFormWrapper.
+          ZoneImportFormWrapper (a server component) then binds zone.id to importSingleZoneXml and passes this bound server action
+          to the ImportXmlForm client component.
         */}
         <ZoneImportFormWrapper zoneId={zone.id} zoneName={zone.name} />
       </div>
     </div>
   );
 }
+
