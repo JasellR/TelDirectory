@@ -16,18 +16,18 @@ import {
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
 import { useToast } from '@/hooks/use-toast';
-import { deleteExtensionAction } from '@/lib/actions'; // Updated path
+import { deleteExtensionAction } from '@/lib/actions'; 
 import type { Extension } from '@/types';
 import { useRouter } from 'next/navigation';
 
 interface DeleteExtensionButtonProps {
   localityId: string;
-  // Pass zoneId if needed for more precise revalidation, though not used by deleteExtensionAction directly
   zoneId: string; 
+  branchId?: string; // Optional: for revalidation context if under a branch
   extension: Extension; 
 }
 
-export function DeleteExtensionButton({ localityId, zoneId, extension }: DeleteExtensionButtonProps) {
+export function DeleteExtensionButton({ localityId, zoneId, branchId, extension }: DeleteExtensionButtonProps) {
   const { toast } = useToast();
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
@@ -35,14 +35,14 @@ export function DeleteExtensionButton({ localityId, zoneId, extension }: DeleteE
 
   const handleDelete = async () => {
     startTransition(async () => {
-      // extension.department is the 'Name' field in XML, extension.number is 'Telephone'
+      // deleteExtensionAction only needs localityId for the Department XML path
       const result = await deleteExtensionAction(localityId, extension.department, extension.number);
       if (result.success) {
         toast({
           title: 'Success',
           description: result.message,
         });
-        router.refresh(); // Re-fetch data for the current page
+        router.refresh(); 
       } else {
         toast({
           title: 'Error',

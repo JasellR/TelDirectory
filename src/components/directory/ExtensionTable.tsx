@@ -17,11 +17,12 @@ import { EditExtensionButton } from '@/components/actions/EditExtensionButton';
 interface ExtensionTableProps {
   extensions: Extension[];
   localityName: string;
-  localityId: string; // Needed for actions
-  zoneId: string; // Needed for actions/revalidation context
+  localityId: string; 
+  zoneId: string; 
+  branchId?: string; // Optional branch context
 }
 
-export function ExtensionTable({ extensions, localityName, localityId, zoneId }: ExtensionTableProps) {
+export function ExtensionTable({ extensions, localityName, localityId, zoneId, branchId }: ExtensionTableProps) {
   if (!extensions || extensions.length === 0) {
     return <p className="text-muted-foreground">No extensions found for {localityName}.</p>;
   }
@@ -65,7 +66,12 @@ export function ExtensionTable({ extensions, localityName, localityId, zoneId }:
                 <TableCell className="text-right">
                   <div className="flex justify-end space-x-1">
                     <EditExtensionButton localityId={localityId} extension={ext} />
-                    <DeleteExtensionButton localityId={localityId} zoneId={zoneId} extension={ext} />
+                    <DeleteExtensionButton 
+                        localityId={localityId} 
+                        zoneId={zoneId} 
+                        branchId={branchId} 
+                        extension={ext} 
+                    />
                   </div>
                 </TableCell>
               </TableRow>

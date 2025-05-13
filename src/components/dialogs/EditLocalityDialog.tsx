@@ -15,63 +15,88 @@ import {
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
-import { editLocalityAction } from '@/lib/actions';
-import type { Locality } from '@/types';
+import { editLocalityOrBranchAction } from '@/lib/actions'; // Updated action name
+import type { ZoneItem } from '@/types';
 import { useRouter } from 'next/navigation';
 import { Loader2 } from 'lucide-react';
+import { useTranslation } from '@/hooks/useTranslation';
 
 interface EditLocalityDialogProps {
   isOpen: boolean;
   onClose: () => void;
   zoneId: string;
-  locality: Locality;
+  branchId?: string; // If editing a locality within a branch
+  item: ZoneItem; // The item being edited (branch or locality)
+  itemType: 'branch' | 'locality';
 }
 
-export function EditLocalityDialog({ isOpen, onClose, zoneId, locality }: EditLocalityDialogProps) {
+export function EditLocalityDialog({ 
+    isOpen, 
+    onClose, 
+    zoneId, 
+    branchId, 
+    item, 
+    itemType 
+}: EditLocalityDialogProps) {
   const { toast } = useToast();
   const router = useRouter();
+  const { t } = useTranslation();
   const [isPending, startTransition] = useTransition();
-  const [newLocalityName, setNewLocalityName] = useState(locality.name);
+  const [newItemName, setNewItemName] = useState(item.name);
 
   useEffect(() => {
     if (isOpen) {
-      setNewLocalityName(locality.name);
+      setNewItemName(item.name);
     }
-  }, [isOpen, locality.name]);
+  }, [isOpen, item.name]);
+
+  const dialogTitle = itemType === 'branch' 
+    ? t('editBranchDialogTitle', { branchName: item.name })
+    : t('editLocalityDialogTitle', { localityName: item.name });
+  
+  const nameLabel = itemType === 'branch' ? t('newBranchNameLabel') : t('newLocalityNameLabel');
+
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    if (!newLocalityName.trim()) {
+    if (!newItemName.trim()) {
       toast({
-        title: 'Error',
-        description: 'Locality name cannot be empty.',
+        title: t('errorTitle'),
+        description: `${nameLabel} ${t('cannotBeEmpty')}`,
         variant: 'destructive',
       });
       return;
     }
 
-    if (newLocalityName.trim() === locality.name) {
+    if (newItemName.trim() === item.name) {
       toast({
-        title: 'No Changes',
-        description: 'The locality name is the same.',
+        title: t('noChangesTitle'),
+        description: t('itemNameSameMessage', { itemName: nameLabel.toLowerCase() }),
       });
       onClose();
       return;
     }
 
     startTransition(async () => {
-      const result = await editLocalityAction(zoneId, locality.id, newLocalityName.trim());
+      const result = await editLocalityOrBranchAction({
+        zoneId,
+        branchId, // undefined if editing a branch or a locality directly under a zone
+        oldItemId: item.id,
+        newItemName: newItemName.trim(),
+        itemType,
+      });
+
       if (result.success) {
         toast({
-          title: 'Success',
+          title: t('successTitle'),
           description: result.message,
         });
         router.refresh();
         onClose();
       } else {
         toast({
-          title: 'Error',
-          description: result.message + (result.error ? ` Details: ${result.error}` : ''),
+          title: t('errorTitle'),
+          description: result.message + (result.error ? ` ${t('detailsLabel')}: ${result.error}` : ''),
           variant: 'destructive',
         });
       }
@@ -84,21 +109,21 @@ export function EditLocalityDialog({ isOpen, onClose, zoneId, locality }: EditLo
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
-          <DialogTitle>Edit Locality: {locality.name}</DialogTitle>
+          <DialogTitle>{dialogTitle}</DialogTitle>
           <DialogDescription>
-            Change the name of this locality. This will update the zone file and rename the corresponding department XML file if the ID changes.
+            {t('editDialogGeneralDescription')}
           </DialogDescription>
         </DialogHeader>
         <form onSubmit={handleSubmit}>
           <div className="grid gap-4 py-4">
             <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="newLocalityName" className="text-right">
-                New Name
+              <Label htmlFor="newItemName" className="text-right">
+                {nameLabel}
               </Label>
               <Input
-                id="newLocalityName"
-                value={newLocalityName}
-                onChange={(e) => setNewLocalityName(e.target.value)}
+                id="newItemName"
+                value={newItemName}
+                onChange={(e) => setNewItemName(e.target.value)}
                 className="col-span-3"
                 disabled={isPending}
                 required
@@ -108,11 +133,11 @@ export function EditLocalityDialog({ isOpen, onClose, zoneId, locality }: EditLo
           <DialogFooter>
             <DialogClose asChild>
               <Button type="button" variant="outline" disabled={isPending}>
-                Cancel
+                {t('cancelButton')}
               </Button>
             </DialogClose>
             <Button type="submit" disabled={isPending}>
-              {isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : 'Save Changes'}
+              {isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : t('saveChangesButton')}
             </Button>
           </DialogFooter>
         </form>

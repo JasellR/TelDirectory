@@ -1,5 +1,5 @@
 
-import type { Zone, Locality, Extension } from '@/types';
+import type { Zone, Locality, Extension, ZoneItem, Branch, BranchItem } from '@/types';
 import fs from 'fs/promises';
 import path from 'path';
 import { parseStringPromise } from 'xml2js';
@@ -20,6 +20,7 @@ const toUrlFriendlyId = (name: string): string => {
 const IVOXS_DIR = path.join(process.cwd(), 'IVOXS');
 const MAINMENU_PATH = path.join(IVOXS_DIR, 'MAINMENU.xml');
 const ZONE_BRANCH_DIR = path.join(IVOXS_DIR, 'ZoneBranch');
+const BRANCH_DIR = path.join(IVOXS_DIR, 'Branch'); // New directory for branches
 const DEPARTMENT_DIR = path.join(IVOXS_DIR, 'Department');
 
 // Schemas for parsing XML
@@ -52,10 +53,10 @@ async function readFileContent(filePath: string): Promise<string> {
   } catch (error: any) {
     if (error.code === 'ENOENT') {
       console.warn(`File not found: ${filePath}`);
-      return ''; // Return empty string if file not found, so parsing can handle it
+      return ''; 
     }
     console.error(`Error reading file ${filePath}:`, error);
-    throw error; // Re-throw other errors
+    throw error;
   }
 }
 
@@ -65,7 +66,15 @@ function extractIdFromUrl(url: string): string {
   return fileName.replace('.xml', '');
 }
 
-export async function getZones(): Promise<Zone[]> {
+// Determines if a URL points to a branch, department, or other
+function getItemTypeFromUrl(url: string): 'branch' | 'locality' | 'unknown' {
+  if (url.includes('/branch/')) return 'branch';
+  if (url.includes('/department/')) return 'locality';
+  return 'unknown';
+}
+
+
+export async function getZones(): Promise<Omit<Zone, 'items'>[]> {
   const xmlContent = await readFileContent(MAINMENU_PATH);
   if (!xmlContent) return [];
 
@@ -81,95 +90,107 @@ export async function getZones(): Promise<Zone[]> {
   return menuItems.map(item => ({
     id: extractIdFromUrl(item.URL),
     name: item.Name,
-    localities: [], // Localities will be fetched on demand by getZoneById
   }));
 }
 
-export async function getZoneById(zoneId: string): Promise<Zone | undefined> {
-  const zones = await getZones(); // This gets names and IDs from MAINMENU.xml
-  const zoneInfo = zones.find(z => z.id === zoneId);
+export async function getZoneDetails(zoneId: string): Promise<Omit<Zone, 'items'> | undefined> {
+  const zones = await getZones();
+  return zones.find(z => z.id === zoneId);
+}
 
-  if (!zoneInfo) return undefined;
-
+export async function getZoneItems(zoneId: string): Promise<ZoneItem[]> {
   const zoneFilePath = path.join(ZONE_BRANCH_DIR, `${zoneId}.xml`);
   const xmlContent = await readFileContent(zoneFilePath);
-  if (!xmlContent) return { ...zoneInfo, localities: [] }; // Return zone with empty localities if file is missing
+  if (!xmlContent) return [];
 
   const parsedXml = await parseStringPromise(xmlContent, { explicitArray: false, trim: true });
   const validated = CiscoIPPhoneMenuSchema.safeParse(parsedXml.CiscoIPPhoneMenu);
 
   if (!validated.success) {
     console.error(`Failed to parse ZoneBranch XML for ${zoneId}:`, validated.error.issues);
-    return { ...zoneInfo, localities: [] };
+    return [];
   }
   
-  const title = validated.data.Title || zoneInfo.name; // Prefer title from XML, fallback to name from MAINMENU
-
   const menuItems = validated.data.MenuItem || [];
-  const localities: Locality[] = menuItems.map(item => ({
-    id: extractIdFromUrl(item.URL),
-    name: item.Name,
-    extensions: [], // Extensions will be fetched on demand by getLocalityById
-  }));
-
-  return {
-    id: zoneId,
-    name: title,
-    localities,
-  };
+  return menuItems.map(item => {
+    const itemType = getItemTypeFromUrl(item.URL);
+    if (itemType === 'unknown') {
+        console.warn(`Unknown URL type in ${zoneId}.xml for item ${item.Name}: ${item.URL}`);
+    }
+    return {
+        id: extractIdFromUrl(item.URL),
+        name: item.Name,
+        type: itemType as 'branch' | 'locality', // Assume valid or default
+    };
+  }).filter(item => item.type === 'branch' || item.type === 'locality'); // Filter out unknown types
 }
 
-export async function getLocalitiesByZoneId(zoneId: string): Promise<Locality[]> {
-  const zone = await getZoneById(zoneId);
-  return zone?.localities || [];
+
+export async function getBranchDetails(zoneId: string, branchId: string): Promise<Omit<Branch, 'items'> | undefined> {
+    const zoneItems = await getZoneItems(zoneId);
+    const branchInfo = zoneItems.find(item => item.id === branchId && item.type === 'branch');
+    if (!branchInfo) return undefined;
+    return { id: branchInfo.id, name: branchInfo.name, zoneId };
 }
 
-export async function getLocalityById(zoneId: string, localityId: string): Promise<Locality | undefined> {
-  const zone = await getZoneById(zoneId); // This gets locality names and IDs from ZoneBranch/[zoneId].xml
-  const localityInfo = zone?.localities.find(l => l.id === localityId);
-
-  if (!localityInfo) return undefined;
-
-  const departmentFilePath = path.join(DEPARTMENT_DIR, `${localityId}.xml`);
-  const xmlContent = await readFileContent(departmentFilePath);
-  if (!xmlContent) return { ...localityInfo, extensions: [] };
+export async function getBranchItems(branchId: string): Promise<BranchItem[]> {
+  const branchFilePath = path.join(BRANCH_DIR, `${branchId}.xml`);
+  const xmlContent = await readFileContent(branchFilePath);
+  if (!xmlContent) return [];
 
   const parsedXml = await parseStringPromise(xmlContent, { explicitArray: false, trim: true });
-  const validated = CiscoIPPhoneDirectorySchema.safeParse(parsedXml.CiscoIPPhoneDirectory);
+  const validated = CiscoIPPhoneMenuSchema.safeParse(parsedXml.CiscoIPPhoneMenu);
 
   if (!validated.success) {
-    console.error(`Failed to parse Department XML for ${localityId}:`, validated.error.issues);
-    return { ...localityInfo, extensions: [] };
+    console.error(`Failed to parse Branch XML for ${branchId}:`, validated.error.issues);
+    return [];
+  }
+
+  const menuItems = validated.data.MenuItem || [];
+  return menuItems.map(item => ({
+    id: extractIdFromUrl(item.URL),
+    name: item.Name,
+    type: 'locality', // Items under a branch are always localities leading to departments
+  }));
+}
+
+export async function getLocalityDetails(
+  localityId: string, 
+  context?: { zoneId?: string; branchId?: string }
+): Promise<Omit<Locality, 'extensions'> | undefined> {
+  // Attempt to get the locality name from its context (zone or branch file)
+  let localityName = localityId; // Fallback name
+
+  if (context?.branchId && context?.zoneId) { // Part of a branch in Zona Metropolitana
+    const branchItems = await getBranchItems(context.branchId);
+    const itemInfo = branchItems.find(item => item.id === localityId);
+    if (itemInfo) localityName = itemInfo.name;
+  } else if (context?.zoneId) { // Directly under a zone
+    const zoneItems = await getZoneItems(context.zoneId);
+    const itemInfo = zoneItems.find(item => item.id === localityId && item.type === 'locality');
+     if (itemInfo) localityName = itemInfo.name;
   }
   
-  const title = validated.data.Title || localityInfo.name; // Prefer title from XML
+  // Try to get a more accurate name from the Department XML's Title field
+  const departmentFilePath = path.join(DEPARTMENT_DIR, `${localityId}.xml`);
+  const departmentXmlContent = await readFileContent(departmentFilePath);
+  if (departmentXmlContent) {
+      try {
+        const parsedDeptXml = await parseStringPromise(departmentXmlContent, { explicitArray: false, trim: true });
+        const validatedDept = CiscoIPPhoneDirectorySchema.safeParse(parsedDeptXml.CiscoIPPhoneDirectory);
+        if (validatedDept.success && validatedDept.data.Title) {
+            localityName = validatedDept.data.Title;
+        }
+      } catch (e) {
+        console.warn(`Could not parse title from ${departmentFilePath}`, e);
+      }
+  }
 
-  const directoryEntries = validated.data.DirectoryEntry || [];
-  const extensions: Extension[] = directoryEntries.map(entry => ({
-    id: toUrlFriendlyId(`${entry.Name}-${entry.Telephone}`), // Generate an ID
-    department: entry.Name,
-    number: entry.Telephone,
-    // name field (contact person) is not in this XML structure
-  }));
-
-  return {
-    id: localityId,
-    name: title,
-    extensions,
-  };
+  return { id: localityId, name: localityName };
 }
 
-export async function getExtensionsByLocalityId(zoneId: string, localityId: string): Promise<Extension[]> {
-  const locality = await getLocalityById(zoneId, localityId);
-  return locality?.extensions || [];
-}
 
-// findLocalityByIdGlobally might be inefficient as it has to read multiple zone files
-// For now, it relies on the API routes to serve specific department XMLs directly
-export async function findLocalityByIdGlobally(localityId: string): Promise<Locality | undefined> {
-  // This function would need to know which zone a localityId belongs to,
-  // or iterate through all zone XMLs, then all department XMLs.
-  // Given the new file structure, the department XML is directly accessible if localityId is known.
+export async function getLocalityWithExtensions(localityId: string): Promise<Locality | undefined> {
   const departmentFilePath = path.join(DEPARTMENT_DIR, `${localityId}.xml`);
   const xmlContent = await readFileContent(departmentFilePath);
   if (!xmlContent) return undefined;
@@ -178,14 +199,14 @@ export async function findLocalityByIdGlobally(localityId: string): Promise<Loca
   const validated = CiscoIPPhoneDirectorySchema.safeParse(parsedXml.CiscoIPPhoneDirectory);
 
   if (!validated.success) {
-    console.error(`Failed to parse Department XML for ${localityId} (globally):`, validated.error.issues);
+    console.error(`Failed to parse Department XML for ${localityId}:`, validated.error.issues);
     return undefined;
   }
-
-  const title = validated.data.Title || localityId; // Fallback to ID if title missing
+  
+  const title = validated.data.Title || localityId; 
   const directoryEntries = validated.data.DirectoryEntry || [];
   const extensions: Extension[] = directoryEntries.map(entry => ({
-    id: toUrlFriendlyId(`${entry.Name}-${entry.Telephone}`),
+    id: toUrlFriendlyId(`${entry.Name}-${entry.Telephone}`), 
     department: entry.Name,
     number: entry.Telephone,
   }));

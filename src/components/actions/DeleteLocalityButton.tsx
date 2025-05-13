@@ -16,34 +16,49 @@ import {
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
 import { useToast } from '@/hooks/use-toast';
-import { deleteLocalityAction } from '@/lib/actions'; // Updated path
+import { deleteLocalityOrBranchAction } from '@/lib/actions'; // Updated action name
 import { useRouter } from 'next/navigation';
+import { useTranslation } from '@/hooks/useTranslation';
 
 
 interface DeleteLocalityButtonProps {
   zoneId: string;
-  localityId: string;
-  localityName: string;
+  branchId?: string; // If deleting a locality within a branch
+  itemId: string;
+  itemName: string;
+  itemType: 'branch' | 'locality';
 }
 
-export function DeleteLocalityButton({ zoneId, localityId, localityName }: DeleteLocalityButtonProps) {
+export function DeleteLocalityButton({ zoneId, branchId, itemId, itemName, itemType }: DeleteLocalityButtonProps) {
   const { toast } = useToast();
   const router = useRouter();
+  const { t } = useTranslation();
   const [isPending, startTransition] = useTransition();
   const [isOpen, setIsOpen] = useState(false);
 
+  const itemTypeDisplay = itemType === 'branch' ? t('branchWord') : t('localityWord');
+  const ariaLabel = t('deleteButtonAriaLabel', { itemType: itemTypeDisplay, itemName: itemName });
+  const dialogTitle = t('confirmDeleteTitle');
+  const dialogDescription = t('confirmDeleteDescription', { itemType: itemTypeDisplay.toLowerCase(), itemName, itemId });
+  const confirmButtonText = t('deleteButtonConfirmText', { itemType: itemTypeDisplay });
+
   const handleDelete = async () => {
     startTransition(async () => {
-      const result = await deleteLocalityAction(zoneId, localityId);
+      const result = await deleteLocalityOrBranchAction({
+          zoneId, 
+          branchId, // undefined if deleting a branch or locality directly under zone
+          itemId, 
+          itemType
+        });
       if (result.success) {
         toast({
-          title: 'Success',
+          title: t('successTitle'),
           description: result.message,
         });
-        router.refresh(); // Re-fetch data for the current page
+        router.refresh(); 
       } else {
         toast({
-          title: 'Error',
+          title: t('errorTitle'),
           description: result.message,
           variant: 'destructive',
         });
@@ -55,22 +70,21 @@ export function DeleteLocalityButton({ zoneId, localityId, localityName }: Delet
   return (
     <AlertDialog open={isOpen} onOpenChange={setIsOpen}>
       <AlertDialogTrigger asChild>
-        <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive hover:bg-destructive/10" aria-label={`Delete locality ${localityName}`}>
+        <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive hover:bg-destructive/10" aria-label={ariaLabel}>
           <Trash2 className="h-4 w-4" />
         </Button>
       </AlertDialogTrigger>
       <AlertDialogContent>
         <AlertDialogHeader>
-          <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+          <AlertDialogTitle>{dialogTitle}</AlertDialogTitle>
           <AlertDialogDescription>
-            This action will delete the locality <strong>{localityName}</strong> (ID: {localityId}) from zone {zoneId}.
-            This will also attempt to delete its corresponding department XML file. This action cannot be undone.
+            {dialogDescription}
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
-          <AlertDialogCancel disabled={isPending}>Cancel</AlertDialogCancel>
+          <AlertDialogCancel disabled={isPending}>{t('cancelButton')}</AlertDialogCancel>
           <AlertDialogAction onClick={handleDelete} disabled={isPending} className="bg-destructive hover:bg-destructive/90">
-            {isPending ? 'Deleting...' : 'Delete Locality'}
+            {isPending ? t('deletingButtonText') : confirmButtonText}
           </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>

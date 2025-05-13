@@ -12,9 +12,10 @@ interface AddExtensionButtonProps {
   localityId: string;
   localityName: string;
   zoneId: string;
+  branchId?: string; // Optional: if the locality is under a branch
 }
 
-export function AddExtensionButton({ localityId, localityName, zoneId }: AddExtensionButtonProps) {
+export function AddExtensionButton({ localityId, localityName, zoneId, branchId }: AddExtensionButtonProps) {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const { t } = useTranslation();
 
@@ -33,6 +34,7 @@ export function AddExtensionButton({ localityId, localityName, zoneId }: AddExte
         localityId={localityId}
         localityName={localityName}
         zoneId={zoneId}
+        branchId={branchId}
       />
     </>
   );

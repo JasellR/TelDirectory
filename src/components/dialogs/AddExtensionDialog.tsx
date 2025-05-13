@@ -25,17 +25,18 @@ interface AddExtensionDialogProps {
   onClose: () => void;
   localityId: string;
   localityName: string;
-  zoneId: string; // For revalidation context if needed, though addExtensionAction might not use it directly
+  zoneId: string; 
+  branchId?: string; // For revalidation context if needed
 }
 
-export function AddExtensionDialog({ isOpen, onClose, localityId, localityName, zoneId }: AddExtensionDialogProps) {
+export function AddExtensionDialog({ isOpen, onClose, localityId, localityName, zoneId, branchId }: AddExtensionDialogProps) {
   const { toast } = useToast();
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const { t } = useTranslation();
 
-  const [extensionName, setExtensionName] = useState(''); // Corresponds to <Name> in XML
-  const [extensionTelephone, setExtensionTelephone] = useState(''); // Corresponds to <Telephone> in XML
+  const [extensionName, setExtensionName] = useState(''); 
+  const [extensionTelephone, setExtensionTelephone] = useState(''); 
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -66,11 +67,12 @@ export function AddExtensionDialog({ isOpen, onClose, localityId, localityName, 
 
 
     startTransition(async () => {
+      // addExtensionAction only needs localityId for the Department XML path
       const result = await addExtensionAction(localityId, extensionName.trim(), extensionTelephone.trim());
       if (result.success) {
         toast({
           title: t('successTitle'),
-          description: result.message, // Use server message directly or a translated one
+          description: result.message,
         });
         router.refresh();
         onClose();

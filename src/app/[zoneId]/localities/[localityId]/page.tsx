@@ -1,11 +1,11 @@
 
-import { getExtensionsByLocalityId, getLocalityById, getZoneById } from '@/lib/data';
+import { getZoneDetails, getLocalityWithExtensions, getLocalityDetails } from '@/lib/data';
 import { ExtensionTable } from '@/components/directory/ExtensionTable';
 import { Breadcrumbs } from '@/components/layout/Breadcrumbs';
 import { notFound } from 'next/navigation';
 import type { Metadata } from 'next';
 import { Separator } from '@/components/ui/separator';
-import { AddExtensionButton } from '@/components/actions/AddExtensionButton'; // Added
+import { AddExtensionButton } from '@/components/actions/AddExtensionButton';
 
 interface LocalityPageProps {
   params: {
@@ -15,7 +15,7 @@ interface LocalityPageProps {
 }
 
 export async function generateMetadata({ params }: LocalityPageProps): Promise<Metadata> {
-  const locality = await getLocalityById(params.zoneId, params.localityId);
+  const locality = await getLocalityDetails(params.localityId, { zoneId: params.zoneId });
   if (!locality) {
     return {
       title: 'Locality Not Found',
@@ -29,10 +29,10 @@ export async function generateMetadata({ params }: LocalityPageProps): Promise<M
 
 export default async function LocalityPage({ params }: LocalityPageProps) {
   const { zoneId, localityId } = params;
-  const zone = await getZoneById(zoneId);
-  const locality = await getLocalityById(zoneId, localityId);
+  const zone = await getZoneDetails(zoneId);
+  const locality = await getLocalityWithExtensions(localityId);
   
-  const extensions = locality?.extensions || [];
+  const localityDisplayName = (await getLocalityDetails(localityId, { zoneId }))?.name || localityId;
 
   if (!zone || !locality) { 
     notFound();
@@ -44,20 +44,20 @@ export default async function LocalityPage({ params }: LocalityPageProps) {
         <Breadcrumbs 
           items={[
             { label: zone.name, href: `/${zoneId}` },
-            { label: locality.name }
+            { label: localityDisplayName }
           ]} 
         />
         <div className="flex justify-between items-center mb-6">
-          <h1 className="text-3xl font-bold text-foreground">Extensions in {locality.name}</h1>
+          <h1 className="text-3xl font-bold text-foreground">Extensions in {localityDisplayName}</h1>
           <AddExtensionButton 
             localityId={localityId} 
-            localityName={locality.name} 
+            localityName={localityDisplayName} 
             zoneId={zoneId} 
           />
         </div>
         <ExtensionTable 
-          extensions={extensions} 
-          localityName={locality.name} 
+          extensions={locality.extensions || []} 
+          localityName={localityDisplayName} 
           localityId={localityId}
           zoneId={zoneId}
         />
@@ -66,9 +66,9 @@ export default async function LocalityPage({ params }: LocalityPageProps) {
       <Separator />
 
       <div>
-        <h2 className="text-2xl font-bold text-foreground mb-2">Data Management for {locality.name}</h2>
+        <h2 className="text-2xl font-bold text-foreground mb-2">Data Management for {localityDisplayName}</h2>
         <p className="text-muted-foreground">
-          Extensions for the <strong>{locality.name}</strong> locality (within <strong>{zone.name}</strong> zone) are managed by editing the XML file at <code>IVOXS/Department/{locality.id}.xml</code>.
+          Extensions for the <strong>{localityDisplayName}</strong> locality (within <strong>{zone.name}</strong> zone) are managed by editing the XML file at <code>IVOXS/Department/{locality.id}.xml</code>.
           Ensure this file has a <code>&lt;CiscoIPPhoneDirectory&gt;</code> root element, containing <code>&lt;DirectoryEntry&gt;</code> items. Deleting an extension will remove its entry from this file.
         </p>
       </div>
