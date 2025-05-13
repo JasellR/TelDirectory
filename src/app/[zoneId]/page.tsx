@@ -5,9 +5,12 @@ import { notFound } from 'next/navigation';
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { Card, CardContent } from '@/components/ui/card';
-import { MapPin } from 'lucide-react';
+import { MapPin, PlusCircle } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
 import { DeleteLocalityButton } from '@/components/actions/DeleteLocalityButton';
+import { EditLocalityButton } from '@/components/actions/EditLocalityButton'; // Added
+import { AddLocalityButton } from '@/components/actions/AddLocalityButton'; // Added
+import { Button } from '@/components/ui/button'; // Added
 
 interface ZonePageProps {
   params: {
@@ -42,7 +45,10 @@ export default async function ZonePage({ params }: ZonePageProps) {
     <div className="space-y-8">
       <div>
         <Breadcrumbs items={[{ label: zone.name }]} />
-        <h1 className="text-3xl font-bold mb-8 text-foreground">Localities in {zone.name}</h1>
+        <div className="flex justify-between items-center mb-8">
+          <h1 className="text-3xl font-bold text-foreground">Localities in {zone.name}</h1>
+          <AddLocalityButton zoneId={zoneId} zoneName={zone.name} />
+        </div>
         {localities.length > 0 ? (
           <div className="space-y-4">
             {localities.map((locality) => (
@@ -61,7 +67,8 @@ export default async function ZonePage({ params }: ZonePageProps) {
                       View extensions and details for {locality.name}. (ID: {locality.id})
                     </p>
                   </div>
-                  <div className="flex-shrink-0">
+                  <div className="flex-shrink-0 flex items-center space-x-1">
+                    <EditLocalityButton zoneId={zoneId} locality={locality} />
                     <DeleteLocalityButton zoneId={zoneId} localityId={locality.id} localityName={locality.name} />
                   </div>
                 </CardContent>
@@ -87,3 +94,4 @@ export default async function ZonePage({ params }: ZonePageProps) {
     </div>
   );
 }
+
