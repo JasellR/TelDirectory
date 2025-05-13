@@ -231,7 +231,7 @@ export default function SettingsPage() {
         <Card>
           <CardHeader>
             <div className="flex items-center gap-3">
-              <InfoIcon className="h-6 w-6 text-primary" />
+              <RadioTower className="h-6 w-6 text-primary" />
               <CardTitle className="text-2xl">{t('ipPhoneDirectoryAccess')}</CardTitle>
             </div>
             <CardDescription>
