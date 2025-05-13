@@ -5,12 +5,12 @@ import fs from 'fs/promises';
 import path from 'path';
 import { parseStringPromise, Builder } from 'xml2js';
 import { revalidatePath } from 'next/cache';
-import type { CiscoIPPhoneMenu, CiscoIPPhoneDirectory } from '@/types/xml'; 
+import type { CiscoIPPhoneMenu, CiscoIPPhoneDirectory, MenuItem as XmlMenuItem } from '@/types/xml'; 
 import { CiscoIPPhoneMenuSchema, CiscoIPPhoneDirectorySchema } from '@/lib/data'; 
 
 const IVOXS_DIR = path.join(process.cwd(), 'IVOXS');
 const ZONE_BRANCH_DIR = path.join(IVOXS_DIR, 'ZoneBranch');
-const BRANCH_DIR = path.join(IVOXS_DIR, 'Branch'); // New
+const BRANCH_DIR = path.join(IVOXS_DIR, 'Branch'); 
 const DEPARTMENT_DIR = path.join(IVOXS_DIR, 'Department');
 const MAINMENU_FILENAME = 'MAINMENU.xml';
 
@@ -80,9 +80,14 @@ export async function addLocalityOrBranchAction(args: AddItemArgs): Promise<{ su
   const sanitizedZoneId = sanitizeFilenamePart(zoneId);
   const newItemId = generateIdFromName(itemName);
 
+  // TODO: Get current host and port, perhaps from a config file or environment variables
+  // For now, using the placeholder, which will be updated by updateXmlUrlsAction
+  const currentHost = 'YOUR_DEVICE_IP'; 
+  const currentPort = '9002';
+
+
   let parentFilePath: string;
   let childDirPath: string;
-  let childFileExtension: string;
   let newChildItemUrl: string;
   let itemTypeNameForMessage: string;
 
@@ -90,7 +95,7 @@ export async function addLocalityOrBranchAction(args: AddItemArgs): Promise<{ su
     if (branchId) return { success: false, message: "Cannot add a branch under another branch using this action."};
     parentFilePath = path.join(ZONE_BRANCH_DIR, `${sanitizedZoneId}.xml`);
     childDirPath = BRANCH_DIR;
-    newChildItemUrl = `http://YOUR_DEVICE_IP:9002/ivoxsdir/branch/${newItemId}.xml`;
+    newChildItemUrl = `http://${currentHost}:${currentPort}/ivoxsdir/branch/${newItemId}.xml`;
     itemTypeNameForMessage = "Branch";
   } else { // Adding a locality
     if (branchId) { // Adding locality to a Branch file
@@ -102,7 +107,7 @@ export async function addLocalityOrBranchAction(args: AddItemArgs): Promise<{ su
       itemTypeNameForMessage = "Locality (to zone)";
     }
     childDirPath = DEPARTMENT_DIR;
-    newChildItemUrl = `http://YOUR_DEVICE_IP:9002/ivoxsdir/department/${newItemId}.xml`;
+    newChildItemUrl = `http://${currentHost}:${currentPort}/ivoxsdir/department/${newItemId}.xml`;
   }
   const childFilePath = path.join(childDirPath, `${newItemId}.xml`);
 
@@ -120,13 +125,11 @@ export async function addLocalityOrBranchAction(args: AddItemArgs): Promise<{ su
     parsedParentXml.CiscoIPPhoneMenu.MenuItem = menuItems;
     await buildAndWriteXML(parentFilePath, parsedParentXml);
 
-    // Create new child XML (Branch or Department)
     const newChildXmlContent = itemType === 'branch'
       ? { CiscoIPPhoneMenu: { Title: itemName, Prompt: 'Select a locality' } }
       : { CiscoIPPhoneDirectory: { Title: itemName, Prompt: 'Select an extension' } };
     await buildAndWriteXML(childFilePath, newChildXmlContent);
 
-    // Revalidation logic
     revalidatePath('/');
     revalidatePath(`/${sanitizedZoneId}`);
     if (branchId) revalidatePath(`/${sanitizedZoneId}/branches/${branchId}`);
@@ -143,7 +146,7 @@ export async function addLocalityOrBranchAction(args: AddItemArgs): Promise<{ su
 
 interface EditItemArgs {
   zoneId: string;
-  branchId?: string; // If editing a locality within a branch
+  branchId?: string; 
   oldItemId: string;
   newItemName: string;
   itemType: 'branch' | 'locality';
@@ -153,6 +156,11 @@ export async function editLocalityOrBranchAction(args: EditItemArgs): Promise<{ 
   const sanitizedZoneId = sanitizeFilenamePart(zoneId);
   const sanitizedOldItemId = sanitizeFilenamePart(oldItemId);
   const newItemId = generateIdFromName(newItemName);
+  
+  // TODO: Get current host and port
+  const currentHost = 'YOUR_DEVICE_IP';
+  const currentPort = '9002';
+
 
   let parentFilePath: string;
   let oldChildFilePath: string;
@@ -167,7 +175,7 @@ export async function editLocalityOrBranchAction(args: EditItemArgs): Promise<{ 
     newChildFilePath = path.join(BRANCH_DIR, `${newItemId}.xml`);
     newChildItemUrlSegment = `/branch/${newItemId}.xml`;
     itemTypeNameForMessage = "Branch";
-  } else { // Editing a locality
+  } else { 
     if (branchId) {
       const sanitizedBranchId = sanitizeFilenamePart(branchId);
       parentFilePath = path.join(BRANCH_DIR, `${sanitizedBranchId}.xml`);
@@ -180,7 +188,7 @@ export async function editLocalityOrBranchAction(args: EditItemArgs): Promise<{ 
     newChildFilePath = path.join(DEPARTMENT_DIR, `${newItemId}.xml`);
     newChildItemUrlSegment = `/department/${newItemId}.xml`;
   }
-  const newChildFullUrl = `http://YOUR_DEVICE_IP:9002/ivoxsdir${newChildItemUrlSegment}`;
+  const newChildFullUrl = `http://${currentHost}:${currentPort}/ivoxsdir${newChildItemUrlSegment}`;
 
   try {
     const parsedParentXml = await readAndParseXML(parentFilePath);
@@ -247,8 +255,8 @@ export async function editLocalityOrBranchAction(args: EditItemArgs): Promise<{ 
 
 interface DeleteItemArgs {
   zoneId: string;
-  branchId?: string; // If deleting a locality from within a branch
-  itemId: string;     // ID of the branch or locality to delete
+  branchId?: string; 
+  itemId: string;     
   itemType: 'branch' | 'locality';
 }
 export async function deleteLocalityOrBranchAction(args: DeleteItemArgs): Promise<{ success: boolean; message: string }> {
@@ -268,9 +276,7 @@ export async function deleteLocalityOrBranchAction(args: DeleteItemArgs): Promis
     parentFilePath = path.join(ZONE_BRANCH_DIR, `${sanitizedZoneId}.xml`);
     childFilePath = path.join(BRANCH_DIR, `${sanitizedItemId}.xml`);
     itemTypeNameForMessage = "Branch";
-    // Note: Deleting a branch should ideally also delete all its child localities and their department files. This is complex.
-    // For now, it will just delete the branch file and its entry in the zone file.
-  } else { // Deleting a locality
+  } else { 
     if (branchId) {
       const sanitizedBranchId = sanitizeFilenamePart(branchId);
       parentFilePath = path.join(BRANCH_DIR, `${sanitizedBranchId}.xml`);
@@ -293,9 +299,9 @@ export async function deleteLocalityOrBranchAction(args: DeleteItemArgs): Promis
     await buildAndWriteXML(parentFilePath, parsedParentXml);
 
     try {
-      await fs.unlink(childFilePath); // Delete the Branch/xxx.xml or Department/xxx.xml file
+      await fs.unlink(childFilePath); 
     } catch (unlinkError: any) {
-      if (unlinkError.code !== 'ENOENT') { // Ignore if file already not found
+      if (unlinkError.code !== 'ENOENT') { 
         console.warn(`Could not delete child file ${childFilePath}: ${unlinkError.message}`);
       }
     }
@@ -332,9 +338,7 @@ export async function addExtensionAction(localityId: string, name: string, telep
       };
       await buildAndWriteXML(departmentFilePath, { CiscoIPPhoneDirectory: newDirectory });
       revalidatePath(`/ivoxsdir/department/${sanitizedLocalityId}.xml`, 'route');
-      // Revalidate relevant pages
-      // This needs to be more dynamic based on how localityId was reached (via zone or zone->branch)
-      revalidatePath('/*/[localityId]', 'page'); // Generic, might over-revalidate
+      revalidatePath('/*/[localityId]', 'page'); 
       revalidatePath('/*/*/[localityId]', 'page'); 
       return { success: true, message: `Extension "${name}" added to new locality "${sanitizedLocalityId}".` };
     }
@@ -453,4 +457,113 @@ export async function saveDepartmentXmlAction(departmentFilenameBase: string | n
   } catch (error: any) {
     return { success: false, message: `Failed to save Department file ${filename}.`, error: error.message };
   }
+}
+
+async function processSingleXmlFileForHostUpdate(filePath: string, newHost: string, newPort: string): Promise<{ success: boolean; error?: string }> {
+  try {
+    const parsedXml = await readAndParseXML(filePath);
+    if (!parsedXml || !parsedXml.CiscoIPPhoneMenu) {
+      // Not a menu file or unreadable, skip or log
+      return { success: true }; // No error if not a menu file we intend to process
+    }
+
+    let changed = false;
+    const menuItems = ensureArray(parsedXml.CiscoIPPhoneMenu.MenuItem);
+
+    for (const menuItem of menuItems) {
+      if (menuItem && typeof menuItem.URL === 'string') {
+        try {
+          const urlObj = new URL(menuItem.URL);
+          let updated = false;
+          if (urlObj.hostname !== newHost) {
+            urlObj.hostname = newHost;
+            updated = true;
+          }
+          if (urlObj.port !== newPort) {
+            urlObj.port = newPort;
+            updated = true;
+          }
+          if (updated) {
+            menuItem.URL = urlObj.toString();
+            changed = true;
+          }
+        } catch (urlError) {
+          console.warn(`Skipping malformed URL "${menuItem.URL}" in ${filePath}: ${urlError}`);
+        }
+      }
+    }
+
+    if (changed) {
+      await buildAndWriteXML(filePath, parsedXml);
+    }
+    return { success: true };
+  } catch (error: any) {
+    console.error(`Error processing file ${filePath} for host update:`, error);
+    return { success: false, error: error.message };
+  }
+}
+
+
+export async function updateXmlUrlsAction(newHost: string, newPort: string): Promise<{ success: boolean; message: string; error?: string; filesProcessed?: number; filesFailed?: number }> {
+  if (!newHost || !newHost.trim()) {
+    return { success: false, message: 'New host cannot be empty.' };
+  }
+  if (!newPort || !/^\d+$/.test(newPort.trim())) {
+    return { success: false, message: 'New port must be a valid number.' };
+  }
+
+  let filesProcessed = 0;
+  let filesFailed = 0;
+  const directoriesToScan = [ZONE_BRANCH_DIR, BRANCH_DIR];
+  const mainMenuPath = path.join(IVOXS_DIR, MAINMENU_FILENAME);
+
+  // Process MAINMENU.xml
+  const mainMenuResult = await processSingleXmlFileForHostUpdate(mainMenuPath, newHost.trim(), newPort.trim());
+  if (mainMenuResult.success) {
+    filesProcessed++;
+  } else {
+    filesFailed++;
+    console.error(`Failed to update ${MAINMENU_FILENAME}: ${mainMenuResult.error}`);
+  }
+
+  // Process files in ZoneBranch and Branch directories
+  for (const dirPath of directoriesToScan) {
+    try {
+      const files = await fs.readdir(dirPath);
+      for (const file of files) {
+        if (file.endsWith('.xml')) {
+          const filePath = path.join(dirPath, file);
+          const result = await processSingleXmlFileForHostUpdate(filePath, newHost.trim(), newPort.trim());
+          if (result.success) {
+            filesProcessed++;
+          } else {
+            filesFailed++;
+            console.error(`Failed to update ${file}: ${result.error}`);
+          }
+        }
+      }
+    } catch (dirError: any) {
+      console.error(`Error reading directory ${dirPath}:`, dirError);
+      // Depending on desired behavior, might count all potential files in dir as failed or just log.
+    }
+  }
+  
+  // Revalidate all relevant paths since URLs could have changed everywhere
+  revalidatePath('/', 'layout');
+
+
+  if (filesFailed > 0) {
+    return { 
+      success: false, 
+      message: 'Some XML files failed to update.', 
+      filesProcessed, 
+      filesFailed 
+    };
+  }
+  return { 
+    success: true, 
+    message: 'XML URLs updated successfully.', 
+    filesProcessed, 
+    filesFailed 
+  };
 }

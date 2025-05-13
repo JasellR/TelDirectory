@@ -15,7 +15,7 @@
   "ipPhoneDirectoryAccessDescription": "Para permitir que sus teléfonos IP Cisco accedan al directorio, configúrelos para usar la siguiente URL para el servicio del menú principal:",
   "serviceUrl": "URL del Servicio:",
   "importantNotice": "Importante:",
-  "ipAddressPlaceholderNotice": "Reemplace YOUR_DEVICE_IP con la dirección IP o el nombre de host real del servidor que ejecuta esta aplicación. Este servidor debe ser accesible desde la red de sus teléfonos IP. El puerto (por ejemplo, 9002 para desarrollo) también debe coincidir con la configuración de ejecución de su aplicación. Los archivos XML para el directorio deben colocarse en la carpeta IVOXS en la raíz del proyecto. El archivo MAINMENU.xml es administrado por la aplicación y normalmente no debe cargarse manualmente aquí.",
+  "ipAddressPlaceholderNotice": "Configuración actual: Host '{currentHost}', Puerto '{currentPort}'. Reemplace 'YOUR_DEVICE_IP' en configuraciones iniciales o si el host mostrado es incorrecto. Este servidor debe ser accesible desde la red de sus teléfonos IP. El puerto también debe coincidir con la configuración de ejecución de su aplicación. Los archivos XML para el directorio deben colocarse en la carpeta IVOXS en la raíz del proyecto.",
   "importXmlFiles": "Importar Archivos XML",
   "importXmlFilesDescription": "Cargue archivos XML directamente a sus respectivas ubicaciones dentro del directorio IVOXS. Asegúrese de que los archivos tengan el formato XML correcto para teléfonos IP Cisco. El nombre del archivo (sin .xml) se utilizará como su ID.",
   "caution": "Precaución",
@@ -76,7 +76,7 @@
   "configureServicePortLabel": "Configurar Puerto para Visualización de URL:",
   "portNumberPlaceholder": "Ej: 9002 (Ingrese solo números)",
   "updatePortButton": "Actualizar Puerto de Visualización",
-  "serviceUrlPlaceholderInfo": "La URL de servicio a continuación se actualizará según el puerto que ingrese aquí. Recuerde, 'YOUR_DEVICE_IP' también debe reemplazarse con la dirección IP o el nombre de host real de su servidor.",
+  "serviceUrlPlaceholderInfo": "La URL de servicio a continuación se actualizará según el host y el puerto que configure aquí. Asegúrese de que coincidan con la configuración de red real de su servidor.",
   "searchPlaceholder": "Buscar {itemType} por nombre o ID...",
   "viewLocalitiesInBranch": "Ver localidades en la rama {branchName}.",
   "viewExtensionsAndDetails": "Ver extensiones y detalles para {localityName}.",
@@ -89,6 +89,16 @@
   "extensionColumnHeader": "Extensión",
   "contactNameColumnHeader": "Nombre de Contacto",
   "actionsColumnHeader": "Acciones",
-  "notApplicable": "N/A"
+  "notApplicable": "N/A",
+  "serviceHostSettingsTitle": "Configuración del Host del Servicio",
+  "serviceHostSettingsDescription": "Configure la dirección IP o el nombre de host utilizado en las URL dentro de sus archivos de directorio XML. Esta acción intentará actualizar todos los archivos XML relevantes.",
+  "configureServiceHostLabel": "Dirección IP o Nombre de Host:",
+  "hostInputPlaceholder": "Ej: 192.168.1.100 o midirectorio.ejemplo.com",
+  "applyHostToXmlButton": "Aplicar a XMLs",
+  "hostSettingsNote": "Al hacer clic en 'Aplicar a XMLs' se modificará el host y el puerto en las URL de sus archivos XML existentes de MAINMENU.xml, ZoneBranch y Branch.",
+  "hostCannotBeEmpty": "El nombre de host/IP no puede estar vacío.",
+  "portUpdatedSuccess": "Puerto de visualización actualizado correctamente.",
+  "portNumberInvalidForHostUpdate": "Se requiere un puerto numérico válido para actualizar las URL de host en XML.",
+  "filesProcessedLabel": "Archivos procesados",
+  "filesFailedLabel": "Archivos fallidos"
 }
-
