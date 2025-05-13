@@ -61,9 +61,8 @@ export function DeleteLocalityButton({ zoneId, localityId, localityName }: Delet
   return (
     <AlertDialog open={isAlertDialogOpen} onOpenChange={setIsAlertDialogOpen}>
       <AlertDialogTrigger asChild>
-        <Button variant="destructive" size="sm">
-          <Trash2 className="mr-2 h-4 w-4" />
-          Delete
+        <Button variant="destructive" size="icon" aria-label={`Delete locality ${localityName}`}>
+          <Trash2 className="h-4 w-4" />
         </Button>
       </AlertDialogTrigger>
       <AlertDialogContent>
@@ -78,9 +77,7 @@ export function DeleteLocalityButton({ zoneId, localityId, localityName }: Delet
           <AlertDialogAction onClick={handleDelete} disabled={isDeleting} className="bg-destructive hover:bg-destructive/90">
             {isDeleting ? (
               <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-            ) : (
-              <Trash2 className="mr-2 h-4 w-4" />
-            )}
+            ) : null}
             Confirm Delete
           </AlertDialogAction>
         </AlertDialogFooter>
@@ -88,3 +85,4 @@ export function DeleteLocalityButton({ zoneId, localityId, localityName }: Delet
     </AlertDialog>
   );
 }
+
