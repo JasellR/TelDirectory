@@ -20,7 +20,7 @@ const toUrlFriendlyId = (name: string): string => {
 const IVOXS_DIR = path.join(process.cwd(), 'IVOXS');
 const MAINMENU_PATH = path.join(IVOXS_DIR, 'MAINMENU.xml');
 const ZONE_BRANCH_DIR = path.join(IVOXS_DIR, 'ZoneBranch');
-const BRANCH_DIR = path.join(IVOXS_DIR, 'Branch'); // New directory for branches
+const BRANCH_DIR = path.join(IVOXS_DIR, 'Branch'); 
 const DEPARTMENT_DIR = path.join(IVOXS_DIR, 'Department');
 
 // Schemas for parsing XML
@@ -36,7 +36,7 @@ export const CiscoIPPhoneMenuSchema = z.object({
 });
 
 const CiscoIPPhoneDirectoryEntrySchema = z.object({
-  Name: z.string().min(1), // This is Department Name in <DirectoryEntry>
+  Name: z.string().min(1), 
   Telephone: z.string().min(1),
 });
 
@@ -66,7 +66,6 @@ function extractIdFromUrl(url: string): string {
   return fileName.replace('.xml', '');
 }
 
-// Determines if a URL points to a branch, department, or other
 function getItemTypeFromUrl(url: string): 'branch' | 'locality' | 'unknown' {
   if (url.includes('/branch/')) return 'branch';
   if (url.includes('/department/')) return 'locality';
@@ -120,9 +119,9 @@ export async function getZoneItems(zoneId: string): Promise<ZoneItem[]> {
     return {
         id: extractIdFromUrl(item.URL),
         name: item.Name,
-        type: itemType as 'branch' | 'locality', // Assume valid or default
+        type: itemType as 'branch' | 'locality', 
     };
-  }).filter(item => item.type === 'branch' || item.type === 'locality'); // Filter out unknown types
+  }).filter(item => item.type === 'branch' || item.type === 'locality'); 
 }
 
 
@@ -150,7 +149,7 @@ export async function getBranchItems(branchId: string): Promise<BranchItem[]> {
   return menuItems.map(item => ({
     id: extractIdFromUrl(item.URL),
     name: item.Name,
-    type: 'locality', // Items under a branch are always localities leading to departments
+    type: 'locality', 
   }));
 }
 
@@ -158,20 +157,18 @@ export async function getLocalityDetails(
   localityId: string, 
   context?: { zoneId?: string; branchId?: string }
 ): Promise<Omit<Locality, 'extensions'> | undefined> {
-  // Attempt to get the locality name from its context (zone or branch file)
-  let localityName = localityId; // Fallback name
+  let localityName = localityId; 
 
-  if (context?.branchId && context?.zoneId) { // Part of a branch in Zona Metropolitana
+  if (context?.branchId && context?.zoneId) { 
     const branchItems = await getBranchItems(context.branchId);
     const itemInfo = branchItems.find(item => item.id === localityId);
     if (itemInfo) localityName = itemInfo.name;
-  } else if (context?.zoneId) { // Directly under a zone
+  } else if (context?.zoneId) { 
     const zoneItems = await getZoneItems(context.zoneId);
     const itemInfo = zoneItems.find(item => item.id === localityId && item.type === 'locality');
      if (itemInfo) localityName = itemInfo.name;
   }
   
-  // Try to get a more accurate name from the Department XML's Title field
   const departmentFilePath = path.join(DEPARTMENT_DIR, `${localityId}.xml`);
   const departmentXmlContent = await readFileContent(departmentFilePath);
   if (departmentXmlContent) {
@@ -218,10 +215,8 @@ export async function getLocalityWithExtensions(localityId: string): Promise<Loc
   };
 }
 
-export interface SearchableExtension {
-  id: string; // Unique ID for React key
-  extensionName: string;
-  extensionNumber: string;
+export interface SearchableLocality {
+  id: string; // Unique ID for React key, e.g. zoneId-localityId or zoneId-branchId-localityId
   localityName: string;
   localityId: string;
   zoneName: string;
@@ -231,8 +226,8 @@ export interface SearchableExtension {
   path: string; // URL path to the locality page
 }
 
-export async function getAllExtensionsForSearch(): Promise<SearchableExtension[]> {
-  const allSearchableExtensions: SearchableExtension[] = [];
+export async function getAllLocalitiesForSearch(): Promise<SearchableLocality[]> {
+  const allSearchableLocalities: SearchableLocality[] = [];
   const zones = await getZones(); 
 
   for (const zone of zones) {
@@ -240,45 +235,41 @@ export async function getAllExtensionsForSearch(): Promise<SearchableExtension[]
 
     for (const zoneItem of zoneItems) {
       if (zoneItem.type === 'locality') {
-        const localityData = await getLocalityWithExtensions(zoneItem.id);
-        if (localityData && localityData.extensions) {
-          for (const ext of localityData.extensions) {
-            allSearchableExtensions.push({
-              id: `${zone.id}-${zoneItem.id}-${ext.id}`,
-              extensionName: ext.department, 
-              extensionNumber: ext.number,   
-              localityName: localityData.name,
-              localityId: localityData.id,
+        // Fetch full locality details to ensure we get the display name
+        const localityDetails = await getLocalityDetails(zoneItem.id, { zoneId: zone.id });
+        if (localityDetails) {
+            allSearchableLocalities.push({
+              id: `${zone.id}-${localityDetails.id}`,
+              localityName: localityDetails.name,
+              localityId: localityDetails.id,
               zoneName: zone.name,
               zoneId: zone.id,
-              path: `/${zone.id}/localities/${localityData.id}`
+              path: `/${zone.id}/localities/${localityDetails.id}`
             });
-          }
         }
       } else if (zoneItem.type === 'branch') {
         const branchItems = await getBranchItems(zoneItem.id); 
         for (const branchItem of branchItems) { 
-          const localityData = await getLocalityWithExtensions(branchItem.id);
-          if (localityData && localityData.extensions) {
-            for (const ext of localityData.extensions) {
-              allSearchableExtensions.push({
-                id: `${zone.id}-${zoneItem.id}-${branchItem.id}-${ext.id}`,
-                extensionName: ext.department,
-                extensionNumber: ext.number,
-                localityName: localityData.name,
-                localityId: localityData.id,
-                zoneName: zone.name,
-                zoneId: zone.id,
-                branchName: zoneItem.name, 
-                branchId: zoneItem.id,     
-                path: `/${zone.id}/branches/${zoneItem.id}/localities/${localityData.id}`
-              });
-            }
+          const localityDetails = await getLocalityDetails(branchItem.id, { zoneId: zone.id, branchId: zoneItem.id });
+          if (localityDetails) {
+            allSearchableLocalities.push({
+              id: `${zone.id}-${zoneItem.id}-${localityDetails.id}`,
+              localityName: localityDetails.name,
+              localityId: localityDetails.id,
+              zoneName: zone.name,
+              zoneId: zone.id,
+              branchName: zoneItem.name, 
+              branchId: zoneItem.id,     
+              path: `/${zone.id}/branches/${zoneItem.id}/localities/${localityDetails.id}`
+            });
           }
         }
       }
     }
   }
-  return allSearchableExtensions;
+  // Deduplicate based on the unique ID
+  const uniqueLocalities = Array.from(new Map(allSearchableLocalities.map(item => [item.id, item])).values());
+  return uniqueLocalities;
 }
 
+    

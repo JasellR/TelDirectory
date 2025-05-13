@@ -1,5 +1,5 @@
 
-import { getZones, getAllExtensionsForSearch } from '@/lib/data';
+import { getZones, getAllLocalitiesForSearch } from '@/lib/data';
 import { NavigationCard } from '@/components/directory/NavigationCard';
 import { Breadcrumbs } from '@/components/layout/Breadcrumbs';
 import { ExtensionSearch } from '@/components/search/ExtensionSearch';
@@ -7,13 +7,13 @@ import { Separator } from '@/components/ui/separator';
 
 export default async function HomePage() {
   const zones = await getZones();
-  const allExtensions = await getAllExtensionsForSearch();
+  const allLocalities = await getAllLocalitiesForSearch();
 
   return (
     <div>
       <Breadcrumbs items={[]} />
-      <h1 className="text-3xl font-bold mb-6 text-foreground">Search Extensions</h1>
-      <ExtensionSearch allExtensions={allExtensions} />
+      <h1 className="text-3xl font-bold mb-6 text-foreground">Search Localities/Departments</h1>
+      <ExtensionSearch allLocalities={allLocalities} />
       
       <Separator className="my-12" />
 
@@ -37,3 +37,4 @@ export default async function HomePage() {
   );
 }
 
+    
