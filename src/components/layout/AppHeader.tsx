@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { Phone, Upload } from 'lucide-react';
+import { Phone, UploadCloud } from 'lucide-react'; // Changed Upload to UploadCloud for consistency
 import { Button } from '@/components/ui/button';
 
 export function AppHeader() {
@@ -14,8 +14,8 @@ export function AppHeader() {
         <nav>
           <Button variant="outline" asChild>
             <Link href="/import-xml" className="flex items-center gap-2">
-              <Upload className="h-4 w-4" />
-              Import XML
+              <UploadCloud className="h-4 w-4" />
+              Import &amp; Setup
             </Link>
           </Button>
         </nav>
