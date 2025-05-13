@@ -1,13 +1,21 @@
 <?xml version="1.0" encoding="UTF-8" standalone="no"?>
 <CiscoIPPhoneMenu>
   <Title>Zona Metropolitana</Title>
-  <Prompt>Select a Branch</Prompt>
+  <Prompt>Select a Branch or Group</Prompt>
   <MenuItem>
-    <Name>Distrito Nacional Centro</Name>
-    <URL>http://YOUR_DEVICE_IP:9002/ivoxsdir/department/DistritoNacionalCentro.xml</URL>
+    <Name>Adm 27 Febrero</Name>
+    <URL>http://YOUR_DEVICE_IP:9002/ivoxsdir/branch/Adm27Febrero.xml</URL>
   </MenuItem>
   <MenuItem>
-    <Name>Santo Domingo Este</Name>
-    <URL>http://YOUR_DEVICE_IP:9002/ivoxsdir/department/SantoDomingoEste.xml</URL>
+    <Name>Adm Corporativo</Name>
+    <URL>http://YOUR_DEVICE_IP:9002/ivoxsdir/branch/AdmCorporativo.xml</URL>
+  </MenuItem>
+  <MenuItem>
+    <Name>Adm Cendis</Name>
+    <URL>http://YOUR_DEVICE_IP:9002/ivoxsdir/branch/AdmCendis.xml</URL>
+  </MenuItem>
+  <MenuItem>
+    <Name>Localities List (Metropolitana)</Name>
+    <URL>http://YOUR_DEVICE_IP:9002/ivoxsdir/branch/ZonaMetropolitanaLocalities.xml</URL>
   </MenuItem>
 </CiscoIPPhoneMenu>

@@ -1,6 +1,26 @@
-<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
 <CiscoIPPhoneMenu>
   <Title>Zona Sur</Title>
-  <Prompt>Select a Branch</Prompt>
-  <MenuItem/>
+  <Prompt>Select a Locality</Prompt>
+  <!--
+  Please add MenuItem entries here for each locality in Zona Sur.
+  Each MenuItem should point to the respective department XML file using the /ivoxsdir/department/ path.
+  Example:
+  <MenuItem>
+    <Name>Bani</Name>
+    <URL>http://YOUR_DEVICE_IP:9002/ivoxsdir/department/Bani.xml</URL>
+  </MenuItem>
+  <MenuItem>
+    <Name>Haina</Name>
+    <URL>http://YOUR_DEVICE_IP:9002/ivoxsdir/department/Haina.xml</URL>
+  </MenuItem>
+  <MenuItem>
+    <Name>San Cristobal</Name>
+    <URL>http://YOUR_DEVICE_IP:9002/ivoxsdir/department/SanCristobal.xml</URL>
+  </MenuItem>
+   <MenuItem>
+    <Name>San Juan</Name>
+    <URL>http://YOUR_DEVICE_IP:9002/ivoxsdir/department/SanJuan.xml</URL>
+  </MenuItem>
+  -->
 </CiscoIPPhoneMenu>
