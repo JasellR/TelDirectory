@@ -1,14 +1,15 @@
+
 import { getLocalitiesByZoneId, getZoneById } from '@/lib/data';
-import { NavigationCard } from '@/components/directory/NavigationCard';
 import { Breadcrumbs } from '@/components/layout/Breadcrumbs';
 import { notFound } from 'next/navigation';
 import type { Metadata } from 'next';
+import Link from 'next/link';
 import { ImportXmlForm } from '@/components/import/ImportXmlForm';
-// Changed from importSingleZoneXml to importZoneBranchMenuItemsXml
 import { importZoneBranchMenuItemsXml } from '@/app/import-xml/actions'; 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { UploadCloud } from 'lucide-react';
+import { UploadCloud, MapPin } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
+import { DeleteLocalityButton } from '@/components/directory/DeleteLocalityButton';
 
 
 interface ZonePageProps {
@@ -30,7 +31,6 @@ export async function generateMetadata({ params }: ZonePageProps): Promise<Metad
   };
 }
 
-// This is a Server Component.
 function ZoneImportFormWrapper({ zoneId, zoneName }: { zoneId: string, zoneName: string }) {
   const zoneSpecificImportDescription = (
     <>
@@ -39,16 +39,13 @@ function ZoneImportFormWrapper({ zoneId, zoneName }: { zoneId: string, zoneName:
     </>
   );
 
-  // Bind the zoneId to the server action.
-  // The resulting boundImportAction is a server action that takes (xmlContent: string).
-  // Changed to use importZoneBranchMenuItemsXml
   const boundImportAction = importZoneBranchMenuItemsXml.bind(null, zoneId);
 
   return (
     <ImportXmlForm
       formTitle={`Import Localities for ${zoneName}`}
       formDescription={zoneSpecificImportDescription}
-      importAction={boundImportAction} // Pass the bound server action
+      importAction={boundImportAction}
     />
   );
 }
@@ -59,7 +56,7 @@ export default async function ZonePage({ params }: ZonePageProps) {
   const zone = await getZoneById(zoneId);
   const localities = await getLocalitiesByZoneId(zoneId);
 
-  if (!zone || !localities) { // localities can be undefined if zone is not found.
+  if (!zone || !localities) { 
     notFound();
   }
 
@@ -69,15 +66,32 @@ export default async function ZonePage({ params }: ZonePageProps) {
         <Breadcrumbs items={[{ label: zone.name }]} />
         <h1 className="text-3xl font-bold mb-8 text-foreground">Localities in {zone.name}</h1>
         {localities.length > 0 ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div className="space-y-4">
             {localities.map((locality) => (
-              <NavigationCard
-                key={locality.id}
-                title={locality.name}
-                href={`/${zoneId}/${locality.id}`}
-                description={`View extensions for ${locality.name}.`}
-                iconType="locality"
-              />
+              <Card key={locality.id} className="shadow-sm hover:shadow-md transition-shadow duration-200">
+                <CardContent className="p-4 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                  <div className="flex-grow">
+                    <div className="flex items-center gap-3 mb-1">
+                      <MapPin className="h-5 w-5 text-primary" />
+                      <h3 className="text-lg font-semibold text-foreground">
+                        <Link href={`/${zoneId}/${locality.id}`} className="hover:underline hover:text-primary transition-colors">
+                          {locality.name}
+                        </Link>
+                      </h3>
+                    </div>
+                    <p className="text-sm text-muted-foreground ml-8 sm:ml-0">
+                      View extensions and details for {locality.name}. (ID: {locality.id})
+                    </p>
+                  </div>
+                  <div className="shrink-0 mt-2 sm:mt-0">
+                    <DeleteLocalityButton
+                      zoneId={zone.id}
+                      localityId={locality.id}
+                      localityName={locality.name}
+                    />
+                  </div>
+                </CardContent>
+              </Card>
             ))}
           </div>
         ) : (
@@ -96,14 +110,8 @@ export default async function ZonePage({ params }: ZonePageProps) {
           Use this form to import or update the list of localities specifically for the <strong>{zone.name}</strong> zone.
           Ensure the XML file contains a <code>&lt;CiscoIPPhoneMenu&gt;</code> root element with <code>&lt;MenuItem&gt;</code> tags representing each locality.
         </p>
-        {/* 
-          ImportXmlForm is a client component.
-          ZoneImportFormWrapper (a server component) binds zone.id to the importZoneBranchMenuItemsXml server action
-          and passes this bound server action to the ImportXmlForm client component.
-        */}
         <ZoneImportFormWrapper zoneId={zone.id} zoneName={zone.name} />
       </div>
     </div>
   );
 }
-

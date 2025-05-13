@@ -40,26 +40,7 @@ let mockDirectory: DirectoryData = {
       name: "Zona Norte",
       id: "norte",
       localities: [
-        { 
-          id: toUrlFriendlyId("Chalatenango"), // Example, can be updated with actual Zona Norte localities
-          name: "Chalatenango", 
-          extensions: [] // Extensions to be populated by import or specific locality XML
-        },
-        {
-          id: toUrlFriendlyId("Santa Ana"), // Example
-          name: "Santa Ana",
-          extensions: [] 
-        },
-        // Add more localities for Zona Norte based on the provided XML structure if needed
-        // e.g., { id: toUrlFriendlyId("Bibbia HOMS"), name: "Bibbia HOMS", extensions: [] },
-        // For now, keeping it simple, assuming these are imported/managed elsewhere or are placeholders.
-        // The user's XML for Zona Norte lists many localities.
-        // We can pre-populate them here if desired for the demo, or assume they get imported.
-        // For this change, the key is that `extensions` is `[]`.
-        // Let's add a few from the user's example for Zona Norte:
-        { id: toUrlFriendlyId("Bibbia HOMS"), name: "Bibbia HOMS", extensions: [] },
-        { id: toUrlFriendlyId("Bonao"), name: "Bonao", extensions: [] },
-        { id: toUrlFriendlyId("Bravo Santiago"), name: "Bravo Santiago", extensions: [] },
+        // Initially populated by populateZonaNorteLocalities
       ],
     },
     {
@@ -69,9 +50,8 @@ let mockDirectory: DirectoryData = {
         {
           id: toUrlFriendlyId("Usulután"), // Example
           name: "Usulután",
-          extensions: [] // Extensions to be populated by import or specific locality XML
+          extensions: [] 
         }
-        // Add more localities for Zona Sur if known
       ]
     },
     {
@@ -81,9 +61,8 @@ let mockDirectory: DirectoryData = {
         {
           id: toUrlFriendlyId("San Salvador"), // Example
           name: "San Salvador",
-          extensions: [] // Extensions to be populated by import or specific locality XML
+          extensions: []
         }
-        // Add more localities for Zona Metropolitana if known
       ]
     }
   ],
@@ -108,12 +87,7 @@ export async function addOrUpdateLocalitiesForZone(zoneId: string, localitiesToI
     if (existingLocalityIndex > -1) {
       const existingLocality = existingZone.localities[existingLocalityIndex];
       existingLocality.name = newLocality.name; 
-
-      // When importing localities for a zone, newLocality.extensions might contain extensions
-      // This part merges/updates extensions if provided in the import.
-      // If newLocality.extensions is empty, existing extensions are preserved unless overwritten.
-      // For consistency with the request, we'll assume the import might overwrite extensions.
-      existingLocality.extensions = newLocality.extensions || [];
+      existingLocality.extensions = newLocality.extensions || existingLocality.extensions || [];
 
 
     } else {
@@ -130,16 +104,10 @@ export async function addOrUpdateZones(newZones: Zone[]): Promise<void> {
   newZones.forEach(newZone => {
     const existingZoneIndex = mockDirectory.zones.findIndex(z => z.id === newZone.id);
     if (existingZoneIndex > -1) {
-      // Update existing zone's name
       mockDirectory.zones[existingZoneIndex].name = newZone.name;
-      // Pass the localities from the newZone to update/add them
-      // Ensure existing localities within this zone are correctly updated or preserved if not in newZone.localities.
-      // The current addOrUpdateLocalitiesForZone will handle merging/adding.
       addOrUpdateLocalitiesForZone(newZone.id, newZone.localities, newZone.name);
 
     } else {
-      // Add new zone with its localities and extensions
-      // Ensure all nested structures have their extensions arrays initialized.
       const zoneToAdd: Zone = {
         ...newZone,
         localities: newZone.localities.map(loc => ({
@@ -167,7 +135,6 @@ export async function addOrUpdateExtensionsForLocality(zoneId: string, localityI
     throw new Error(`Locality with id ${localityId} in zone ${zoneId} not found.`);
   }
 
-  // Replace all existing extensions with the new ones
   locality.extensions = newExtensions;
   console.log(`Extensions for locality ${localityId} (or ${toUrlFriendlyId(locality.name)}) in zone ${zoneId} updated (in-memory).`);
 }
@@ -194,7 +161,6 @@ export async function getLocalityById(zoneId: string, localityId: string): Promi
 export async function findLocalityByIdGlobally(localityId: string): Promise<Locality | undefined> {
   const zones = await getZones();
   for (const zone of zones) {
-    // Check against both original ID and URL-friendly ID
     const locality = zone.localities.find(l => l.id === localityId || toUrlFriendlyId(l.name) === localityId);
     if (locality) {
       return locality;
@@ -209,13 +175,30 @@ export async function getExtensionsByLocalityId(zoneId: string, localityId: stri
   return locality?.extensions;
 }
 
-// This function might be used by department/[localityId].xml if zoneId is not available in URL
 export async function getExtensionsByGlobalLocalityId(localityId: string): Promise<Extension[] | undefined> {
   const locality = await findLocalityByIdGlobally(localityId);
   return locality?.extensions;
 }
 
-// Function to populate Zona Norte with its specific localities as per user's XML example
+// Function to delete a locality from a specific zone
+export async function deleteLocality(zoneId: string, localityId: string): Promise<void> {
+  const zone = mockDirectory.zones.find(z => z.id === zoneId);
+  if (!zone) {
+    console.error(`Zone with id ${zoneId} not found. Cannot delete locality.`);
+    throw new Error(`Zone with id ${zoneId} not found.`);
+  }
+
+  const localityIndex = zone.localities.findIndex(l => l.id === localityId);
+  if (localityIndex === -1) {
+    console.warn(`Locality with id ${localityId} not found in zone ${zoneId}. No action taken.`);
+    return; // Or throw an error if preferred
+  }
+
+  zone.localities.splice(localityIndex, 1);
+  console.log(`Locality with id ${localityId} deleted from zone ${zoneId} (in-memory).`);
+}
+
+
 function populateZonaNorteLocalities() {
   const zonaNorte = mockDirectory.zones.find(z => z.id === 'norte');
   if (zonaNorte) {
@@ -248,21 +231,13 @@ function populateZonaNorteLocalities() {
       { id: toUrlFriendlyId("SN Villa Olga"), name: "SN Villa Olga", extensions: [] },
       { id: toUrlFriendlyId("Sosua"), name: "Sosua", extensions: [] },
     ];
-    // Filter out any placeholder localities previously added, then add the new list.
-    // This ensures no duplicates if this function is called multiple times or if placeholders existed.
-    const existingPlaceholderNames = ["Chalatenango", "Santa Ana"];
-    zonaNorte.localities = zonaNorte.localities.filter(loc => !existingPlaceholderNames.includes(loc.name));
     
+    // Clear existing localities if any (e.g. placeholders) and add the new list
+    zonaNorte.localities = [];
     norteLocalities.forEach(newLoc => {
-        if (!zonaNorte.localities.find(exLoc => exLoc.id === newLoc.id)) {
-            zonaNorte.localities.push(newLoc);
-        }
+        zonaNorte.localities.push(newLoc);
     });
   }
 }
 
-// Populate Zona Norte with its specific localities.
-// This ensures that if `getZoneById('norte')` is called, it returns these localities.
 populateZonaNorteLocalities();
-
-    

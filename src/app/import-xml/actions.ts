@@ -1,9 +1,11 @@
+
 'use server';
 
 import { parseStringPromise } from 'xml2js';
 import type { Zone, Locality, Extension } from '@/types';
-import { addOrUpdateZones, addOrUpdateLocalitiesForZone, addOrUpdateExtensionsForLocality } from '@/lib/data';
+import { addOrUpdateZones, addOrUpdateLocalitiesForZone, addOrUpdateExtensionsForLocality, deleteLocality } from '@/lib/data';
 import { z } from 'zod';
+import { revalidatePath } from 'next/cache';
 
 // Helper to ensure an element is an array, useful for xml2js when explicitArray: false
 const ensureArray = <T,>(item: T | T[] | undefined | null): T[] => {
@@ -84,7 +86,7 @@ const LocalityExtensionsDataSchema = z.object({
 // Schema for MenuItem in CiscoIPPhoneMenu (for localities within a zone branch)
 const MenuItemSchema = z.object({
   Name: z.string().min(1, "MenuItem Name cannot be empty"),
-  URL: z.string().optional(), // URL might not be strictly needed for import but is present
+  URL: z.string().optional(), 
 });
 
 const ZoneBranchMenuItemsSchema = z.object({
@@ -157,6 +159,8 @@ export async function importZonesFromXml(xmlContent: string): Promise<{ success:
     }
 
     await addOrUpdateZones(zonesToImport);
+    revalidatePath('/'); // Revalidate home page
+    zonesToImport.forEach(zone => revalidatePath(`/${zone.id}`)); // Revalidate each zone page
     return { success: true, message: `${zonesToImport.length} zone(s) processed from Directory XML successfully.` };
   } catch (error: any) {
     console.error('Error importing Directory XML:', error);
@@ -190,8 +194,10 @@ export async function importSingleZoneXml(targetZoneId: string, xmlContent: stri
 
     const domainZone = transformParsedXmlZoneToDomainZone(parsedZoneDataFromXml);
 
-    // This will update the zone's name if different and merge/add localities and their extensions.
     await addOrUpdateLocalitiesForZone(targetZoneId, domainZone.localities, domainZone.name);
+    revalidatePath(`/${targetZoneId}`); // Revalidate the specific zone page
+    domainZone.localities.forEach(locality => revalidatePath(`/${targetZoneId}/${locality.id}`));
+
 
     return { success: true, message: `Data for zone '${domainZone.name}' (ID: ${targetZoneId}) imported successfully from &lt;Zone> XML. ${domainZone.localities.length} localities processed.` };
   } catch (error: any) {
@@ -248,6 +254,7 @@ export async function importExtensionsForLocalityXml(
     }
 
     await addOrUpdateExtensionsForLocality(zoneId, localityId, extensionsToImport);
+    revalidatePath(`/${zoneId}/${localityId}`); // Revalidate the specific locality page
 
     return { 
       success: true, 
@@ -270,9 +277,9 @@ function transformZoneBranchMenuItemsToLocalities(parsedXml: any): Locality[] {
     const menuItems = validatedData.CiscoIPPhoneMenu.MenuItem || [];
     
     return menuItems.map((item): Locality => ({
-      id: toUrlFriendlyId(item.Name), // Generate ID from Name
+      id: toUrlFriendlyId(item.Name), 
       name: item.Name,
-      extensions: [], // Extensions for these localities will be imported separately
+      extensions: [], 
     }));
   } catch (error) {
     if (error instanceof z.ZodError) {
@@ -307,9 +314,10 @@ export async function importZoneBranchMenuItemsXml(
        return { success: false, message: 'No MenuItem data found in the XML to import as localities. Expected &lt;CiscoIPPhoneMenu> root with &lt;MenuItem> items.' };
     }
 
-    // This will add new localities or update names of existing ones.
-    // Extensions of existing localities will be preserved if not overwritten by a full zone import.
     await addOrUpdateLocalitiesForZone(targetZoneId, localitiesToImport);
+    revalidatePath(`/${targetZoneId}`); // Revalidate the specific zone page
+    localitiesToImport.forEach(locality => revalidatePath(`/${targetZoneId}/${locality.id}`));
+
 
     return { 
       success: true, 
@@ -321,6 +329,28 @@ export async function importZoneBranchMenuItemsXml(
       success: false, 
       message: `Failed to import localities for zone ${targetZoneId} from CiscoIPPhoneMenu XML.`, 
       error: error.message || 'Unknown parsing error' 
+    };
+  }
+}
+
+export async function deleteLocalityAction(
+  zoneId: string,
+  localityId: string
+): Promise<{ success: boolean; message: string; error?: string }> {
+  if (!zoneId || !localityId) {
+    return { success: false, message: 'Zone ID and Locality ID are required for deletion.' };
+  }
+
+  try {
+    await deleteLocality(zoneId, localityId);
+    revalidatePath(`/${zoneId}`); // Revalidate the zone page to reflect the deletion
+    return { success: true, message: `Locality '${localityId}' deleted successfully from zone '${zoneId}'.` };
+  } catch (error: any) {
+    console.error(`Error deleting locality ${localityId} from zone ${zoneId}:`, error);
+    return {
+      success: false,
+      message: `Failed to delete locality '${localityId}'.`,
+      error: error.message || 'Unknown error during deletion.',
     };
   }
 }
