@@ -1,6 +1,7 @@
 import type { DirectoryData, Zone, Locality, Extension } from '@/types';
 
-const mockDirectory: DirectoryData = {
+// Changed from const to let to allow modification for demo purposes
+let mockDirectory: DirectoryData = {
   zones: [
     {
       name: "Zona Este",
@@ -80,6 +81,46 @@ const mockDirectory: DirectoryData = {
 
 // Simulate API delay
 const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+
+// Function to add or update zones from imported data
+// In a real app, this would interact with a database or persistent storage.
+export async function addOrUpdateZones(newZones: Zone[]): Promise<void> {
+  // await delay(100);
+  newZones.forEach(newZone => {
+    const existingZoneIndex = mockDirectory.zones.findIndex(z => z.id === newZone.id);
+    if (existingZoneIndex > -1) {
+      // Merge localities: update existing ones, add new ones
+      const existingZone = mockDirectory.zones[existingZoneIndex];
+      newZone.localities.forEach(newLocality => {
+        const existingLocalityIndex = existingZone.localities.findIndex(l => l.id === newLocality.id);
+        if (existingLocalityIndex > -1) {
+           // Merge extensions: update existing ones, add new ones
+          const existingLocality = existingZone.localities[existingLocalityIndex];
+          newLocality.extensions.forEach(newExtension => {
+            const existingExtensionIndex = existingLocality.extensions.findIndex(e => e.id === newExtension.id);
+            if (existingExtensionIndex > -1) {
+              existingLocality.extensions[existingExtensionIndex] = newExtension; // Update
+            } else {
+              existingLocality.extensions.push(newExtension); // Add new
+            }
+          });
+          // Update locality name if changed
+          existingLocality.name = newLocality.name;
+
+        } else {
+          existingZone.localities.push(newLocality); // Add new locality
+        }
+      });
+      // Update zone name if changed
+      existingZone.name = newZone.name;
+
+    } else {
+      mockDirectory.zones.push(newZone); // Add new zone
+    }
+  });
+  console.log("Directory data updated via XML import (in-memory)", mockDirectory);
+}
+
 
 export async function getZones(): Promise<Zone[]> {
   // await delay(100); // Simulate API call

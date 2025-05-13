@@ -1,5 +1,6 @@
 import Link from 'next/link';
-import { Phone } from 'lucide-react';
+import { Phone, Upload } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 
 export function AppHeader() {
   return (
@@ -9,7 +10,15 @@ export function AppHeader() {
           <Phone className="h-7 w-7" />
           <span>TelDirectory</span>
         </Link>
-        {/* Additional nav items can go here if needed */}
+        
+        <nav>
+          <Button variant="outline" asChild>
+            <Link href="/import-xml" className="flex items-center gap-2">
+              <Upload className="h-4 w-4" />
+              Import XML
+            </Link>
+          </Button>
+        </nav>
       </div>
     </header>
   );
