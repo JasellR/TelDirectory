@@ -17,36 +17,53 @@ import type { ReactNode } from 'react';
 const MAX_FILE_SIZE_MB = 5;
 const MAX_FILE_SIZE_BYTES = MAX_FILE_SIZE_MB * 1024 * 1024;
 
-const createSchema = (requiresId?: boolean, idFieldLabel?: string) => {
+// Helper function, assuming it's available or define it if not
+// For this example, we'll assume it's similar to the one in actions.ts
+// If not, it should be imported or defined.
+const sanitizeFilenamePart = (filenamePart: string): string => {
+  return filenamePart.replace(/[^a-zA-Z0-9_-]/g, '');
+};
+
+
+const createSchema = (requiresId?: boolean, idFieldLabel?: string, allowMultipleFiles?: boolean) => {
   let baseSchemaObject = {
     xmlFile: z
       .custom<FileList>((val) => val instanceof FileList, 'File input is required.')
-      .refine((files) => files && files.length > 0, 'XML file is required.')
+      .refine((files) => files && files.length > 0, 'At least one XML file is required.')
       .refine(
-        (files) => files && files[0]?.size <= MAX_FILE_SIZE_BYTES,
-        `File size should be less than ${MAX_FILE_SIZE_MB}MB.`
+        (files) => {
+          if (!files) return false;
+          for (let i = 0; i < files.length; i++) {
+            if (files[i]?.size > MAX_FILE_SIZE_BYTES) return false;
+          }
+          return true;
+        },
+        `Each file size should be less than ${MAX_FILE_SIZE_MB}MB.`
       )
       .refine(
-        (files) => files && (files[0]?.type === 'text/xml' || files[0]?.type === 'application/xml'),
-        'File must be an XML.'
+        (files) => {
+          if (!files) return false;
+          for (let i = 0; i < files.length; i++) {
+            if (!(files[i]?.type === 'text/xml' || files[i]?.type === 'application/xml')) return false;
+          }
+          return true;
+        },
+        'All selected files must be XML.'
       ),
   };
 
-  if (requiresId) {
+  if (!allowMultipleFiles && requiresId) {
     baseSchemaObject = {
       ...baseSchemaObject,
-      // Use a generic 'idField' name for the schema, label prop controls display
       idField: z.string().min(1, `${idFieldLabel || 'ID'} is required.`).regex(/^[a-zA-Z0-9_-]+$/, 'Filename must be alphanumeric, underscore, or hyphen, without .xml extension.'),
     };
   }
   return z.object(baseSchemaObject);
 };
 
-// Define a base type for form values
 interface BaseFormValues {
   xmlFile: FileList;
 }
-// Define an extended type for when an ID field is present
 interface FormValuesWithId extends BaseFormValues {
   idField: string;
 }
@@ -58,6 +75,7 @@ interface FileUploadFormProps {
   requiresId?: boolean;
   idFieldLabel?: string;
   idFieldPlaceholder?: string;
+  allowMultipleFiles?: boolean;
 }
 
 export function FileUploadForm({
@@ -67,11 +85,12 @@ export function FileUploadForm({
   requiresId = false,
   idFieldLabel = 'Filename ID',
   idFieldPlaceholder = 'Enter filename ID',
+  allowMultipleFiles = false,
 }: FileUploadFormProps) {
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
   
-  const currentSchema = createSchema(requiresId, idFieldLabel);
+  const currentSchema = createSchema(requiresId, idFieldLabel, allowMultipleFiles);
   type CurrentFormValues = z.infer<typeof currentSchema>;
 
   const {
@@ -85,66 +104,129 @@ export function FileUploadForm({
 
   const onSubmit: SubmitHandler<CurrentFormValues> = async (data) => {
     setIsSubmitting(true);
-    const file = data.xmlFile[0];
-    if (!file) {
-      toast({
-        title: 'Error',
-        description: 'No file selected.',
-        variant: 'destructive',
-      });
+
+    if (allowMultipleFiles) {
+      const files = data.xmlFile as FileList;
+      let filesProcessed = 0;
+
+      for (const file of Array.from(files)) {
+        const originalFilename = file.name;
+        const idValue = originalFilename.replace(/\.xml$/i, ''); // Case-insensitive .xml removal
+        
+        // Server-side action (importAction) already sanitizes the filename part.
+        // We pass the base name (without .xml) to the action.
+
+        if (!idValue) {
+            toast({
+                title: 'Skipped File',
+                description: `Could not derive a valid ID from filename: ${originalFilename}. It must not be empty and should contain valid characters before the .xml extension.`,
+                variant: 'destructive',
+            });
+            continue;
+        }
+
+        try {
+          const xmlContent = await new Promise<string>((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = (e) => {
+              if (e.target?.result) {
+                resolve(e.target.result as string);
+              } else {
+                reject(new Error("File content is empty or unreadable."));
+              }
+            };
+            reader.onerror = () => reject(new Error("Failed to read file: " + file.name));
+            reader.readAsText(file);
+          });
+
+          if (!xmlContent) {
+            toast({
+              title: 'Error Reading File',
+              description: `Could not read content for ${originalFilename}.`,
+              variant: 'destructive',
+            });
+            continue;
+          }
+          
+          // The importAction will handle individual toasts
+          await importAction(idValue, xmlContent);
+          filesProcessed++;
+
+        } catch (error: any) {
+          toast({
+            title: 'File Processing Error',
+            description: `Error processing ${originalFilename}: ${error.message}`,
+            variant: 'destructive',
+          });
+        }
+      }
       setIsSubmitting(false);
-      return;
-    }
+      if (filesProcessed > 0 || files.length > 0) { // Reset if any file was attempted or selected
+        reset();
+      }
 
-    const idValue = requiresId ? (data as FormValuesWithId).idField : null;
-
-    const reader = new FileReader();
-    reader.onload = async (e) => {
-      const xmlContent = e.target?.result as string;
-      if (!xmlContent) {
+    } else { // Single file upload logic
+      const file = data.xmlFile[0];
+      if (!file) {
         toast({
           title: 'Error',
-          description: 'Could not read file content.',
+          description: 'No file selected.',
           variant: 'destructive',
         });
         setIsSubmitting(false);
         return;
       }
 
-      try {
-        const result = await importAction(idValue, xmlContent);
-        if (result.success) {
+      const idValue = requiresId ? (data as FormValuesWithId).idField : null;
+
+      const reader = new FileReader();
+      reader.onload = async (e) => {
+        const xmlContent = e.target?.result as string;
+        if (!xmlContent) {
           toast({
-            title: 'Success',
-            description: result.message,
-          });
-          reset(); 
-        } else {
-          toast({
-            title: 'Import Failed',
-            description: result.message + (result.error ? ` Details: ${result.error}` : ''),
+            title: 'Error Reading File',
+            description: 'Could not read file content.',
             variant: 'destructive',
           });
+          setIsSubmitting(false);
+          return;
         }
-      } catch (error: any) {
+
+        try {
+          const result = await importAction(idValue, xmlContent);
+          if (result.success) {
+            toast({
+              title: 'Success',
+              description: result.message,
+            });
+            reset(); 
+          } else {
+            toast({
+              title: 'Import Failed',
+              description: result.message + (result.error ? ` Details: ${result.error}` : ''),
+              variant: 'destructive',
+            });
+          }
+        } catch (error: any) {
+          toast({
+            title: 'Error',
+            description: error.message || 'An unexpected error occurred during import.',
+            variant: 'destructive',
+          });
+        } finally {
+          setIsSubmitting(false);
+        }
+      };
+      reader.onerror = () => {
         toast({
           title: 'Error',
-          description: error.message || 'An unexpected error occurred during import.',
+          description: 'Failed to read the file.',
           variant: 'destructive',
         });
-      } finally {
         setIsSubmitting(false);
-      }
-    };
-    reader.onerror = () => {
-      toast({
-        title: 'Error',
-        description: 'Failed to read the file.',
-        variant: 'destructive',
-      });
-      setIsSubmitting(false);
-    };
-    reader.readAsText(file);
+      };
+      reader.readAsText(file);
+    }
   };
 
   return (
@@ -155,14 +237,14 @@ export function FileUploadForm({
       </CardHeader>
       <form onSubmit={handleSubmit(onSubmit)}>
         <CardContent className="space-y-4">
-          {requiresId && (
+          {!allowMultipleFiles && requiresId && (
             <div className="space-y-2">
               <Label htmlFor="idField">{idFieldLabel}</Label>
               <Input
                 id="idField"
                 type="text"
                 placeholder={idFieldPlaceholder}
-                {...register('idField' as any)} // Cast to any due to conditional field
+                {...register('idField' as any)} 
                 disabled={isSubmitting}
               />
               {errors.idField && (
@@ -172,11 +254,12 @@ export function FileUploadForm({
             </div>
           )}
           <div className="space-y-2">
-            <Label htmlFor="xmlFile">XML File</Label>
+            <Label htmlFor="xmlFile">XML File(s)</Label>
             <Input
               id="xmlFile"
               type="file"
               accept=".xml,text/xml,application/xml"
+              multiple={allowMultipleFiles}
               {...register('xmlFile')}
               disabled={isSubmitting}
             />

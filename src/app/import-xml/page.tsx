@@ -5,7 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { InfoIcon, UploadCloud } from 'lucide-react';
 import { FileUploadForm } from '@/components/import/FileUploadForm';
-import { saveMainMenuXmlAction, saveZoneBranchXmlAction, saveDepartmentXmlAction } from '@/lib/actions';
+import { saveZoneBranchXmlAction, saveDepartmentXmlAction } from '@/lib/actions';
 
 export const metadata: Metadata = {
   title: 'Import & Setup - TelDirectory',
@@ -42,7 +42,7 @@ export default function ImportXmlPage() {
               <AlertDescription>
                 <strong>Important:</strong> Replace <code>YOUR_DEVICE_IP</code> with the actual IP address or hostname of the server running this application. 
                 This server must be accessible from your IP phones' network. The port (e.g., <code>9002</code> for development) must also match your application's running configuration.
-                The XML files for the directory should be placed in the <code>IVOXS</code> folder in the project root.
+                The XML files for the directory should be placed in the <code>IVOXS</code> folder in the project root. The <code>MAINMENU.xml</code> file is managed by the application and should not typically be manually uploaded here.
               </AlertDescription>
             </Alert>
           </CardContent>
@@ -69,13 +69,6 @@ export default function ImportXmlPage() {
             </Alert>
 
             <FileUploadForm
-              formTitle="Import Main Menu XML"
-              formDescription={<>Upload the <code>MAINMENU.xml</code> file. This file defines the top-level zones. It will be saved as <code>IVOXS/MAINMENU.xml</code>.</>}
-              importAction={saveMainMenuXmlAction}
-              requiresId={false}
-            />
-
-            <FileUploadForm
               formTitle="Import Zone Branch XML"
               formDescription={<>Upload an XML file for a specific zone (e.g., Zona Este). This file lists the localities within that zone. It will be saved in <code>IVOXS/ZoneBranch/</code>.</>}
               importAction={saveZoneBranchXmlAction}
@@ -85,12 +78,11 @@ export default function ImportXmlPage() {
             />
 
             <FileUploadForm
-              formTitle="Import Department XML"
-              formDescription={<>Upload an XML file for a specific department/locality (e.g., Bavaro). This file lists the extensions. It will be saved in <code>IVOXS/Department/</code>.</>}
+              formTitle="Import Department XML Files"
+              formDescription={<>Upload one or more XML files for specific departments/localities. The filename (without the <code>.xml</code> extension) will be used as its ID. Files will be saved in <code>IVOXS/Department/</code>.</>}
               importAction={saveDepartmentXmlAction}
-              requiresId={true}
-              idFieldLabel="Department Filename (e.g., Bavaro, SantoDomingoEste)"
-              idFieldPlaceholder="Enter department filename without .xml"
+              allowMultipleFiles={true}
+              requiresId={false} // ID is derived from filename for multiple uploads
             />
           </CardContent>
         </Card>
