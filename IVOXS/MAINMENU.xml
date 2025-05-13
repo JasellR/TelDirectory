@@ -4,18 +4,18 @@
   <Prompt>Select a Zone Branch</Prompt>
   <MenuItem>
     <Name>Zona Este</Name>
-    <URL>http://YOUR_DEVICE_IP:9002/ivoxsdir/zonebranch/este.xml</URL>
+    <URL>http://YOUR_DEVICE_IP:9002/ivoxsdir/zonebranch/ZonaEste.xml</URL>
   </MenuItem>
   <MenuItem>
     <Name>Zona Norte</Name>
-    <URL>http://YOUR_DEVICE_IP:9002/ivoxsdir/zonebranch/norte.xml</URL>
+    <URL>http://YOUR_DEVICE_IP:9002/ivoxsdir/zonebranch/ZonaNorte.xml</URL>
   </MenuItem>
   <MenuItem>
     <Name>Zona Sur</Name>
-    <URL>http://YOUR_DEVICE_IP:9002/ivoxsdir/zonebranch/sur.xml</URL>
+    <URL>http://YOUR_DEVICE_IP:9002/ivoxsdir/zonebranch/ZonaSur.xml</URL>
   </MenuItem>
   <MenuItem>
     <Name>Zona Metropolitana</Name>
-    <URL>http://YOUR_DEVICE_IP:9002/ivoxsdir/zonebranch/metropolitana.xml</URL>
+    <URL>http://YOUR_DEVICE_IP:9002/ivoxsdir/zonebranch/ZonaMetropolitana.xml</URL>
   </MenuItem>
 </CiscoIPPhoneMenu>
