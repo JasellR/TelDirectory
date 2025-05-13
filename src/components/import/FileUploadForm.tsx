@@ -17,42 +17,73 @@ import type { ReactNode } from 'react';
 const MAX_FILE_SIZE_MB = 5;
 const MAX_FILE_SIZE_BYTES = MAX_FILE_SIZE_MB * 1024 * 1024;
 
-const schema = z.object({
-  xmlFile: z
-    .custom<FileList>()
-    .refine((files) => files && files.length > 0, 'XML file is required.')
-    .refine(
-      (files) => files && files[0]?.size <= MAX_FILE_SIZE_BYTES,
-      `File size should be less than ${MAX_FILE_SIZE_MB}MB.`
-    )
-    .refine(
-      (files) => files && (files[0]?.type === 'text/xml' || files[0]?.type === 'application/xml'),
-      'File must be an XML.'
-    ),
-});
+const createSchema = (requiresId?: boolean, idFieldLabel?: string) => {
+  let baseSchemaObject = {
+    xmlFile: z
+      .custom<FileList>((val) => val instanceof FileList, 'File input is required.')
+      .refine((files) => files && files.length > 0, 'XML file is required.')
+      .refine(
+        (files) => files && files[0]?.size <= MAX_FILE_SIZE_BYTES,
+        `File size should be less than ${MAX_FILE_SIZE_MB}MB.`
+      )
+      .refine(
+        (files) => files && (files[0]?.type === 'text/xml' || files[0]?.type === 'application/xml'),
+        'File must be an XML.'
+      ),
+  };
 
-type ImportXmlFormValues = z.infer<typeof schema>;
+  if (requiresId) {
+    baseSchemaObject = {
+      ...baseSchemaObject,
+      // Use a generic 'idField' name for the schema, label prop controls display
+      idField: z.string().min(1, `${idFieldLabel || 'ID'} is required.`).regex(/^[a-zA-Z0-9_-]+$/, 'Filename must be alphanumeric, underscore, or hyphen, without .xml extension.'),
+    };
+  }
+  return z.object(baseSchemaObject);
+};
 
-interface ImportXmlFormProps {
-  formTitle: string;
-  formDescription: ReactNode;
-  importAction: (xmlContent: string) => Promise<{ success: boolean; message: string; error?: string }>;
+// Define a base type for form values
+interface BaseFormValues {
+  xmlFile: FileList;
+}
+// Define an extended type for when an ID field is present
+interface FormValuesWithId extends BaseFormValues {
+  idField: string;
 }
 
-export function ImportXmlForm({ formTitle, formDescription, importAction }: ImportXmlFormProps) {
+interface FileUploadFormProps {
+  formTitle: string;
+  formDescription: ReactNode;
+  importAction: (id: string | null, xmlContent: string) => Promise<{ success: boolean; message: string; error?: string }>;
+  requiresId?: boolean;
+  idFieldLabel?: string;
+  idFieldPlaceholder?: string;
+}
+
+export function FileUploadForm({
+  formTitle,
+  formDescription,
+  importAction,
+  requiresId = false,
+  idFieldLabel = 'Filename ID',
+  idFieldPlaceholder = 'Enter filename ID',
+}: FileUploadFormProps) {
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
+  
+  const currentSchema = createSchema(requiresId, idFieldLabel);
+  type CurrentFormValues = z.infer<typeof currentSchema>;
 
   const {
     register,
     handleSubmit,
     formState: { errors },
     reset,
-  } = useForm<ImportXmlFormValues>({
-    resolver: zodResolver(schema),
+  } = useForm<CurrentFormValues>({
+    resolver: zodResolver(currentSchema),
   });
 
-  const onSubmit: SubmitHandler<ImportXmlFormValues> = async (data) => {
+  const onSubmit: SubmitHandler<CurrentFormValues> = async (data) => {
     setIsSubmitting(true);
     const file = data.xmlFile[0];
     if (!file) {
@@ -64,6 +95,8 @@ export function ImportXmlForm({ formTitle, formDescription, importAction }: Impo
       setIsSubmitting(false);
       return;
     }
+
+    const idValue = requiresId ? (data as FormValuesWithId).idField : null;
 
     const reader = new FileReader();
     reader.onload = async (e) => {
@@ -79,13 +112,13 @@ export function ImportXmlForm({ formTitle, formDescription, importAction }: Impo
       }
 
       try {
-        const result = await importAction(xmlContent);
+        const result = await importAction(idValue, xmlContent);
         if (result.success) {
           toast({
             title: 'Success',
             description: result.message,
           });
-          reset(); // Reset form fields
+          reset(); 
         } else {
           toast({
             title: 'Import Failed',
@@ -115,15 +148,29 @@ export function ImportXmlForm({ formTitle, formDescription, importAction }: Impo
   };
 
   return (
-    <Card className="w-full max-w-lg mx-auto">
+    <Card className="w-full">
       <CardHeader>
         <CardTitle>{formTitle}</CardTitle>
-        <CardDescription>
-          {formDescription}
-        </CardDescription>
+        {typeof formDescription === 'string' ? <CardDescription>{formDescription}</CardDescription> : formDescription}
       </CardHeader>
       <form onSubmit={handleSubmit(onSubmit)}>
         <CardContent className="space-y-4">
+          {requiresId && (
+            <div className="space-y-2">
+              <Label htmlFor="idField">{idFieldLabel}</Label>
+              <Input
+                id="idField"
+                type="text"
+                placeholder={idFieldPlaceholder}
+                {...register('idField' as any)} // Cast to any due to conditional field
+                disabled={isSubmitting}
+              />
+              {errors.idField && (
+                // @ts-ignore
+                <p className="text-sm text-destructive">{errors.idField.message}</p>
+              )}
+            </div>
+          )}
           <div className="space-y-2">
             <Label htmlFor="xmlFile">XML File</Label>
             <Input
@@ -134,6 +181,7 @@ export function ImportXmlForm({ formTitle, formDescription, importAction }: Impo
               disabled={isSubmitting}
             />
             {errors.xmlFile && (
+              // @ts-ignore
               <p className="text-sm text-destructive">{errors.xmlFile.message}</p>
             )}
           </div>

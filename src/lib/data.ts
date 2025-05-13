@@ -22,24 +22,24 @@ const MAINMENU_PATH = path.join(IVOXS_DIR, 'MAINMENU.xml');
 const ZONE_BRANCH_DIR = path.join(IVOXS_DIR, 'ZoneBranch');
 const DEPARTMENT_DIR = path.join(IVOXS_DIR, 'Department');
 
-// Schemas for parsing XML (adapted from import-xml/actions.ts)
+// Schemas for parsing XML
 const MenuItemSchema = z.object({
   Name: z.string().min(1),
   URL: z.string(),
 });
 
-const CiscoIPPhoneMenuSchema = z.object({
+export const CiscoIPPhoneMenuSchema = z.object({
   Title: z.string().optional(),
   Prompt: z.string().optional(),
   MenuItem: z.preprocess(ensureArray, z.array(MenuItemSchema).optional()),
 });
 
 const CiscoIPPhoneDirectoryEntrySchema = z.object({
-  Name: z.string().min(1),
+  Name: z.string().min(1), // This is Department Name in <DirectoryEntry>
   Telephone: z.string().min(1),
 });
 
-const CiscoIPPhoneDirectorySchema = z.object({
+export const CiscoIPPhoneDirectorySchema = z.object({
   Title: z.string().optional(),
   Prompt: z.string().optional(),
   DirectoryEntry: z.preprocess(ensureArray, z.array(CiscoIPPhoneDirectoryEntrySchema).optional()),
@@ -196,3 +196,4 @@ export async function findLocalityByIdGlobally(localityId: string): Promise<Loca
     extensions,
   };
 }
+
