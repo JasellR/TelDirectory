@@ -15,7 +15,7 @@ export default function ImportXmlPage() {
   // This value should ideally come from an environment variable or configuration
   // For now, it reflects the placeholder used in the API routes.
   const appBaseUrlPlaceholder = 'http://YOUR_DEVICE_IP:9002';
-  const mainmenuUrl = `${appBaseUrlPlaceholder}/api/ivoxdir/mainmenu.xml`;
+  const mainmenuUrl = `${appBaseUrlPlaceholder}/ivoxsdir/mainmenu.xml`; // Updated path
 
   return (
     <div>

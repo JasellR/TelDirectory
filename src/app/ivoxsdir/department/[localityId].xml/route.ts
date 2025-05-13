@@ -1,26 +1,28 @@
 
 import { NextResponse } from 'next/server';
-import { getLocalityById } from '@/lib/data';
+import { findLocalityByIdGlobally } from '@/lib/data';
 import type { Extension, Locality } from '@/types';
 
-export async function GET(request: Request, { params }: { params: { zoneId: string, localityId: string } }) {
-  const { zoneId, localityId } = params;
-  const locality: Locality | undefined = await getLocalityById(zoneId, localityId);
+export async function GET(request: Request, { params }: { params: { localityId: string } }) {
+  // localityId from URL, e.g., "Bavaro", "BlueMallPuntaCana"
+  const { localityId } = params; 
+  const locality: Locality | undefined = await findLocalityByIdGlobally(localityId);
 
   if (!locality) {
-    return new NextResponse('Locality not found', { 
-      status: 404,
-      headers: { 'Content-Type': 'text/xml' },
-      body: '<CiscoIPPhoneText><Title>Error</Title><Text>Locality not found</Text></CiscoIPPhoneText>'
-    });
+    return new NextResponse(
+      '<CiscoIPPhoneText><Title>Error</Title><Text>Locality not found</Text></CiscoIPPhoneText>',
+      { 
+        status: 404,
+        headers: { 'Content-Type': 'text/xml' }
+      }
+    );
   }
 
   const xmlContent = `
 <CiscoIPPhoneDirectory>
-  <Title>${locality.name}</Title>
+  <Title>${locality.name.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')}</Title>
   <Prompt>Select a contact</Prompt>
   ${locality.extensions.map((extension: Extension) => {
-    // Sanitize names for XML: escape '&', '<', '>'
     const departmentName = extension.department.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
     const contactName = extension.name ? ` (${extension.name.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')})` : '';
     const fullDisplayName = `${departmentName}${contactName}`;
