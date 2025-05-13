@@ -1,11 +1,11 @@
-
 import { getLocalitiesByZoneId, getZoneById } from '@/lib/data';
 import { NavigationCard } from '@/components/directory/NavigationCard';
 import { Breadcrumbs } from '@/components/layout/Breadcrumbs';
 import { notFound } from 'next/navigation';
 import type { Metadata } from 'next';
 import { ImportXmlForm } from '@/components/import/ImportXmlForm';
-import { importSingleZoneXml } from '@/app/import-xml/actions';
+// Changed from importSingleZoneXml to importZoneBranchMenuItemsXml
+import { importZoneBranchMenuItemsXml } from '@/app/import-xml/actions'; 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { UploadCloud } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
@@ -34,18 +34,19 @@ export async function generateMetadata({ params }: ZonePageProps): Promise<Metad
 function ZoneImportFormWrapper({ zoneId, zoneName }: { zoneId: string, zoneName: string }) {
   const zoneSpecificImportDescription = (
     <>
-      Upload an XML file to import or update localities and extensions specifically for the <strong>{zoneName}</strong> zone.
-      The expected root tag in the XML file is <code>&lt;Zone id="{zoneId}" name="{zoneName}"&gt;</code>, containing <code>&lt;locality&gt;</code> elements.
+      Upload an XML file to import or update localities specifically for the <strong>{zoneName}</strong> zone.
+      The expected root tag in the XML file is <code>&lt;CiscoIPPhoneMenu&gt;</code>, containing <code>&lt;MenuItem&gt;</code> elements, where each <code>&lt;Name&gt;</code> tag represents a locality.
     </>
   );
 
   // Bind the zoneId to the server action.
   // The resulting boundImportAction is a server action that takes (xmlContent: string).
-  const boundImportAction = importSingleZoneXml.bind(null, zoneId);
+  // Changed to use importZoneBranchMenuItemsXml
+  const boundImportAction = importZoneBranchMenuItemsXml.bind(null, zoneId);
 
   return (
     <ImportXmlForm
-      formTitle={`Import Data for ${zoneName}`}
+      formTitle={`Import Localities for ${zoneName}`}
       formDescription={zoneSpecificImportDescription}
       importAction={boundImportAction} // Pass the bound server action
     />
@@ -58,7 +59,7 @@ export default async function ZonePage({ params }: ZonePageProps) {
   const zone = await getZoneById(zoneId);
   const localities = await getLocalitiesByZoneId(zoneId);
 
-  if (!zone || !localities) {
+  if (!zone || !localities) { // localities can be undefined if zone is not found.
     notFound();
   }
 
@@ -80,7 +81,7 @@ export default async function ZonePage({ params }: ZonePageProps) {
             ))}
           </div>
         ) : (
-          <p className="text-muted-foreground">No localities found in this zone.</p>
+          <p className="text-muted-foreground">No localities found in this zone. You can import them using the form below.</p>
         )}
       </div>
 
@@ -89,18 +90,16 @@ export default async function ZonePage({ params }: ZonePageProps) {
       <div>
         <div className="flex items-center gap-3 mb-4">
           <UploadCloud className="h-8 w-8 text-primary" />
-          <h2 className="text-2xl font-bold text-foreground">Import Data for {zone.name}</h2>
+          <h2 className="text-2xl font-bold text-foreground">Import Localities for {zone.name}</h2>
         </div>
         <p className="mb-6 text-muted-foreground">
-          Use this form to import or update localities and extensions specifically for the <strong>{zone.name}</strong> zone.
-          Ensure the XML file contains a single <code>&lt;Zone&gt;</code> root element with its <code>id</code> attribute matching "{zone.id}".
+          Use this form to import or update the list of localities specifically for the <strong>{zone.name}</strong> zone.
+          Ensure the XML file contains a <code>&lt;CiscoIPPhoneMenu&gt;</code> root element with <code>&lt;MenuItem&gt;</code> tags representing each locality.
         </p>
         {/* 
-          ImportXmlForm is a client component because it uses react-hook-form and useState.
-          The importSingleZoneXml is a server action.
-          We pass zone.id and zone.name (which are available on the server) to the ZoneImportFormWrapper.
-          ZoneImportFormWrapper (a server component) then binds zone.id to importSingleZoneXml and passes this bound server action
-          to the ImportXmlForm client component.
+          ImportXmlForm is a client component.
+          ZoneImportFormWrapper (a server component) binds zone.id to the importZoneBranchMenuItemsXml server action
+          and passes this bound server action to the ImportXmlForm client component.
         */}
         <ZoneImportFormWrapper zoneId={zone.id} zoneName={zone.name} />
       </div>

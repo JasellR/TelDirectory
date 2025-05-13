@@ -13,7 +13,7 @@ const ensureArray = <T,>(item: T | T[] | undefined | null): T[] => {
 
 // Helper to generate URL-friendly IDs from names, also used for extension IDs from their names
 const toUrlFriendlyId = (name: string): string => {
-  if (!name) return ''; // Handle cases where name might be undefined or empty
+  if (!name) return `unnamed-${Date.now()}`; // Handle cases where name might be undefined or empty
   return name.trim().replace(/\s+/g, '-').replace(/[^a-zA-Z0-9-]/g, '').toLowerCase();
 };
 
@@ -59,12 +59,12 @@ const DirectoryDataSchema = z.object({
   }),
 });
 
-// Schema for importing a single zone file (root tag is <Zone>)
+// Schema for importing a single zone file (root tag is &lt;Zone>)
 const SingleZoneFileSchema = z.object({
   Zone: ZoneSchema,
 });
 
-// --- New Schemas for Locality Extensions Import ---
+// Schema for DirectoryEntry in CiscoIPPhoneDirectory (for extensions within a locality)
 const DirectoryEntrySchema = z.object({
   Name: z.string().min(1, "DirectoryEntry Name cannot be empty"),
   Telephone: z.string().min(1, "DirectoryEntry Telephone cannot be empty"),
@@ -74,14 +74,30 @@ const LocalityExtensionsDataSchema = z.object({
   CiscoIPPhoneDirectory: z.object({
     DirectoryEntry: z.preprocess(
       (val) => ensureArray(val as any[] | any | undefined | null),
-      z.array(DirectoryEntrySchema).optional() // optional if directory can be empty
+      z.array(DirectoryEntrySchema).optional()
     ),
-    // Allow other tags like Title, Prompt if they exist, but don't strictly require them for data extraction
     Title: z.string().optional(),
     Prompt: z.string().optional(),
   }),
 });
-// --- End New Schemas ---
+
+// Schema for MenuItem in CiscoIPPhoneMenu (for localities within a zone branch)
+const MenuItemSchema = z.object({
+  Name: z.string().min(1, "MenuItem Name cannot be empty"),
+  URL: z.string().optional(), // URL might not be strictly needed for import but is present
+});
+
+const ZoneBranchMenuItemsSchema = z.object({
+  CiscoIPPhoneMenu: z.object({
+    MenuItem: z.preprocess(
+      (val) => ensureArray(val as any[] | any | undefined | null),
+      z.array(MenuItemSchema).optional()
+    ),
+    Title: z.string().optional(),
+    Prompt: z.string().optional(),
+  }),
+});
+
 
 // Helper function to transform parsed XML zone data (from Zod schema) to domain Zone type
 function transformParsedXmlZoneToDomainZone(parsedZoneData: z.infer<typeof ZoneSchema>): Zone {
@@ -137,7 +153,7 @@ export async function importZonesFromXml(xmlContent: string): Promise<{ success:
     }
     
     if (zonesToImport.length === 0) {
-      return { success: false, message: 'No zone data found in the Directory XML or XML format is incorrect. Please verify the XML structure against documentation (expected <directorydata> root).' };
+      return { success: false, message: 'No zone data found in the Directory XML or XML format is incorrect. Please verify the XML structure against documentation (expected &lt;directorydata> root).' };
     }
 
     await addOrUpdateZones(zonesToImport);
@@ -148,7 +164,7 @@ export async function importZonesFromXml(xmlContent: string): Promise<{ success:
   }
 }
 
-// Action for importing XML for a single zone
+// Action for importing XML for a single zone definition (expects &lt;Zone> root)
 export async function importSingleZoneXml(targetZoneId: string, xmlContent: string): Promise<{ success: boolean; message: string; error?: string }> {
   if (!xmlContent) {
     return { success: false, message: 'No XML content provided for single zone import.' };
@@ -160,7 +176,7 @@ export async function importSingleZoneXml(targetZoneId: string, xmlContent: stri
     const validationResult = SingleZoneFileSchema.safeParse(parsedXml);
     if (!validationResult.success) {
       const messages = validationResult.error.errors.map(e => `Field '${e.path.join('.')}': ${e.message}`);
-      throw new Error(`Single Zone XML data does not match expected structure (expected <Zone> root). Specific issues: ${messages.join('; ')}`);
+      throw new Error(`Single Zone XML data does not match expected structure (expected &lt;Zone> root). Specific issues: ${messages.join('; ')}`);
     }
 
     const parsedZoneDataFromXml = validationResult.data.Zone;
@@ -174,29 +190,28 @@ export async function importSingleZoneXml(targetZoneId: string, xmlContent: stri
 
     const domainZone = transformParsedXmlZoneToDomainZone(parsedZoneDataFromXml);
 
+    // This will update the zone's name if different and merge/add localities and their extensions.
     await addOrUpdateLocalitiesForZone(targetZoneId, domainZone.localities, domainZone.name);
 
-    return { success: true, message: `Data for zone '${domainZone.name}' (ID: ${targetZoneId}) imported successfully. ${domainZone.localities.length} localities processed.` };
+    return { success: true, message: `Data for zone '${domainZone.name}' (ID: ${targetZoneId}) imported successfully from &lt;Zone> XML. ${domainZone.localities.length} localities processed.` };
   } catch (error: any) {
-    console.error(`Error importing XML for zone ${targetZoneId}:`, error);
-    return { success: false, message: `Failed to import XML for zone ${targetZoneId}.`, error: error.message || 'Unknown parsing error' };
+    console.error(`Error importing &lt;Zone> XML for zone ${targetZoneId}:`, error);
+    return { success: false, message: `Failed to import &lt;Zone> XML for zone ${targetZoneId}.`, error: error.message || 'Unknown parsing error' };
   }
 }
 
 
-// --- New Transformation for Locality Extensions ---
+// Transformation for Locality Extensions XML (CiscoIPPhoneDirectory > DirectoryEntry)
 function transformLocalityExtensionsXmlToExtensions(parsedXml: any): Extension[] {
   try {
     const validatedData = LocalityExtensionsDataSchema.parse(parsedXml);
     const directoryEntries = validatedData.CiscoIPPhoneDirectory.DirectoryEntry || [];
     
     return directoryEntries.map((entry, index): Extension => ({
-      // Generate an ID. Using a combination of name and telephone, or index for fallback.
-      // Using toUrlFriendlyId for the name part to make it somewhat consistent.
-      id: toUrlFriendlyId(entry.Name) || `ext-${index}`, 
-      department: entry.Name, // The <Name> tag value acts as the department/label
+      id: toUrlFriendlyId(`${entry.Name}-${entry.Telephone}`) || `ext-${index}-${Date.now()}`, 
+      department: entry.Name,
       number: entry.Telephone,
-      name: undefined, // This XML format does not provide a separate contact person name
+      name: undefined, 
     }));
   } catch (error) {
     if (error instanceof z.ZodError) {
@@ -208,7 +223,7 @@ function transformLocalityExtensionsXmlToExtensions(parsedXml: any): Extension[]
   }
 }
 
-// --- New Server Action for Locality Extensions Import ---
+// Server Action for Locality Extensions Import (CiscoIPPhoneDirectory > DirectoryEntry)
 export async function importExtensionsForLocalityXml(
   zoneId: string,
   localityId: string,
@@ -229,9 +244,8 @@ export async function importExtensionsForLocalityXml(
       return { success: true, message: 'XML is valid (CiscoIPPhoneDirectory) but contains no DirectoryEntry data to import.' };
     }
     if (extensionsToImport.length === 0) {
-       return { success: false, message: 'No DirectoryEntry data found in the XML or XML format is incorrect for locality extensions. Expected <CiscoIPPhoneDirectory> root with <DirectoryEntry> items.' };
+       return { success: false, message: 'No DirectoryEntry data found in the XML or XML format is incorrect for locality extensions. Expected &lt;CiscoIPPhoneDirectory> root with &lt;DirectoryEntry> items.' };
     }
-
 
     await addOrUpdateExtensionsForLocality(zoneId, localityId, extensionsToImport);
 
@@ -248,3 +262,66 @@ export async function importExtensionsForLocalityXml(
     };
   }
 }
+
+// New Transformation for Zone Branch Menu Items (CiscoIPPhoneMenu > MenuItem) to Localities
+function transformZoneBranchMenuItemsToLocalities(parsedXml: any): Locality[] {
+  try {
+    const validatedData = ZoneBranchMenuItemsSchema.parse(parsedXml);
+    const menuItems = validatedData.CiscoIPPhoneMenu.MenuItem || [];
+    
+    return menuItems.map((item): Locality => ({
+      id: toUrlFriendlyId(item.Name), // Generate ID from Name
+      name: item.Name,
+      extensions: [], // Extensions for these localities will be imported separately
+    }));
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      const messages = error.errors.map(e => `Field '${e.path.join('.')}': ${e.message}`);
+      throw new Error(`Zone Branch Localities XML data does not match expected structure (CiscoIPPhoneMenu > MenuItem). Specific issues: ${messages.join('; ')}`);
+    }
+    console.error("Zone Branch Localities XML parsing/validation error:", error);
+    throw new Error("Invalid Zone Branch Localities XML structure or missing required fields.");
+  }
+}
+
+// New Server Action for Zone Branch Localities Import (CiscoIPPhoneMenu > MenuItem)
+export async function importZoneBranchMenuItemsXml(
+  targetZoneId: string,
+  xmlContent: string
+): Promise<{ success: boolean; message: string; error?: string }> {
+  if (!xmlContent) {
+    return { success: false, message: 'No XML content provided for zone branch localities import.' };
+  }
+  if (!targetZoneId) {
+    return { success: false, message: 'Target Zone ID is required.' };
+  }
+
+  try {
+    const parsedXml = await parseStringPromise(xmlContent, { explicitArray: false, trim: true });
+    const localitiesToImport = transformZoneBranchMenuItemsToLocalities(parsedXml);
+
+    if (localitiesToImport.length === 0 && parsedXml.CiscoIPPhoneMenu && (!parsedXml.CiscoIPPhoneMenu.MenuItem || parsedXml.CiscoIPPhoneMenu.MenuItem.length === 0)) {
+      return { success: true, message: 'XML is valid (CiscoIPPhoneMenu) but contains no MenuItem data to import as localities.' };
+    }
+    if (localitiesToImport.length === 0) {
+       return { success: false, message: 'No MenuItem data found in the XML to import as localities. Expected &lt;CiscoIPPhoneMenu> root with &lt;MenuItem> items.' };
+    }
+
+    // This will add new localities or update names of existing ones.
+    // Extensions of existing localities will be preserved if not overwritten by a full zone import.
+    await addOrUpdateLocalitiesForZone(targetZoneId, localitiesToImport);
+
+    return { 
+      success: true, 
+      message: `Successfully imported ${localitiesToImport.length} localities for zone ID '${targetZoneId}' from CiscoIPPhoneMenu XML.` 
+    };
+  } catch (error: any) {
+    console.error(`Error importing localities from CiscoIPPhoneMenu XML for zone ${targetZoneId}:`, error);
+    return { 
+      success: false, 
+      message: `Failed to import localities for zone ${targetZoneId} from CiscoIPPhoneMenu XML.`, 
+      error: error.message || 'Unknown parsing error' 
+    };
+  }
+}
+
