@@ -3,63 +3,64 @@ import { NextResponse } from 'next/server';
 import fs from 'fs/promises';
 import path from 'path';
 
-const ivoxsRootDir = path.join(process.cwd(), 'IVOXS');
-const DEPARTMENT_DIR = path.join(ivoxsRootDir, 'Department');
-
 export async function GET(request: Request, { params }: { params: { localityId: string } }) {
-  console.log(`[GET /ivoxsdir/department/[localityId].xml] --- Debug Info ---`);
-  console.log(`[GET /ivoxsdir/department/[localityId].xml] process.cwd(): ${process.cwd()}`);
-  console.log(`[GET /ivoxsdir/department/[localityId].xml] Constructed ivoxsRootDir: ${ivoxsRootDir}`);
-  console.log(`[GET /ivoxsdir/department/[localityId].xml] Constructed DEPARTMENT_DIR: ${DEPARTMENT_DIR}`);
-  console.log(`[GET /ivoxsdir/department/[localityId].xml] Received request. URL: ${request.url}, Params:`, params);
   const { localityId } = params;
-  console.log(`[GET /ivoxsdir/department/[localityId].xml] localityId: ${localityId}`);
 
-  if (!localityId || !/^[a-zA-Z0-9_.-]+$/.test(localityId)) {
-    console.error(`[GET /ivoxsdir/department/[localityId].xml] Invalid localityId: ${localityId}`);
-    const errorXml = `<CiscoIPPhoneText><Title>Error</Title><Text>Invalid locality identifier: ${localityId}</Text></CiscoIPPhoneText>`;
-    return new NextResponse(errorXml, { status: 400, headers: { 'Content-Type': 'text/xml' }});
+  console.log(`[GET /ivoxsdir/department/] Received request for localityId: "${localityId}"`);
+  
+  if (!localityId || typeof localityId !== 'string' || !/^[a-zA-Z0-9_.-]+$/.test(localityId)) {
+    console.error(`[GET /ivoxsdir/department/] Invalid localityId format: "${localityId}"`);
+    const errorXml = `<CiscoIPPhoneText><Title>Error</Title><Text>Invalid locality identifier format provided.</Text></CiscoIPPhoneText>`;
+    return new NextResponse(errorXml, { status: 400, headers: { 'Content-Type': 'text/xml' } });
   }
+
+  const projectRootDir = process.cwd();
+  const departmentDir = path.join(projectRootDir, 'IVOXS', 'Department');
+  const targetFilePath = path.join(departmentDir, `${localityId}.xml`);
+
+  console.log(`[GET /ivoxsdir/department/] process.cwd(): "${projectRootDir}"`);
+  console.log(`[GET /ivoxsdir/department/] Department directory: "${departmentDir}"`);
+  console.log(`[GET /ivoxsdir/department/] Attempting to read file: "${targetFilePath}" for localityId: "${localityId}"`);
   
   try {
-    await fs.access(DEPARTMENT_DIR);
-    console.log(`[GET /ivoxsdir/department/[localityId].xml] Directory ${DEPARTMENT_DIR} confirmed to exist and is accessible.`);
-  } catch (dirAccessError: any) {
-    console.error(`[GET /ivoxsdir/department/[localityId].xml] Critical Error: Directory ${DEPARTMENT_DIR} does not exist or is not accessible:`, dirAccessError);
-    const errorXml = `
-<CiscoIPPhoneText>
-  <Title>Server Configuration Error</Title>
-  <Text>The base directory for department files (${DEPARTMENT_DIR}) was not found or is inaccessible on the server.</Text>
-  <Prompt>Please contact administrator. Server log contains details.</Prompt>
-</CiscoIPPhoneText>
-    `.trim();
-    return new NextResponse(errorXml, { status: 500, headers: { 'Content-Type': 'text/xml' } });
-  }
+    try {
+      await fs.access(departmentDir);
+    } catch (dirAccessError: any) {
+      console.error(`[GET /ivoxsdir/department/] Critical Error: Base directory "${departmentDir}" does not exist or is not accessible:`, dirAccessError);
+      const errorXml = `<CiscoIPPhoneText><Title>Server Configuration Error</Title><Text>Base directory for department files (${path.basename(departmentDir)}) not found or inaccessible.</Text></CiscoIPPhoneText>`;
+      return new NextResponse(errorXml, { status: 500, headers: { 'Content-Type': 'text/xml' } });
+    }
 
-  const departmentFilePath = path.join(DEPARTMENT_DIR, `${localityId}.xml`);
-  console.log(`[GET /ivoxsdir/department/[localityId].xml] Attempting to read file: ${departmentFilePath}`);
-
-  try {
-    const xmlContent = await fs.readFile(departmentFilePath, 'utf-8');
-    console.log(`[GET /ivoxsdir/department/[localityId].xml] Successfully read file: ${departmentFilePath}`);
+    const xmlContent = await fs.readFile(targetFilePath, 'utf-8');
+    console.log(`[GET /ivoxsdir/department/] Successfully read file: "${targetFilePath}"`);
     return new NextResponse(xmlContent.trim(), {
       status: 200,
-      headers: {
-        'Content-Type': 'text/xml',
-      },
+      headers: { 'Content-Type': 'text/xml' },
     });
   } catch (error: any) {
-    console.error(`[GET /ivoxsdir/department/[localityId].xml] Error reading department file ${localityId}.xml (Path: ${departmentFilePath}):`, error);
+    console.error(`[GET /ivoxsdir/department/] Error reading department file "${localityId}.xml" (Path: "${targetFilePath}"):`, error);
+
+    let errorMessage = `Department configuration for ${localityId} not found or is unreadable.`;
+    let statusCode = 500;
+
+    if (error.code === 'ENOENT') {
+      errorMessage = `File not found: ${targetFilePath}`;
+      statusCode = 404;
+    } else if (error.code === 'EACCES') {
+      errorMessage = `Permission denied when trying to read: ${targetFilePath}`;
+      statusCode = 403;
+    }
+    
     const errorTitleDisplay = localityId.replace(/([A-Z])/g, ' $1').trim() || localityId;
     const errorXml = `
 <CiscoIPPhoneText>
   <Title>Error Accessing Department File</Title>
-  <Text>Department configuration for ${errorTitleDisplay} not found or unreadable. Attempted path: ${departmentFilePath}</Text>
-  <Prompt>Verify file exists and has correct permissions. Server log may contain more details.</Prompt>
+  <Text>${errorMessage.replace(localityId, errorTitleDisplay)}</Text>
+  <Prompt>Verify file exists and has correct permissions. Server log contains detailed error code: ${error.code || 'UNKNOWN'}.</Prompt>
 </CiscoIPPhoneText>
     `.trim();
     return new NextResponse(errorXml, { 
-        status: 404,
+        status: statusCode,
         headers: { 'Content-Type': 'text/xml' }
     });
   }
