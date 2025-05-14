@@ -3,9 +3,14 @@ import { NextResponse } from 'next/server';
 import fs from 'fs/promises';
 import path from 'path';
 
-const ZONE_BRANCH_DIR = path.join(process.cwd(), 'IVOXS', 'ZoneBranch');
+const ivoxsRootDir = path.join(process.cwd(), 'IVOXS');
+const ZONE_BRANCH_DIR = path.join(ivoxsRootDir, 'ZoneBranch');
 
 export async function GET(request: Request, { params }: { params: { zoneId: string } }) {
+  console.log(`[GET /ivoxsdir/zonebranch/[zoneId].xml] --- Debug Info ---`);
+  console.log(`[GET /ivoxsdir/zonebranch/[zoneId].xml] process.cwd(): ${process.cwd()}`);
+  console.log(`[GET /ivoxsdir/zonebranch/[zoneId].xml] Constructed ivoxsRootDir: ${ivoxsRootDir}`);
+  console.log(`[GET /ivoxsdir/zonebranch/[zoneId].xml] Constructed ZONE_BRANCH_DIR: ${ZONE_BRANCH_DIR}`);
   console.log(`[GET /ivoxsdir/zonebranch/[zoneId].xml] Received request. URL: ${request.url}, Params:`, params);
   const { zoneId } = params;
   console.log(`[GET /ivoxsdir/zonebranch/[zoneId].xml] zoneId: ${zoneId}`);

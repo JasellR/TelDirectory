@@ -3,9 +3,14 @@ import { NextResponse } from 'next/server';
 import fs from 'fs/promises';
 import path from 'path';
 
-const DEPARTMENT_DIR = path.join(process.cwd(), 'IVOXS', 'Department');
+const ivoxsRootDir = path.join(process.cwd(), 'IVOXS');
+const DEPARTMENT_DIR = path.join(ivoxsRootDir, 'Department');
 
 export async function GET(request: Request, { params }: { params: { localityId: string } }) {
+  console.log(`[GET /ivoxsdir/department/[localityId].xml] --- Debug Info ---`);
+  console.log(`[GET /ivoxsdir/department/[localityId].xml] process.cwd(): ${process.cwd()}`);
+  console.log(`[GET /ivoxsdir/department/[localityId].xml] Constructed ivoxsRootDir: ${ivoxsRootDir}`);
+  console.log(`[GET /ivoxsdir/department/[localityId].xml] Constructed DEPARTMENT_DIR: ${DEPARTMENT_DIR}`);
   console.log(`[GET /ivoxsdir/department/[localityId].xml] Received request. URL: ${request.url}, Params:`, params);
   const { localityId } = params;
   console.log(`[GET /ivoxsdir/department/[localityId].xml] localityId: ${localityId}`);

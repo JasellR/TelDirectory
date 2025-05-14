@@ -3,9 +3,14 @@ import { NextResponse } from 'next/server';
 import fs from 'fs/promises';
 import path from 'path';
 
-const BRANCH_DIR = path.join(process.cwd(), 'IVOXS', 'Branch');
+const ivoxsRootDir = path.join(process.cwd(), 'IVOXS');
+const BRANCH_DIR = path.join(ivoxsRootDir, 'Branch');
 
 export async function GET(request: Request, { params }: { params: { branchName: string } }) {
+  console.log(`[GET /ivoxsdir/branch/[branchName].xml] --- Debug Info ---`);
+  console.log(`[GET /ivoxsdir/branch/[branchName].xml] process.cwd(): ${process.cwd()}`);
+  console.log(`[GET /ivoxsdir/branch/[branchName].xml] Constructed ivoxsRootDir: ${ivoxsRootDir}`);
+  console.log(`[GET /ivoxsdir/branch/[branchName].xml] Constructed BRANCH_DIR: ${BRANCH_DIR}`);
   console.log(`[GET /ivoxsdir/branch/[branchName].xml] Received request. URL: ${request.url}, Params:`, params);
   const { branchName } = params;
   console.log(`[GET /ivoxsdir/branch/[branchName].xml] branchName: ${branchName}`);
