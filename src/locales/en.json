@@ -1,5 +1,4 @@
 
-
 {
   "appTitle": "TelDirectory",
   "appSubtitle": "Corporate Phone Directory",
@@ -74,7 +73,7 @@
   "deletingButtonText": "Deleting...",
   "servicePortSettings": "Service URL Port Setting",
   "servicePortDescription": "This setting updates the example Service URL displayed below. It does NOT change the port your application server is running on, nor does it automatically update your XML files. You must manually ensure your server runs on the correct port and update your XML files accordingly.",
-  "configureServicePortLabel": "Configure Port for URL Display:",
+  "configureServicePortLabel": "Port for XML URLs:",
   "portNumberPlaceholder": "e.g., 9002 (Enter numbers only)",
   "updatePortButton": "Update Display Port",
   "serviceUrlPlaceholderInfo": "The Service URL below will update based on the host and port you configure here. Ensure these match your server's actual network configuration.",
@@ -93,10 +92,12 @@
   "notApplicable": "N/A",
   "serviceHostSettingsTitle": "Service Host Settings",
   "serviceHostSettingsDescription": "Configure the IP address or hostname used in the URLs within your XML directory files. This action will attempt to update all relevant XML files.",
-  "configureServiceHostLabel": "IP Address or Hostname:",
+  "configureServiceHostLabel": "IP Address or Hostname for XML URLs:",
   "hostInputPlaceholder": "e.g., 192.168.1.100 or mydirectory.example.com",
-  "applyHostToXmlButton": "Apply to XMLs",
+  "applyHostToXmlButton": "Apply Host to XMLs",
+  "applyNetworkSettingsToXmlButton": "Apply Network Settings to XMLs",
   "hostSettingsNote": "Clicking 'Apply to XMLs' will modify the host and port in the URLs of your existing MAINMENU.xml, ZoneBranch, and Branch XML files.",
+  "hostAndPortSettingsNote": "Clicking 'Apply Network Settings to XMLs' will modify the host and port in the URLs of your existing MAINMENU.xml, ZoneBranch, and Branch XML files.",
   "hostCannotBeEmpty": "Hostname/IP cannot be empty.",
   "portUpdatedSuccess": "Display port updated successfully.",
   "portNumberInvalidForHostUpdate": "A valid numeric port is required to update XML host URLs.",
@@ -110,5 +111,3 @@
   "servicePortTooltip": "Set the port number that will be written into your XML file URLs. This also affects what your IP phones try to connect to.",
   "hostSettingsNoteShort": "Updates URLs in MAINMENU, ZoneBranch, and Branch XMLs."
 }
-
-

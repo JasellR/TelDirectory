@@ -1,5 +1,4 @@
 
-
 'use client'; 
 
 import { Breadcrumbs } from '@/components/layout/Breadcrumbs';
@@ -26,10 +25,12 @@ export default function SettingsPage() {
   const { toast } = useToast();
   const [isPending, startTransition] = useTransition();
 
+  // State for the displayed example URL
   const [displayPort, setDisplayPort] = useState<string>('9002');
-  const [tempPort, setTempPort] = useState<string>(displayPort);
-  
   const [displayHost, setDisplayHost] = useState<string>('YOUR_DEVICE_IP');
+
+  // State for the input fields
+  const [tempPort, setTempPort] = useState<string>(displayPort);
   const [tempHost, setTempHost] = useState<string>(displayHost);
 
 
@@ -38,52 +39,45 @@ export default function SettingsPage() {
     const storedPort = localStorage.getItem('displayPort');
     if (storedPort) {
       setDisplayPort(storedPort);
-      setTempPort(storedPort);
+      setTempPort(storedPort); // Initialize tempPort with stored value
     }
     const storedHost = localStorage.getItem('displayHost');
     if (storedHost) {
       setDisplayHost(storedHost);
-      setTempHost(storedHost);
+      setTempHost(storedHost); // Initialize tempHost with stored value
     }
   }, [t]);
 
-  const handlePortChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handlePortInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setTempPort(e.target.value);
   };
 
-  const handlePortUpdate = () => {
-    const newPort = tempPort.trim();
-    if (newPort && /^\d+$/.test(newPort)) {
-        setDisplayPort(newPort);
-        localStorage.setItem('displayPort', newPort);
-        toast({ title: t('successTitle'), description: t('portUpdatedSuccess') });
-    } else {
-        toast({ title: t('errorTitle'), description: t('portNumberPlaceholder'), variant: 'destructive' });
-    }
-  };
-
-  const handleHostChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleHostInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setTempHost(e.target.value);
   };
 
-  const handleApplyHostToXml = () => {
+  const handleApplyNetworkSettingsToXml = () => {
     const newHost = tempHost.trim();
-    const currentPort = displayPort.trim();
+    const newPort = tempPort.trim();
 
     if (!newHost) {
       toast({ title: t('errorTitle'), description: t('hostCannotBeEmpty'), variant: 'destructive' });
       return;
     }
-    if (!currentPort || !/^\d+$/.test(currentPort)) {
+    if (!newPort || !/^\d+$/.test(newPort)) {
       toast({ title: t('errorTitle'), description: t('portNumberInvalidForHostUpdate'), variant: 'destructive' });
       return;
     }
     
     startTransition(async () => {
-      const result = await updateXmlUrlsAction(newHost, currentPort);
+      const result = await updateXmlUrlsAction(newHost, newPort);
       if (result.success) {
-        localStorage.setItem('displayHost', newHost);
+        // Update display and localStorage to reflect what was applied
         setDisplayHost(newHost);
+        localStorage.setItem('displayHost', newHost);
+        setDisplayPort(newPort);
+        localStorage.setItem('displayPort', newPort);
+        
         toast({ 
           title: t('successTitle'), 
           description: `${result.message} ${t('filesProcessedLabel')}: ${result.filesProcessed || 0}. ${t('filesFailedLabel')}: ${result.filesFailed || 0}.`
@@ -158,7 +152,7 @@ export default function SettingsPage() {
             </CardDescription>
           </CardHeader>
           <TooltipProvider>
-            <CardContent className="grid md:grid-cols-2 gap-x-8 gap-y-6">
+            <CardContent className="space-y-6">
               {/* Host Settings */}
               <div className="space-y-3">
                 <div className="flex items-center justify-between">
@@ -176,21 +170,15 @@ export default function SettingsPage() {
                     </TooltipContent>
                   </Tooltip>
                 </div>
-                <div className="flex items-center gap-2">
-                  <Input
-                    id="hostInput"
-                    type="text"
-                    value={tempHost}
-                    onChange={handleHostChange}
-                    placeholder={t('hostInputPlaceholder')}
-                    className="flex-grow"
-                    disabled={isPending}
-                  />
-                  <Button onClick={handleApplyHostToXml} disabled={isPending} className="shrink-0">
-                     {isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : t('applyHostToXmlButton')}
-                  </Button>
-                </div>
-                 <p className="text-xs text-muted-foreground">{t('hostSettingsNoteShort')}</p>
+                <Input
+                  id="hostInput"
+                  type="text"
+                  value={tempHost}
+                  onChange={handleHostInputChange}
+                  placeholder={t('hostInputPlaceholder')}
+                  className="flex-grow"
+                  disabled={isPending}
+                />
               </div>
 
               {/* Port Settings */}
@@ -210,18 +198,20 @@ export default function SettingsPage() {
                     </TooltipContent>
                   </Tooltip>
                 </div>
-                <div className="flex items-center gap-2">
-                  <Input
-                    id="portInput"
-                    type="text"
-                    value={tempPort}
-                    onChange={handlePortChange}
-                    placeholder={t('portNumberPlaceholder')}
-                    className="flex-grow"
-                  />
-                  <Button onClick={handlePortUpdate} className="shrink-0">{t('updatePortButton')}</Button>
-                </div>
+                <Input
+                  id="portInput"
+                  type="text"
+                  value={tempPort}
+                  onChange={handlePortInputChange}
+                  placeholder={t('portNumberPlaceholder')}
+                  className="flex-grow"
+                  disabled={isPending}
+                />
               </div>
+               <Button onClick={handleApplyNetworkSettingsToXml} disabled={isPending} className="w-full">
+                 {isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : t('applyNetworkSettingsToXmlButton')}
+              </Button>
+              <p className="text-xs text-muted-foreground">{t('hostAndPortSettingsNote')}</p>
             </CardContent>
           </TooltipProvider>
         </Card>
@@ -309,5 +299,3 @@ export default function SettingsPage() {
     </div>
   );
 }
-
-

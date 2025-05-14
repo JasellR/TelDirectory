@@ -1,5 +1,4 @@
 
-
 {
   "appTitle": "TelDirectorio",
   "appSubtitle": "Directorio Telefónico Corporativo",
@@ -74,7 +73,7 @@
   "deletingButtonText": "Eliminando...",
   "servicePortSettings": "Configuración del Puerto para URL de Servicio",
   "servicePortDescription": "Esta configuración actualiza la URL de servicio de ejemplo que se muestra a continuación. NO cambia el puerto en el que se ejecuta el servidor de su aplicación, ni actualiza automáticamente sus archivos XML. Debe asegurarse manualmente de que su servidor se ejecute en el puerto correcto y actualizar sus archivos XML según sea necesario.",
-  "configureServicePortLabel": "Configurar Puerto para Visualización de URL:",
+  "configureServicePortLabel": "Puerto para URLs en XML:",
   "portNumberPlaceholder": "Ej: 9002 (Ingrese solo números)",
   "updatePortButton": "Actualizar Puerto de Visualización",
   "serviceUrlPlaceholderInfo": "La URL de servicio a continuación se actualizará según el host y el puerto que configure aquí. Asegúrese de que coincidan con la configuración de red real de su servidor.",
@@ -93,10 +92,12 @@
   "notApplicable": "N/A",
   "serviceHostSettingsTitle": "Configuración del Host del Servicio",
   "serviceHostSettingsDescription": "Configure la dirección IP o el nombre de host utilizado en las URL dentro de sus archivos de directorio XML. Esta acción intentará actualizar todos los archivos XML relevantes.",
-  "configureServiceHostLabel": "Dirección IP o Nombre de Host:",
+  "configureServiceHostLabel": "Dirección IP o Nombre de Host para URLs en XML:",
   "hostInputPlaceholder": "Ej: 192.168.1.100 o midirectorio.ejemplo.com",
-  "applyHostToXmlButton": "Aplicar a XMLs",
+  "applyHostToXmlButton": "Aplicar Host a XMLs",
+  "applyNetworkSettingsToXmlButton": "Aplicar Configuración de Red a XMLs",
   "hostSettingsNote": "Al hacer clic en 'Aplicar a XMLs' se modificará el host y el puerto en las URL de sus archivos XML existentes de MAINMENU.xml, ZoneBranch y Branch.",
+  "hostAndPortSettingsNote": "Al hacer clic en 'Aplicar Configuración de Red a XMLs' se modificará el host y el puerto en las URLs de sus archivos XML existentes de MAINMENU.xml, ZoneBranch y Branch.",
   "hostCannotBeEmpty": "El nombre de host/IP no puede estar vacío.",
   "portUpdatedSuccess": "Puerto de visualización actualizado correctamente.",
   "portNumberInvalidForHostUpdate": "Se requiere un puerto numérico válido para actualizar las URL de host en XML.",
@@ -110,5 +111,3 @@
   "servicePortTooltip": "Establezca el número de puerto que se escribirá en las URL de sus archivos XML. Esto también afecta a qué intentan conectarse sus teléfonos IP.",
   "hostSettingsNoteShort": "Actualiza URLs en XMLs de MAINMENU, ZoneBranch y Branch."
 }
-
-
