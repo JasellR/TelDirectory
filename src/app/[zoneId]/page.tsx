@@ -6,7 +6,6 @@ import type { Metadata } from 'next';
 import { Separator } from '@/components/ui/separator';
 import { AddLocalityButton } from '@/components/actions/AddLocalityButton';
 import { LocalityBranchSearch } from '@/components/search/LocalityBranchSearch';
-import { useTranslation } from '@/hooks/useTranslation';
 
 interface ZonePageProps {
   params: {
@@ -15,7 +14,8 @@ interface ZonePageProps {
 }
 
 export async function generateMetadata({ params }: ZonePageProps): Promise<Metadata> {
-  const zone = await getZoneDetails(params.zoneId);
+  const resolvedParams = await params; // Await params
+  const zone = await getZoneDetails(resolvedParams.zoneId);
   if (!zone) {
     return {
       title: 'Zone Not Found',
@@ -29,7 +29,8 @@ export async function generateMetadata({ params }: ZonePageProps): Promise<Metad
 }
 
 export default async function ZonePage({ params }: ZonePageProps) {
-  const { zoneId } = params;
+  const resolvedParams = await params; // Await params
+  const { zoneId } = resolvedParams;
   const zone = await getZoneDetails(zoneId);
   
   if (!zone) { 
@@ -78,4 +79,3 @@ function itemTypeHelpText(isZonaMetropolitana: boolean) {
   }
   return "department XML file (in IVOXS/Department/)";
 }
-
