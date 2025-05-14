@@ -80,10 +80,10 @@
   "searchPlaceholder": "Buscar {itemType} por nombre o ID...",
   "viewLocalitiesInBranch": "Ver localidades en la rama {branchName}.",
   "viewExtensionsAndDetails": "Ver extensiones y detalles para {localityName}.",
-  "noItemsMatchSearch": "Ningún/a {itemType} coincide con su búsqueda de \"{searchTerm}\".",
-  "noItemsFoundInZone": "No se encontraron {itemType} en esta zona.",
+  "noItemsMatchSearch": "Su búsqueda de \"{searchTerm}\" no coincidió con ningún/a {itemType}.",
+  "noItemsFoundInZone": "No se encontraron {itemType} en esta zona. Puede agregar nuevos usando el botón de arriba.",
   "extensionsForLocality": "Extensiones para {localityName}",
-  "noExtensionsAvailable": "No hay extensiones disponibles para {localityName}.",
+  "noExtensionsAvailable": "No hay extensiones disponibles actualmente para {localityName}. Puede agregar nuevas usando el botón de arriba.",
   "extensionListCaption": "Una lista de todas las extensiones para {localityName}.",
   "departmentColumnHeader": "Departamento",
   "extensionColumnHeader": "Extensión",
@@ -109,5 +109,13 @@
   "networkServiceConfigDescription": "Configure el host y el puerto utilizados en las URL de los servicios XML y para fines de visualización.",
   "serviceHostTooltip": "Establezca la dirección IP o el nombre de host que se escribirá en las URL de sus archivos XML. Esto afecta directamente a qué intentan conectarse sus teléfonos IP.",
   "servicePortTooltip": "Establezca el número de puerto que se escribirá en las URL de sus archivos XML. Esto también afecta a qué intentan conectarse sus teléfonos IP.",
-  "hostSettingsNoteShort": "Actualiza URLs en XMLs de MAINMENU, ZoneBranch y Branch."
+  "hostSettingsNoteShort": "Actualiza URLs en XMLs de MAINMENU, ZoneBranch y Branch.",
+  "localitiesInBranchTitle": "Localidades en {branchName}",
+  "dataManagementForBranchTitle": "Gestión de Datos para {branchName}",
+  "dataManagementForBranchDescription": "Las localidades para la rama {branchName} (dentro de la zona {zoneName}) se gestionan editando el archivo XML en IVOXS/Branch/{branchId}.xml. Asegúrese de que este archivo contenga etiquetas <MenuItem> que representen cada localidad. Eliminar una localidad aquí la eliminará de esta lista e intentará eliminar su XML de departamento.",
+  "emptyZoneTitle": "Esta Zona está Vacía",
+  "emptyBranchTitle": "Esta Rama está Vacía",
+  "emptyLocalityTitle": "No Hay Extensiones Aquí",
+  "noItemsMatchSearchTitle": "No se Encontraron Resultados",
+  "noLocalitiesInBranch": "No se encontraron localidades en {branchName} (IVOXS/Branch/{branchId}.xml). Agregue nuevas usando el botón de arriba."
 }

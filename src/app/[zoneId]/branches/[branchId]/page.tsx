@@ -5,11 +5,12 @@ import { notFound } from 'next/navigation';
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { Card, CardContent } from '@/components/ui/card';
-import { MapPin, PlusCircle, Building } from 'lucide-react';
+import { MapPin, PlusCircle, Building, Inbox } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
 import { DeleteLocalityButton } from '@/components/actions/DeleteLocalityButton';
 import { EditLocalityButton } from '@/components/actions/EditLocalityButton';
 import { AddLocalityButton } from '@/components/actions/AddLocalityButton';
+import { getTranslations } from '@/lib/translations-server';
 
 
 interface BranchPageProps {
@@ -42,6 +43,7 @@ export default async function BranchPage({ params }: BranchPageProps) {
   }
   
   const localities = await getBranchItems(branchId);
+  const t = await getTranslations(); // For server-side translations
 
   return (
     <div className="space-y-8">
@@ -53,7 +55,7 @@ export default async function BranchPage({ params }: BranchPageProps) {
           ]} 
         />
         <div className="flex justify-between items-center mb-8">
-          <h1 className="text-3xl font-bold text-foreground">Localities in {branch.name}</h1>
+          <h1 className="text-3xl font-bold text-foreground">{t('localitiesInBranchTitle', { branchName: branch.name }) || `Localities in ${branch.name}`}</h1>
           <AddLocalityButton 
             zoneId={zoneId} 
             zoneName={zone.name} 
@@ -80,7 +82,7 @@ export default async function BranchPage({ params }: BranchPageProps) {
                       </h3>
                     </div>
                     <p className="text-sm text-muted-foreground ml-8 sm:ml-0">
-                      View extensions and details for {locality.name}. (ID: {locality.id})
+                      {t('viewExtensionsAndDetails', { localityName: locality.name })} (ID: {locality.id})
                     </p>
                   </div>
                   <div className="flex-shrink-0 flex items-center space-x-1">
@@ -103,22 +105,24 @@ export default async function BranchPage({ params }: BranchPageProps) {
             ))}
           </div>
         ) : (
-          <p className="text-muted-foreground">
-            No localities found in the XML file for this branch (<code>IVOXS/Branch/{branch.id}.xml</code>).
-          </p>
+          <div className="text-center py-10 border-2 border-dashed border-muted-foreground/30 rounded-lg">
+            <Inbox className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
+            <p className="text-xl font-semibold text-foreground">{t('emptyBranchTitle') || 'This Branch is Empty'}</p>
+            <p className="text-muted-foreground">
+              {t('noLocalitiesInBranch', { branchName: branch.name, branchId: branch.id })}
+            </p>
+          </div>
         )}
       </div>
 
       <Separator />
 
       <div>
-        <h2 className="text-2xl font-bold text-foreground mb-2">Data Management for {branch.name}</h2>
+        <h2 className="text-2xl font-bold text-foreground mb-2">{t('dataManagementForBranchTitle', { branchName: branch.name}) || `Data Management for ${branch.name}`}</h2>
         <p className="text-muted-foreground">
-          Localities for the <strong>{branch.name}</strong> branch (within <strong>{zone.name}</strong> zone) are managed by editing the XML file at <code>IVOXS/Branch/{branch.id}.xml</code>.
-          Ensure this file contains <code>&lt;MenuItem&gt;</code> tags representing each locality. Deleting a locality here will remove it from this list and attempt to delete its department XML.
+          {t('dataManagementForBranchDescription', { branchName: branch.name, zoneName: zone.name, branchId: branch.id })}
         </p>
       </div>
     </div>
   );
 }
-

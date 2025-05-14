@@ -6,7 +6,7 @@ import Link from 'next/link';
 import type { ZoneItem } from '@/types';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent } from '@/components/ui/card';
-import { GitBranch, Building, Search as SearchIcon } from 'lucide-react';
+import { GitBranch, Building, Search as SearchIcon, Inbox, SearchX } from 'lucide-react';
 import { EditLocalityButton } from '@/components/actions/EditLocalityButton';
 import { DeleteLocalityButton } from '@/components/actions/DeleteLocalityButton';
 import { useTranslation } from '@/hooks/useTranslation';
@@ -60,8 +60,6 @@ export function LocalityBranchSearch({ items, zoneId, itemType, itemTypePlural }
               ? t('viewLocalitiesInBranch', { branchName: item.name })
               : t('viewExtensionsAndDetails', { localityName: item.name });
             
-            const itemTypeDisplay = item.type === 'branch' ? t('branchWord') : t('localityWord');
-
             return (
               <Card key={item.id} className="shadow-sm hover:shadow-md transition-shadow duration-200">
                 <CardContent className="p-4 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
@@ -97,12 +95,25 @@ export function LocalityBranchSearch({ items, zoneId, itemType, itemTypePlural }
           })}
         </div>
       ) : (
-        <p className="text-muted-foreground text-center py-4">
-          {searchTerm.trim() 
-            ? t('noItemsMatchSearch', { itemType: itemTypePlural.toLowerCase(), searchTerm: searchTerm })
-            : t('noItemsFoundInZone', { itemType: itemTypePlural.toLowerCase() })
-          }
-        </p>
+        <div className="text-center py-10">
+          {searchTerm.trim() ? (
+            <>
+              <SearchX className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
+              <p className="text-xl font-semibold text-foreground">{t('noItemsMatchSearchTitle') || 'No Results Found'}</p>
+              <p className="text-muted-foreground">
+                {t('noItemsMatchSearch', { itemType: itemTypePlural.toLowerCase(), searchTerm: searchTerm })}
+              </p>
+            </>
+          ) : (
+            <>
+              <Inbox className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
+              <p className="text-xl font-semibold text-foreground">{t('emptyZoneTitle') || `This ${itemType} is Empty`}</p>
+              <p className="text-muted-foreground">
+                {t('noItemsFoundInZone', { itemType: itemTypePlural.toLowerCase() })}
+              </p>
+            </>
+          )}
+        </div>
       )}
     </div>
   );

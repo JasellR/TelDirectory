@@ -80,10 +80,10 @@
   "searchPlaceholder": "Search {itemType} by name or ID...",
   "viewLocalitiesInBranch": "View localities in {branchName} branch.",
   "viewExtensionsAndDetails": "View extensions and details for {localityName}.",
-  "noItemsMatchSearch": "No {itemType} match your search for \"{searchTerm}\".",
-  "noItemsFoundInZone": "No {itemType} found in this zone.",
+  "noItemsMatchSearch": "Your search for \"{searchTerm}\" did not match any {itemType}.",
+  "noItemsFoundInZone": "No {itemType} found in this zone. You can add new ones using the button above.",
   "extensionsForLocality": "Extensions for {localityName}",
-  "noExtensionsAvailable": "No extensions available for {localityName}.",
+  "noExtensionsAvailable": "No extensions currently available for {localityName}. You can add new ones using the button above.",
   "extensionListCaption": "A list of all extensions for {localityName}.",
   "departmentColumnHeader": "Department",
   "extensionColumnHeader": "Extension",
@@ -109,5 +109,13 @@
   "networkServiceConfigDescription": "Configure the host and port used in the XML service URLs and for display purposes.",
   "serviceHostTooltip": "Set the IP address or hostname that will be written into your XML file URLs. This directly affects what your IP phones try to connect to.",
   "servicePortTooltip": "Set the port number that will be written into your XML file URLs. This also affects what your IP phones try to connect to.",
-  "hostSettingsNoteShort": "Updates URLs in MAINMENU, ZoneBranch, and Branch XMLs."
+  "hostSettingsNoteShort": "Updates URLs in MAINMENU, ZoneBranch, and Branch XMLs.",
+  "localitiesInBranchTitle": "Localities in {branchName}",
+  "dataManagementForBranchTitle": "Data Management for {branchName}",
+  "dataManagementForBranchDescription": "Localities for the {branchName} branch (within {zoneName} zone) are managed by editing the XML file at IVOXS/Branch/{branchId}.xml. Ensure this file contains <MenuItem> tags representing each locality. Deleting a locality here will remove it from this list and attempt to delete its department XML.",
+  "emptyZoneTitle": "This Zone is Empty",
+  "emptyBranchTitle": "This Branch is Empty",
+  "emptyLocalityTitle": "No Extensions Here",
+  "noItemsMatchSearchTitle": "No Results Found",
+  "noLocalitiesInBranch": "No localities found in {branchName} (IVOXS/Branch/{branchId}.xml). Add new ones using the button above."
 }

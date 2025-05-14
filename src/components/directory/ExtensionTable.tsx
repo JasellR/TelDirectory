@@ -11,7 +11,7 @@ import {
   TableCell,
   TableCaption,
 } from '@/components/ui/table';
-import { UserCircle, PhoneOutgoing } from 'lucide-react';
+import { UserCircle, PhoneOutgoing, ListX } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { DeleteExtensionButton } from '@/components/actions/DeleteExtensionButton';
 import { EditExtensionButton } from '@/components/actions/EditExtensionButton';
@@ -30,7 +30,15 @@ export function ExtensionTable({ extensions, localityName, localityId, zoneId, b
 
   const renderTableContent = () => {
     if (!extensions || extensions.length === 0) {
-      return <p className="text-muted-foreground p-4 text-center">{t('noExtensionsAvailable', { localityName: localityName })}</p>;
+      return (
+        <div className="text-center py-10">
+          <ListX className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
+          <p className="text-xl font-semibold text-foreground">{t('emptyLocalityTitle') || 'No Extensions Here'}</p>
+          <p className="text-muted-foreground">
+            {t('noExtensionsAvailable', { localityName: localityName })}
+          </p>
+        </div>
+      );
     }
 
     return (
@@ -95,4 +103,3 @@ export function ExtensionTable({ extensions, localityName, localityId, zoneId, b
     </Card>
   );
 }
-
