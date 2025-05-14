@@ -15,13 +15,27 @@ export async function GET(request: Request, { params }: { params: { zoneId: stri
   const { zoneId } = params;
   console.log(`[GET /ivoxsdir/zonebranch/[zoneId].xml] zoneId: ${zoneId}`);
 
-  // Updated regex to be more inclusive (allows dots, retains underscore and hyphen)
   if (!zoneId || !/^[a-zA-Z0-9_.-]+$/.test(zoneId)) {
     console.error(`[GET /ivoxsdir/zonebranch/[zoneId].xml] Invalid zoneId: ${zoneId}`);
     const errorXml = `<CiscoIPPhoneText><Title>Error</Title><Text>Invalid zone identifier: ${zoneId}</Text></CiscoIPPhoneText>`;
     return new NextResponse(errorXml, { status: 400, headers: { 'Content-Type': 'text/xml' }});
   }
 
+  try {
+    await fs.access(ZONE_BRANCH_DIR);
+    console.log(`[GET /ivoxsdir/zonebranch/[zoneId].xml] Directory ${ZONE_BRANCH_DIR} confirmed to exist and is accessible.`);
+  } catch (dirAccessError: any) {
+    console.error(`[GET /ivoxsdir/zonebranch/[zoneId].xml] Critical Error: Directory ${ZONE_BRANCH_DIR} does not exist or is not accessible:`, dirAccessError);
+    const errorXml = `
+<CiscoIPPhoneText>
+  <Title>Server Configuration Error</Title>
+  <Text>The base directory for zone files (${ZONE_BRANCH_DIR}) was not found or is inaccessible on the server.</Text>
+  <Prompt>Please contact administrator. Server log contains details.</Prompt>
+</CiscoIPPhoneText>
+    `.trim();
+    return new NextResponse(errorXml, { status: 500, headers: { 'Content-Type': 'text/xml' } });
+  }
+  
   const zoneFilePath = path.join(ZONE_BRANCH_DIR, `${zoneId}.xml`);
   console.log(`[GET /ivoxsdir/zonebranch/[zoneId].xml] Attempting to read file: ${zoneFilePath}`);
 
@@ -36,7 +50,6 @@ export async function GET(request: Request, { params }: { params: { zoneId: stri
     });
   } catch (error: any) {
     console.error(`[GET /ivoxsdir/zonebranch/[zoneId].xml] Error reading zone file ${zoneId}.xml (Path: ${zoneFilePath}):`, error);
-    // Sanitize display name by trying to add spaces before capitals, or just use zoneId
     const errorTitleDisplay = zoneId.replace(/([A-Z])/g, ' $1').trim() || zoneId;
     const errorXml = `
 <CiscoIPPhoneText>

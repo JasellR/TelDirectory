@@ -15,13 +15,27 @@ export async function GET(request: Request, { params }: { params: { localityId: 
   const { localityId } = params;
   console.log(`[GET /ivoxsdir/department/[localityId].xml] localityId: ${localityId}`);
 
-  // Updated regex to be more inclusive (allows dots, retains underscore and hyphen)
   if (!localityId || !/^[a-zA-Z0-9_.-]+$/.test(localityId)) {
     console.error(`[GET /ivoxsdir/department/[localityId].xml] Invalid localityId: ${localityId}`);
     const errorXml = `<CiscoIPPhoneText><Title>Error</Title><Text>Invalid locality identifier: ${localityId}</Text></CiscoIPPhoneText>`;
     return new NextResponse(errorXml, { status: 400, headers: { 'Content-Type': 'text/xml' }});
   }
   
+  try {
+    await fs.access(DEPARTMENT_DIR);
+    console.log(`[GET /ivoxsdir/department/[localityId].xml] Directory ${DEPARTMENT_DIR} confirmed to exist and is accessible.`);
+  } catch (dirAccessError: any) {
+    console.error(`[GET /ivoxsdir/department/[localityId].xml] Critical Error: Directory ${DEPARTMENT_DIR} does not exist or is not accessible:`, dirAccessError);
+    const errorXml = `
+<CiscoIPPhoneText>
+  <Title>Server Configuration Error</Title>
+  <Text>The base directory for department files (${DEPARTMENT_DIR}) was not found or is inaccessible on the server.</Text>
+  <Prompt>Please contact administrator. Server log contains details.</Prompt>
+</CiscoIPPhoneText>
+    `.trim();
+    return new NextResponse(errorXml, { status: 500, headers: { 'Content-Type': 'text/xml' } });
+  }
+
   const departmentFilePath = path.join(DEPARTMENT_DIR, `${localityId}.xml`);
   console.log(`[GET /ivoxsdir/department/[localityId].xml] Attempting to read file: ${departmentFilePath}`);
 
@@ -36,7 +50,6 @@ export async function GET(request: Request, { params }: { params: { localityId: 
     });
   } catch (error: any) {
     console.error(`[GET /ivoxsdir/department/[localityId].xml] Error reading department file ${localityId}.xml (Path: ${departmentFilePath}):`, error);
-    // Sanitize display name
     const errorTitleDisplay = localityId.replace(/([A-Z])/g, ' $1').trim() || localityId;
     const errorXml = `
 <CiscoIPPhoneText>

@@ -15,13 +15,27 @@ export async function GET(request: Request, { params }: { params: { branchName: 
   const { branchName } = params;
   console.log(`[GET /ivoxsdir/branch/[branchName].xml] branchName: ${branchName}`);
   
-  // Updated regex to be more inclusive (allows dots, retains underscore and hyphen)
   if (!branchName || !/^[a-zA-Z0-9_.-]+$/.test(branchName)) {
     console.error(`[GET /ivoxsdir/branch/[branchName].xml] Invalid branchName: ${branchName}`);
     const errorXml = `<CiscoIPPhoneText><Title>Error</Title><Text>Invalid branch identifier: ${branchName}</Text></CiscoIPPhoneText>`;
     return new NextResponse(errorXml, { status: 400, headers: { 'Content-Type': 'text/xml' }});
   }
   
+  try {
+    await fs.access(BRANCH_DIR);
+    console.log(`[GET /ivoxsdir/branch/[branchName].xml] Directory ${BRANCH_DIR} confirmed to exist and is accessible.`);
+  } catch (dirAccessError: any) {
+    console.error(`[GET /ivoxsdir/branch/[branchName].xml] Critical Error: Directory ${BRANCH_DIR} does not exist or is not accessible:`, dirAccessError);
+    const errorXml = `
+<CiscoIPPhoneText>
+  <Title>Server Configuration Error</Title>
+  <Text>The base directory for branch files (${BRANCH_DIR}) was not found or is inaccessible on the server.</Text>
+  <Prompt>Please contact administrator. Server log contains details.</Prompt>
+</CiscoIPPhoneText>
+    `.trim();
+    return new NextResponse(errorXml, { status: 500, headers: { 'Content-Type': 'text/xml' } });
+  }
+
   const branchFilePath = path.join(BRANCH_DIR, `${branchName}.xml`);
   console.log(`[GET /ivoxsdir/branch/[branchName].xml] Attempting to read file: ${branchFilePath}`);
 
@@ -36,7 +50,6 @@ export async function GET(request: Request, { params }: { params: { branchName: 
     });
   } catch (error: any) {
     console.error(`[GET /ivoxsdir/branch/[branchName].xml] Error reading branch file ${branchName}.xml (Path: ${branchFilePath}):`, error);
-    // Sanitize display name
     const errorTitleDisplay = branchName.replace(/([A-Z]+)/g, " $1").replace(/^ /, "") || branchName;
     const errorXml = `
 <CiscoIPPhoneText>
