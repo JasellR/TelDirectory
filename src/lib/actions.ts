@@ -458,46 +458,59 @@ export async function saveDepartmentXmlAction(departmentFilenameBase: string | n
   }
 }
 
-async function processSingleXmlFileForHostUpdate(filePath: string, newHost: string, newPort: string): Promise<{ success: boolean; error?: string; RfilePath: string }> {
+async function processSingleXmlFileForHostUpdate(filePath: string, newHost: string, newPort: string): Promise<{ success: boolean; error?: string; RfilePath: string; changed: boolean }> {
+  let fileChanged = false;
   try {
     const parsedXml = await readAndParseXML(filePath);
-    if (!parsedXml || !parsedXml.CiscoIPPhoneMenu) {
-      return { success: true, RfilePath: filePath }; 
+    if (!parsedXml) {
+      console.log(`[processSingleXmlFileForHostUpdate] Skipped: File ${filePath} could not be read or was empty.`);
+      return { success: true, RfilePath: filePath, changed: fileChanged };
+    }
+    if (!parsedXml.CiscoIPPhoneMenu) {
+      console.log(`[processSingleXmlFileForHostUpdate] Skipped: File ${filePath} is not a CiscoIPPhoneMenu type or has no MenuItem root.`);
+      return { success: true, RfilePath: filePath, changed: fileChanged };
     }
 
-    let changed = false;
     const menuItems = ensureArray(parsedXml.CiscoIPPhoneMenu.MenuItem);
+     if (!menuItems || menuItems.length === 0) {
+        console.log(`[processSingleXmlFileForHostUpdate] Skipped: File ${filePath} has no MenuItems to update.`);
+        return { success: true, RfilePath: filePath, changed: fileChanged };
+    }
+
 
     for (const menuItem of menuItems) {
       if (menuItem && typeof menuItem.URL === 'string') {
         try {
           const urlObj = new URL(menuItem.URL);
-          let updated = false;
+          let urlWasUpdated = false;
           if (urlObj.hostname !== newHost) {
             urlObj.hostname = newHost;
-            updated = true;
+            urlWasUpdated = true;
           }
           if (urlObj.port !== newPort) {
             urlObj.port = newPort;
-            updated = true;
+            urlWasUpdated = true;
           }
-          if (updated) {
+          if (urlWasUpdated) {
             menuItem.URL = urlObj.toString();
-            changed = true;
+            fileChanged = true;
           }
         } catch (urlError) {
-          console.warn(`Skipping malformed URL "${menuItem.URL}" in ${filePath}: ${urlError}`);
+          console.warn(`[processSingleXmlFileForHostUpdate] Skipped malformed URL "${menuItem.URL}" in ${filePath}: ${urlError}`);
         }
       }
     }
 
-    if (changed) {
+    if (fileChanged) {
       await buildAndWriteXML(filePath, parsedXml);
+      console.log(`[processSingleXmlFileForHostUpdate] Updated URLs in: ${filePath}`);
+    } else {
+      console.log(`[processSingleXmlFileForHostUpdate] No URL changes needed for: ${filePath}`);
     }
-    return { success: true, RfilePath: filePath };
+    return { success: true, RfilePath: filePath, changed: fileChanged };
   } catch (error: any) {
-    console.error(`Error processing file ${filePath} for host update:`, error);
-    return { success: false, error: error.message, RfilePath: filePath };
+    console.error(`[processSingleXmlFileForHostUpdate] Error processing file ${filePath} for host update:`, error);
+    return { success: false, error: error.message, RfilePath: filePath, changed: fileChanged };
   }
 }
 
@@ -514,15 +527,20 @@ export async function updateXmlUrlsAction(newHost: string, newPort: string): Pro
   let filesFailed = 0;
   const filesToRevalidate: string[] = [];
 
+  console.log(`[updateXmlUrlsAction] Starting update for host "${newHost}" and port "${newPort}".`);
+
   // Process MAINMENU.xml
   const mainMenuPath = path.join(IVOXS_DIR, MAINMENU_FILENAME);
+  console.log(`[updateXmlUrlsAction] Processing ${mainMenuPath}`);
   const mainMenuResult = await processSingleXmlFileForHostUpdate(mainMenuPath, newHost.trim(), newPort.trim());
   if (mainMenuResult.success) {
     filesProcessed++;
-    filesToRevalidate.push(`/ivoxsdir/${path.basename(mainMenuResult.RfilePath)}`);
+    if (mainMenuResult.changed) {
+      filesToRevalidate.push(`/ivoxsdir/${path.basename(mainMenuResult.RfilePath)}`);
+    }
   } else {
     filesFailed++;
-    console.error(`Failed to update ${MAINMENU_FILENAME}: ${mainMenuResult.error}`);
+    console.error(`[updateXmlUrlsAction] Failed to update ${MAINMENU_FILENAME}: ${mainMenuResult.error}`);
   }
 
   // Process files in ZoneBranch and Branch directories
@@ -533,49 +551,56 @@ export async function updateXmlUrlsAction(newHost: string, newPort: string): Pro
 
   for (const { dirPath, routePrefix } of directoriesToScan) {
     try {
+      console.log(`[updateXmlUrlsAction] Scanning directory: ${dirPath}`);
       const files = await fs.readdir(dirPath);
       for (const file of files) {
         if (file.endsWith('.xml')) {
           const filePath = path.join(dirPath, file);
+          console.log(`[updateXmlUrlsAction] Processing ${filePath}`);
           const result = await processSingleXmlFileForHostUpdate(filePath, newHost.trim(), newPort.trim());
           if (result.success) {
             filesProcessed++;
-            filesToRevalidate.push(`${routePrefix}${path.basename(result.RfilePath)}`);
+            if (result.changed) {
+               filesToRevalidate.push(`${routePrefix}${path.basename(result.RfilePath)}`);
+            }
           } else {
             filesFailed++;
-            console.error(`Failed to update ${file}: ${result.error}`);
+            console.error(`[updateXmlUrlsAction] Failed to update ${file} in ${dirPath}: ${result.error}`);
           }
         }
       }
     } catch (dirError: any) {
-      console.error(`Error reading directory ${dirPath}:`, dirError);
+      console.error(`[updateXmlUrlsAction] Error reading directory ${dirPath}:`, dirError);
+       // Optionally, increment filesFailed if the directory itself is inaccessible
     }
   }
   
   // Revalidate web pages
-  revalidatePath('/', 'layout'); // Revalidates all pages including home, zone pages, branch pages, locality pages.
+  revalidatePath('/', 'layout'); 
 
-  // Revalidate specific API routes for XML files
+  // Revalidate specific API routes for XML files that were changed
+  console.log(`[updateXmlUrlsAction] Revalidating ${filesToRevalidate.length} API routes.`);
   for (const routePath of filesToRevalidate) {
     try {
       revalidatePath(routePath, 'route');
+      console.log(`[updateXmlUrlsAction] Revalidated API route: ${routePath}`);
     } catch (e) {
-        console.warn(`Failed to revalidate route ${routePath}: `, e)
+        console.warn(`[updateXmlUrlsAction] Failed to revalidate API route ${routePath}: `, e)
     }
   }
 
-
+  console.log(`[updateXmlUrlsAction] Update complete. Processed: ${filesProcessed}, Failed: ${filesFailed}`);
   if (filesFailed > 0) {
     return { 
       success: false, 
-      message: `XML URL update partially failed. ${filesFailed} file(s) could not be updated.`, 
+      message: `XML URL update partially failed. ${filesFailed} file(s) could not be updated. Check server logs for details.`, 
       filesProcessed, 
       filesFailed 
     };
   }
   return { 
     success: true, 
-    message: `XML URLs updated successfully in ${filesProcessed} file(s).`, 
+    message: `XML URLs updated successfully in ${filesProcessed} processed file(s). ${filesToRevalidate.length} file(s) were modified.`, 
     filesProcessed, 
     filesFailed 
   };
