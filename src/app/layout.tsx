@@ -1,3 +1,4 @@
+
 import type { Metadata } from 'next';
 import { Geist, Geist_Mono } from 'next/font/google'; // Corrected: Geist_Sans to Geist
 import './globals.css';
@@ -23,13 +24,16 @@ export const metadata: Metadata = {
   description: 'Find extensions and contact information easily.',
 };
 
+const bodyClassNames = `${geistSans.variable} ${geistMono.variable} antialiased flex flex-col min-h-screen`;
+
+
 export default function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
+    <html lang="en" suppressHydrationWarning>
       <body className={`${geistSans.variable} ${geistMono.variable} antialiased flex flex-col min-h-screen`}>
         <LanguageProvider>
           <ThemeInitializer />
