@@ -15,7 +15,8 @@ export async function GET(request: Request, { params }: { params: { branchName: 
   const { branchName } = params;
   console.log(`[GET /ivoxsdir/branch/[branchName].xml] branchName: ${branchName}`);
   
-  if (!branchName || !/^[a-zA-Z0-9_-]+$/.test(branchName)) {
+  // Updated regex to be more inclusive (allows dots, retains underscore and hyphen)
+  if (!branchName || !/^[a-zA-Z0-9_.-]+$/.test(branchName)) {
     console.error(`[GET /ivoxsdir/branch/[branchName].xml] Invalid branchName: ${branchName}`);
     const errorXml = `<CiscoIPPhoneText><Title>Error</Title><Text>Invalid branch identifier: ${branchName}</Text></CiscoIPPhoneText>`;
     return new NextResponse(errorXml, { status: 400, headers: { 'Content-Type': 'text/xml' }});
@@ -35,11 +36,12 @@ export async function GET(request: Request, { params }: { params: { branchName: 
     });
   } catch (error: any) {
     console.error(`[GET /ivoxsdir/branch/[branchName].xml] Error reading branch file ${branchName}.xml (Path: ${branchFilePath}):`, error);
-    const errorTitle = branchName.replace(/([A-Z]+)/g, " $1").replace(/^ /, "");
+    // Sanitize display name
+    const errorTitleDisplay = branchName.replace(/([A-Z]+)/g, " $1").replace(/^ /, "") || branchName;
     const errorXml = `
 <CiscoIPPhoneText>
   <Title>Error Accessing Branch File</Title>
-  <Text>Branch configuration for ${errorTitle || branchName} not found or is unreadable. Attempted path: ${branchFilePath}</Text>
+  <Text>Branch configuration for ${errorTitleDisplay} not found or is unreadable. Attempted path: ${branchFilePath}</Text>
   <Prompt>Verify file exists and has correct permissions. Server log may contain more details.</Prompt>
 </CiscoIPPhoneText>
     `.trim();
