@@ -6,10 +6,10 @@ import path from 'path';
 const DEPARTMENT_DIR = path.join(process.cwd(), 'IVOXS', 'Department');
 
 export async function GET(request: Request, { params }: { params: { localityId: string } }) {
-  const { localityId } = params; // e.g., "Bavaro", "BlueMallPuntaCana" (filename without .xml)
+  const { localityId } = params;
 
   if (!localityId || !/^[a-zA-Z0-9_-]+$/.test(localityId)) {
-    const errorXml = `<CiscoIPPhoneText><Title>Error</Title><Text>Invalid locality identifier.</Text></CiscoIPPhoneText>`;
+    const errorXml = `<CiscoIPPhoneText><Title>Error</Title><Text>Invalid locality identifier: ${localityId}</Text></CiscoIPPhoneText>`;
     return new NextResponse(errorXml, { status: 400, headers: { 'Content-Type': 'text/xml' }});
   }
   
@@ -24,12 +24,13 @@ export async function GET(request: Request, { params }: { params: { localityId: 
       },
     });
   } catch (error: any) {
-    console.error(`Error reading department file ${localityId}.xml:`, error);
-    const errorTitle = localityId.replace(/([A-Z])/g, ' $1').trim(); // Basic spacing for camelCase
+    console.error(`Error reading department file ${localityId}.xml (Path: ${departmentFilePath}):`, error);
+    const errorTitle = localityId.replace(/([A-Z])/g, ' $1').trim();
     const errorXml = `
 <CiscoIPPhoneText>
-  <Title>Error</Title>
-  <Text>Department configuration for ${errorTitle} not found or unreadable.</Text>
+  <Title>Error Accessing Department File</Title>
+  <Text>Department configuration for ${errorTitle} not found or unreadable. Attempted path: ${departmentFilePath}</Text>
+  <Prompt>Verify file exists and has correct permissions.</Prompt>
 </CiscoIPPhoneText>
     `.trim();
     return new NextResponse(errorXml, { 

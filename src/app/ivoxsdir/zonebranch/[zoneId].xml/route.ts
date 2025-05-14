@@ -6,13 +6,13 @@ import path from 'path';
 const ZONE_BRANCH_DIR = path.join(process.cwd(), 'IVOXS', 'ZoneBranch');
 
 export async function GET(request: Request, { params }: { params: { zoneId: string } }) {
-  const { zoneId } = params; // e.g., "este", "norte" (filename without .xml)
+  const { zoneId } = params; 
   
   if (!zoneId || !/^[a-zA-Z0-9_-]+$/.test(zoneId)) {
-    const errorXml = `<CiscoIPPhoneText><Title>Error</Title><Text>Invalid zone identifier.</Text></CiscoIPPhoneText>`;
+    const errorXml = `<CiscoIPPhoneText><Title>Error</Title><Text>Invalid zone identifier: ${zoneId}</Text></CiscoIPPhoneText>`;
     return new NextResponse(errorXml, { status: 400, headers: { 'Content-Type': 'text/xml' }});
   }
-
+  
   const zoneFilePath = path.join(ZONE_BRANCH_DIR, `${zoneId}.xml`);
 
   try {
@@ -24,16 +24,17 @@ export async function GET(request: Request, { params }: { params: { zoneId: stri
       },
     });
   } catch (error: any) {
-    console.error(`Error reading zone file ${zoneId}.xml:`, error);
-    const errorTitle = zoneId.charAt(0).toUpperCase() + zoneId.slice(1); // Basic capitalization
+    console.error(`Error reading zone file ${zoneId}.xml (Path: ${zoneFilePath}):`, error);
+    const errorTitle = zoneId.charAt(0).toUpperCase() + zoneId.slice(1);
     const errorXml = `
 <CiscoIPPhoneText>
-  <Title>Error</Title>
-  <Text>Zone configuration for ${errorTitle} not found or unreadable.</Text>
+  <Title>Error Accessing Zone File</Title>
+  <Text>Zone configuration for ${errorTitle} not found or is unreadable. Attempted path: ${zoneFilePath}</Text>
+  <Prompt>Verify file exists and has correct permissions.</Prompt>
 </CiscoIPPhoneText>
     `.trim();
     return new NextResponse(errorXml, { 
-        status: 404, // Or 500 if it's a server read error rather than not found
+        status: 404,
         headers: { 'Content-Type': 'text/xml' }
     });
   }

@@ -8,9 +8,8 @@ const BRANCH_DIR = path.join(process.cwd(), 'IVOXS', 'Branch');
 export async function GET(request: Request, { params }: { params: { branchName: string } }) {
   const { branchName } = params; 
   
-  // Basic sanitization for filename, allow alphanumeric, underscore, hyphen
   if (!branchName || !/^[a-zA-Z0-9_-]+$/.test(branchName)) {
-    const errorXml = `<CiscoIPPhoneText><Title>Error</Title><Text>Invalid branch identifier.</Text></CiscoIPPhoneText>`;
+    const errorXml = `<CiscoIPPhoneText><Title>Error</Title><Text>Invalid branch identifier: ${branchName}</Text></CiscoIPPhoneText>`;
     return new NextResponse(errorXml, { status: 400, headers: { 'Content-Type': 'text/xml' }});
   }
   
@@ -25,17 +24,17 @@ export async function GET(request: Request, { params }: { params: { branchName: 
       },
     });
   } catch (error: any) {
-    console.error(`Error reading branch file ${branchName}.xml:`, error);
-    // Attempt to create a more user-friendly title from camelCase or PascalCase.
-    const errorTitle = branchName.replace(/([A-Z]+)/g, " $1").replace(/^ /, ""); // Add space before caps, remove leading space
+    console.error(`Error reading branch file ${branchName}.xml (Path: ${branchFilePath}):`, error);
+    const errorTitle = branchName.replace(/([A-Z]+)/g, " $1").replace(/^ /, "");
     const errorXml = `
 <CiscoIPPhoneText>
-  <Title>Error Accessing Branch</Title>
-  <Text>Branch configuration for ${errorTitle || branchName} not found or is unreadable.</Text>
+  <Title>Error Accessing Branch File</Title>
+  <Text>Branch configuration for ${errorTitle || branchName} not found or is unreadable. Attempted path: ${branchFilePath}</Text>
+  <Prompt>Verify file exists and has correct permissions.</Prompt>
 </CiscoIPPhoneText>
     `.trim();
     return new NextResponse(errorXml, { 
-        status: 404, // Not Found
+        status: 404,
         headers: { 'Content-Type': 'text/xml' }
     });
   }
