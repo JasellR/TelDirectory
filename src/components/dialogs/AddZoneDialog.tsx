@@ -15,68 +15,37 @@ import {
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
-import { addLocalityOrBranchAction } from '@/lib/actions';
+import { addZoneAction } from '@/lib/actions';
 import { useRouter } from 'next/navigation';
 import { Loader2 } from 'lucide-react';
 import { useTranslation } from '@/hooks/useTranslation';
 
-interface AddLocalityDialogProps {
+interface AddZoneDialogProps {
   isOpen: boolean;
   onClose: () => void;
-  zoneId: string;
-  zoneName: string;
-  branchId?: string;
-  branchName?: string;
-  itemType: 'branch' | 'locality';
 }
 
-export function AddLocalityDialog({ 
-    isOpen, 
-    onClose, 
-    zoneId, 
-    zoneName, 
-    branchId, 
-    branchName, 
-    itemType 
-}: AddLocalityDialogProps) {
+export function AddZoneDialog({ isOpen, onClose }: AddZoneDialogProps) {
   const { toast } = useToast();
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const { t } = useTranslation();
-  const [itemName, setItemName] = useState('');
 
-  const dialogTitle = itemType === 'branch' 
-    ? t('addBranchDialogTitle', { parentName: zoneName }) // Changed for consistency
-    : t('addLocalityToParentDialogTitle', { parentName: branchName || zoneName });
-
-  const dialogDescription = itemType === 'branch'
-    ? t('addBranchDialogDescription')
-    : t('addLocalityDialogDescription');
-  
-  const nameLabel = itemType === 'branch' ? t('branchNameLabel') : t('localityNameLabel');
-  const namePlaceholder = itemType === 'branch' ? t('branchNamePlaceholder') : t('localityNamePlaceholder');
-  const buttonActionLabel = itemType === 'branch' ? t('addBranchButtonAction') : t('addLocalityButtonAction');
-
+  const [zoneName, setZoneName] = useState('');
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    if (!itemName.trim()) {
+    if (!zoneName.trim()) {
       toast({
         title: t('errorTitle'),
-        description: t('itemNameCannotBeEmpty', { itemName: nameLabel }),
+        description: t('zoneNameCannotBeEmpty'),
         variant: 'destructive',
       });
       return;
     }
 
     startTransition(async () => {
-      const result = await addLocalityOrBranchAction({
-        zoneId,
-        branchId, 
-        itemName: itemName.trim(),
-        itemType,
-      });
-
+      const result = await addZoneAction(zoneName.trim());
       if (result.success) {
         toast({
           title: t('successTitle'),
@@ -84,7 +53,7 @@ export function AddLocalityDialog({
         });
         router.refresh();
         onClose();
-        setItemName('');
+        setZoneName('');
       } else {
         toast({
           title: t('errorTitle'),
@@ -101,25 +70,25 @@ export function AddLocalityDialog({
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
-          <DialogTitle>{dialogTitle}</DialogTitle>
+          <DialogTitle>{t('addZoneDialogTitle')}</DialogTitle>
           <DialogDescription>
-            {dialogDescription}
+            {t('addZoneDialogDescription')}
           </DialogDescription>
         </DialogHeader>
         <form onSubmit={handleSubmit}>
           <div className="grid gap-4 py-4">
             <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="itemName" className="text-right">
-                {nameLabel}
+              <Label htmlFor="zoneName" className="text-right">
+                {t('zoneNameLabel')}
               </Label>
               <Input
-                id="itemName"
-                value={itemName}
-                onChange={(e) => setItemName(e.target.value)}
+                id="zoneName"
+                value={zoneName}
+                onChange={(e) => setZoneName(e.target.value)}
                 className="col-span-3"
                 disabled={isPending}
                 required
-                placeholder={namePlaceholder}
+                placeholder={t('zoneNamePlaceholder')}
               />
             </div>
           </div>
@@ -130,7 +99,7 @@ export function AddLocalityDialog({
               </Button>
             </DialogClose>
             <Button type="submit" disabled={isPending}>
-              {isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : buttonActionLabel}
+              {isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : t('addZoneButton')}
             </Button>
           </DialogFooter>
         </form>

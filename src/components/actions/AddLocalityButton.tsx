@@ -10,17 +10,16 @@ import { useTranslation } from '@/hooks/useTranslation';
 interface AddLocalityButtonProps {
   zoneId: string;
   zoneName: string;
-  branchId?: string; // For adding locality to a specific branch
-  branchName?: string; // For dialog title context
-  itemType: 'branch' | 'locality'; // What is being added
+  branchId?: string; 
+  branchName?: string; 
+  itemType: 'branch' | 'locality'; 
 }
 
 export function AddLocalityButton({ zoneId, zoneName, branchId, branchName, itemType }: AddLocalityButtonProps) {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const { t } = useTranslation();
 
-  const buttonLabel = itemType === 'branch' ? t('addBranchButtonLabel') : t('addLocalityButton'); // Assuming new translation key
-  const titleContext = branchName ? `${branchName} (Branch)` : zoneName;
+  const buttonLabel = itemType === 'branch' ? t('addBranchButtonLabel') : t('addLocalityButtonLabel');
 
 
   return (
