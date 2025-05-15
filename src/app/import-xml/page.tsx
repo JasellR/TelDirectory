@@ -17,7 +17,7 @@ import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2 } from 'lucide-react';
-import { getDirectoryConfig } from '@/lib/config'; // To fetch current config for display
+import { getDirectoryConfig } from '@/lib/config';
 import type { DirectoryConfig } from '@/lib/config';
 
 export default function SettingsPage() {
@@ -27,27 +27,43 @@ export default function SettingsPage() {
   const [isPathPending, startPathTransition] = useTransition();
 
   const [serviceHost, setServiceHost] = useState('');
-  const [servicePort, setServicePort] = useState('3128');
+  const [servicePort, setServicePort] = useState('3000'); // Default to 3000 as per recent changes
+  
+  // State for the directory path input field
   const [directoryRootPath, setDirectoryRootPath] = useState('');
-  const [currentDirectoryRootPath, setCurrentDirectoryRootPath] = useState<string | null>(null);
+  // State for displaying the currently *saved/configured* path
+  const [currentConfigDisplayPath, setCurrentConfigDisplayPath] = useState<string | null>(null);
+  const [isLoadingPath, setIsLoadingPath] = useState(true);
+  
   const [pathStatus, setPathStatus] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
 
-
+  // Effect for setting the document title (depends on t)
   useEffect(() => {
     document.title = `${t('settings')} - TelDirectory`;
-    // Fetch current ivoxsdir root path for display
-    async function fetchCurrentPath() {
-      try {
-        const config: DirectoryConfig = await getDirectoryConfig(); // This now needs to be called in an async context or via server action
-        setCurrentDirectoryRootPath(config.ivoxsRootPath || t('defaultPathLabel', { path: 'ivoxsdir (project root)' }));
-        setDirectoryRootPath(config.ivoxsRootPath || '');
-      } catch (e) {
-        setCurrentDirectoryRootPath(t('errorFetchingPathLabel'));
-         setDirectoryRootPath('');
-      }
-    }
-    fetchCurrentPath();
   }, [t]);
+
+  // Effect to fetch and set initial directory path (runs once on mount)
+  useEffect(() => {
+    let isMounted = true;
+    setIsLoadingPath(true);
+    
+    getDirectoryConfig().then(config => {
+      if (isMounted) {
+        const savedPath = config.ivoxsRootPath || '';
+        setDirectoryRootPath(savedPath); // Initialize input field
+        setCurrentConfigDisplayPath(savedPath); // Initialize display for current config
+        setIsLoadingPath(false);
+      }
+    }).catch(() => {
+      if (isMounted) {
+        setDirectoryRootPath(''); // Default input to empty on error
+        setCurrentConfigDisplayPath(null); // Indicate error for display
+        setIsLoadingPath(false);
+      }
+    });
+    
+    return () => { isMounted = false; }; // Cleanup function to prevent state updates on unmounted component
+  }, []); // Empty dependency array ensures this runs only once on mount
 
   const handleApplyNetworkSettings = async () => {
     if (!serviceHost.trim()) {
@@ -81,7 +97,7 @@ export default function SettingsPage() {
         setPathStatus({type: 'error', message: t('directoryPathCannotBeEmpty')});
         return;
     }
-    if (!path.isAbsolute(directoryRootPath.trim())) { // Basic client-side check
+    if (!path.isAbsolute(directoryRootPath.trim())) { 
         toast({ title: t('errorTitle'), description: t('directoryPathMustBeAbsolute'), variant: 'destructive' });
         setPathStatus({type: 'error', message: t('directoryPathMustBeAbsolute')});
         return;
@@ -90,7 +106,7 @@ export default function SettingsPage() {
         const result = await updateDirectoryRootPathAction(directoryRootPath.trim());
         if (result.success) {
             toast({ title: t('successTitle'), description: result.message });
-            setCurrentDirectoryRootPath(directoryRootPath.trim());
+            setCurrentConfigDisplayPath(directoryRootPath.trim()); // Update the displayed saved path
             setPathStatus({type: 'success', message: result.message});
         } else {
             toast({ title: t('errorTitle'), description: result.message + (result.error ? ` ${t('detailsLabel')}: ${result.error}` : ''), variant: 'destructive' });
@@ -163,10 +179,17 @@ export default function SettingsPage() {
                 value={directoryRootPath}
                 onChange={(e) => setDirectoryRootPath(e.target.value)}
                 placeholder={t('directoryRootPathPlaceholder')}
-                disabled={isPathPending}
+                disabled={isPathPending || isLoadingPath}
               />
                <p className="text-sm text-muted-foreground">
-                {t('currentPathLabel')}: {currentDirectoryRootPath || t('loadingPathLabel')}
+                {t('currentPathLabel')}:{' '}
+                {isLoadingPath 
+                  ? t('loadingPathLabel') 
+                  : currentConfigDisplayPath === null 
+                    ? t('errorFetchingPathLabel') 
+                    : currentConfigDisplayPath 
+                      ? currentConfigDisplayPath 
+                      : t('defaultPathLabel', { path: 'ivoxsdir (project root)' })}
               </p>
             </div>
             <div className="flex items-center justify-between">
@@ -174,7 +197,7 @@ export default function SettingsPage() {
                     <Info className="h-3 w-3" />
                     {t('directoryPathInfo')}
                 </p>
-                <Button onClick={handleSaveDirectoryPath} disabled={isPathPending}>
+                <Button onClick={handleSaveDirectoryPath} disabled={isPathPending || isLoadingPath}>
                     {isPathPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : t('saveDirectoryPathButton')}
                 </Button>
             </div>
@@ -196,7 +219,7 @@ export default function SettingsPage() {
               <CardTitle className="text-2xl">{t('networkServiceUrlConfigTitle')}</CardTitle>
             </div>
             <CardDescription>
-              {t('networkServiceUrlConfigDescription')}
+              {t('networkServiceUrlConfigDescription', { dirPath: currentConfigDisplayPath || 'the configured ivoxsdir path' })}
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
@@ -217,7 +240,7 @@ export default function SettingsPage() {
                   id="servicePort"
                   value={servicePort}
                   onChange={(e) => setServicePort(e.target.value)}
-                  placeholder="e.g., 3128"
+                  placeholder="e.g., 3000"
                   disabled={isPending}
                   type="number"
                 />
@@ -226,7 +249,7 @@ export default function SettingsPage() {
              <div className="flex items-center justify-between mt-4">
                 <p className="text-xs text-muted-foreground flex items-center gap-1">
                     <Info className="h-3 w-3" />
-                    {t('networkSettingsInfo')}
+                    {t('networkSettingsInfo', { dirPath: currentConfigDisplayPath || 'the configured ivoxsdir path' })}
                 </p>
                 <Button onClick={handleApplyNetworkSettings} disabled={isPending}>
                     {isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : t('applyNetworkSettingsButton')}
@@ -244,7 +267,7 @@ export default function SettingsPage() {
                 <CardTitle className="text-2xl">{t('importXmlFiles')}</CardTitle>
             </div>
             <CardDescription>
-                {t('importXmlFilesDescription')}
+                {t('importXmlFilesDescription', { dirPath: currentConfigDisplayPath || 'the configured ivoxsdir path' })}
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">
@@ -259,12 +282,12 @@ export default function SettingsPage() {
             <Card className="shadow-none border">
                 <CardHeader>
                     <CardTitle className="text-xl">{t('importZoneBranchXml')}</CardTitle>
-                    <CardDescription>{t('importZoneBranchXmlDescription')}</CardDescription>
+                    <CardDescription>{t('importZoneBranchXmlDescription', { dirPath: currentConfigDisplayPath || 'the configured ivoxsdir path' })}</CardDescription>
                 </CardHeader>
                 <CardContent>
                     <FileUploadForm
                       importAction={saveZoneBranchXmlAction}
-                      requiresId={false}
+                      requiresId={false} // Filename derived from uploaded file
                       allowMultipleFiles={true}
                     />
                 </CardContent>
@@ -273,13 +296,13 @@ export default function SettingsPage() {
             <Card className="shadow-none border">
                 <CardHeader>
                     <CardTitle className="text-xl">{t('importDepartmentXml')}</CardTitle>
-                    <CardDescription>{t('importDepartmentXmlDescription')}</CardDescription>
+                    <CardDescription>{t('importDepartmentXmlDescription', { dirPath: currentConfigDisplayPath || 'the configured ivoxsdir path' })}</CardDescription>
                 </CardHeader>
                 <CardContent>
                     <FileUploadForm
                       importAction={saveDepartmentXmlAction}
                       allowMultipleFiles={true}
-                      requiresId={false}
+                      requiresId={false} // Filename derived from uploaded file
                     />
                 </CardContent>
             </Card>
