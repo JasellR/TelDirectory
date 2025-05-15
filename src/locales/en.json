@@ -90,5 +90,13 @@
   "emptyBranchTitle": "This Branch is Empty",
   "emptyLocalityTitle": "No Extensions Here",
   "noItemsMatchSearchTitle": "No Results Found",
-  "noLocalitiesInBranch": "No localities found in {branchName} (IVOXS/Branch/{branchId}.xml). Add new ones using the button above."
+  "noLocalitiesInBranch": "No localities found in {branchName} (IVOXS/Branch/{branchId}.xml). Add new ones using the button above.",
+  "editExtensionDialogTitle": "Edit Extension: {extensionName} ({extensionNumber})",
+  "editExtensionDialogDescription": "Modify the details for this extension. This will update the locality's XML file.",
+  "newExtensionNameLabel": "New Name (Dept/Role)",
+  "newExtensionNumberLabel": "New Extension Number",
+  "extensionUpdatedSuccess": "Extension \"{oldExtensionName}\" updated successfully.",
+  "extensionUpdateNoChange": "No changes detected for the extension.",
+  "extensionUpdateConflict": "An extension with the new name and number already exists.",
+  "editExtensionButtonAriaLabel": "Edit extension {extensionName} ({extensionNumber})"
 }

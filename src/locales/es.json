@@ -90,5 +90,13 @@
   "emptyBranchTitle": "Esta Rama está Vacía",
   "emptyLocalityTitle": "No Hay Extensiones Aquí",
   "noItemsMatchSearchTitle": "No se Encontraron Resultados",
-  "noLocalitiesInBranch": "No se encontraron localidades en {branchName} (IVOXS/Branch/{branchId}.xml). Agregue nuevas usando el botón de arriba."
+  "noLocalitiesInBranch": "No se encontraron localidades en {branchName} (IVOXS/Branch/{branchId}.xml). Agregue nuevas usando el botón de arriba.",
+  "editExtensionDialogTitle": "Editar Extensión: {extensionName} ({extensionNumber})",
+  "editExtensionDialogDescription": "Modifique los detalles de esta extensión. Esto actualizará el archivo XML de la localidad.",
+  "newExtensionNameLabel": "Nuevo Nombre (Dpto/Rol)",
+  "newExtensionNumberLabel": "Nuevo Número de Extensión",
+  "extensionUpdatedSuccess": "Extensión \"{oldExtensionName}\" actualizada exitosamente.",
+  "extensionUpdateNoChange": "No se detectaron cambios para la extensión.",
+  "extensionUpdateConflict": "Ya existe una extensión con el nuevo nombre y número.",
+  "editExtensionButtonAriaLabel": "Editar extensión {extensionName} ({extensionNumber})"
 }

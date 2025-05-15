@@ -76,7 +76,12 @@ export function ExtensionTable({ extensions, localityName, localityId, zoneId, b
               </TableCell>
               <TableCell className="text-right">
                 <div className="flex justify-end space-x-1">
-                  <EditExtensionButton localityId={localityId} extension={ext} />
+                  <EditExtensionButton 
+                    localityId={localityId} 
+                    extension={ext} 
+                    zoneId={zoneId}
+                    branchId={branchId}
+                  />
                   <DeleteExtensionButton 
                       localityId={localityId} 
                       zoneId={zoneId} 
