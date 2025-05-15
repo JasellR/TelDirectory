@@ -34,8 +34,8 @@ export async function saveDirectoryConfig(config: DirectoryConfig): Promise<void
 }
 
 /**
- * Resolves the root path for the IVOXS directory.
- * Uses the path from directory.config.json if set, otherwise defaults to 'IVOXS' in the project root.
+ * Resolves the root path for the ivoxsdir directory.
+ * Uses the path from directory.config.json if set, otherwise defaults to 'ivoxsdir' in the project root.
  */
 export async function getResolvedIvoxsRootPath(): Promise<string> {
   const config = await getDirectoryConfig();
@@ -46,13 +46,15 @@ export async function getResolvedIvoxsRootPath(): Promise<string> {
       if (stats.isDirectory()) {
         return config.ivoxsRootPath;
       } else {
-        console.warn(`Configured IVOXS root path "${config.ivoxsRootPath}" is not a directory. Falling back to default.`);
+        console.warn(`Configured ivoxsdir root path "${config.ivoxsRootPath}" is not a directory. Falling back to default.`);
       }
     } catch (error) {
-      console.warn(`Error accessing configured IVOXS root path "${config.ivoxsRootPath}": ${error}. Falling back to default.`);
+      console.warn(`Error accessing configured ivoxsdir root path "${config.ivoxsRootPath}": ${error}. Falling back to default.`);
     }
   } else if (config.ivoxsRootPath) {
-    console.warn(`Configured IVOXS root path "${config.ivoxsRootPath}" is not an absolute path. Falling back to default.`);
+    console.warn(`Configured ivoxsdir root path "${config.ivoxsRootPath}" is not an absolute path. Falling back to default.`);
   }
-  return path.join(process.cwd(), 'IVOXS');
+  // Default to 'ivoxsdir' in the project root
+  return path.join(process.cwd(), 'ivoxsdir');
 }
+

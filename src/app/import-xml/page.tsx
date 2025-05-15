@@ -35,11 +35,11 @@ export default function SettingsPage() {
 
   useEffect(() => {
     document.title = `${t('settings')} - TelDirectory`;
-    // Fetch current IVOXS root path for display
+    // Fetch current ivoxsdir root path for display
     async function fetchCurrentPath() {
       try {
         const config: DirectoryConfig = await getDirectoryConfig(); // This now needs to be called in an async context or via server action
-        setCurrentDirectoryRootPath(config.ivoxsRootPath || t('defaultPathLabel', { path: 'IVOXS (project root)' }));
+        setCurrentDirectoryRootPath(config.ivoxsRootPath || t('defaultPathLabel', { path: 'ivoxsdir (project root)' }));
         setDirectoryRootPath(config.ivoxsRootPath || '');
       } catch (e) {
         setCurrentDirectoryRootPath(t('errorFetchingPathLabel'));
@@ -251,3 +251,4 @@ const path = {
     return p.startsWith('/') || /^[a-zA-Z]:\\/.test(p) || /^[a-zA-Z]:\//.test(p);
   }
 };
+
