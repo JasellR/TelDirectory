@@ -6,6 +6,10 @@ import type { Metadata } from 'next';
 import { Separator } from '@/components/ui/separator';
 import { AddLocalityButton } from '@/components/actions/AddLocalityButton';
 import { LocalityBranchSearch } from '@/components/search/LocalityBranchSearch';
+import { Button } from '@/components/ui/button'; // Added
+import Link from 'next/link'; // Added
+import { ArrowLeft } from 'lucide-react'; // Added
+import { getTranslations } from '@/lib/translations-server'; // Added
 
 interface ZonePageProps {
   params: {
@@ -32,6 +36,7 @@ export default async function ZonePage({ params }: ZonePageProps) {
   const resolvedParams = await params; // Await params
   const { zoneId } = resolvedParams;
   const zone = await getZoneDetails(zoneId);
+  const t = await getTranslations(); // For server-side translations
   
   if (!zone) { 
     notFound();
@@ -47,6 +52,14 @@ export default async function ZonePage({ params }: ZonePageProps) {
     <div className="space-y-8">
       <div>
         <Breadcrumbs items={[{ label: zone.name }]} />
+        <div className="mb-4">
+          <Button asChild variant="outline" size="sm">
+            <Link href="/">
+              <ArrowLeft className="mr-2 h-4 w-4" />
+              {t('backButton') || 'Back'} 
+            </Link>
+          </Button>
+        </div>
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-8 gap-4">
           <h1 className="text-3xl font-bold text-foreground">{itemTypeNamePlural} in {zone.name}</h1>
           <AddLocalityButton 
@@ -65,7 +78,7 @@ export default async function ZonePage({ params }: ZonePageProps) {
       <div>
         <h2 className="text-2xl font-bold text-foreground mb-2">Data Management</h2>
         <p className="text-muted-foreground">
-          {itemTypeNamePlural} for the <strong>{zone.name}</strong> zone are managed by editing the XML file at <code>IVOXS/ZoneBranch/{zone.id}.xml</code>.
+          {itemTypeNamePlural} for the <strong>{zone.name}</strong> zone are managed by editing the XML file at <code>ivoxsdir/zonebranch/{zone.id}.xml</code>.
           Ensure this file contains <code>&lt;MenuItem&gt;</code> tags representing each {itemTypeName.toLowerCase()}. Deleting an item here will remove it from this list and attempt to delete its corresponding {itemTypeHelpText(isZonaMetropolitana)}.
         </p>
       </div>
@@ -75,7 +88,7 @@ export default async function ZonePage({ params }: ZonePageProps) {
 
 function itemTypeHelpText(isZonaMetropolitana: boolean) {
   if (isZonaMetropolitana) {
-    return "branch XML file (in IVOXS/Branch/) and recursively its contents";
+    return "branch XML file (in ivoxsdir/branch/) and recursively its contents";
   }
-  return "department XML file (in IVOXS/Department/)";
+  return "department XML file (in ivoxsdir/department/)";
 }
