@@ -2,9 +2,10 @@
 import { getZones } from '@/lib/data';
 import { NavigationCard } from '@/components/directory/NavigationCard';
 import { Breadcrumbs } from '@/components/layout/Breadcrumbs';
-import { Separator } from '@/components/ui/separator';
-import { AddZoneButton } from '@/components/actions/AddZoneButton'; // New import
+import { AddZoneButton } from '@/components/actions/AddZoneButton';
 import { getTranslations } from '@/lib/translations-server';
+import { GlobalSearch } from '@/components/search/GlobalSearch'; // New import
+import { Separator } from '@/components/ui/separator'; // New import
 
 export default async function HomePage() {
   const zones = await getZones();
@@ -13,9 +14,17 @@ export default async function HomePage() {
   return (
     <div>
       <Breadcrumbs items={[]} />
+      <div className="mb-8">
+        <h1 className="text-3xl font-bold text-foreground mb-2">{t('appSubtitle')}</h1>
+        <p className="text-muted-foreground">{t('homePageDescription')}</p>
+        <GlobalSearch />
+      </div>
+
+      <Separator className="my-8" />
+
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-8 gap-4">
-        <h1 className="text-3xl font-bold text-foreground">{t('browseByZoneTitle')}</h1>
-        <AddZoneButton /> 
+        <h2 className="text-2xl font-bold text-foreground">{t('browseByZoneTitle')}</h2>
+        <AddZoneButton />
       </div>
       {zones.length > 0 ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">

@@ -27,17 +27,35 @@ export interface BranchItem {
 export interface Zone {
   id: string; // for URL slug
   name: string;
-  items: ZoneItem[]; // Can list branches or localities
+  // items: ZoneItem[]; // items are fetched dynamically now
 }
 
 export interface Branch {
   id: string;
   name: string;
   zoneId: string; // To trace back to parent zone
-  items: BranchItem[]; // Lists localities
+  // items: BranchItem[]; // items are fetched dynamically now
 }
 
 
 export interface DirectoryData {
   zones: Zone[];
+}
+
+// Types for Global Search
+export interface MatchedExtension {
+  name: string;
+  number: string;
+  matchedOn: 'extensionName' | 'extensionNumber';
+}
+export interface GlobalSearchResult {
+  localityId: string;
+  localityName: string;
+  zoneId: string;
+  branchId?: string;
+  zoneName: string;
+  branchName?: string;
+  fullPath: string;
+  localityNameMatch: boolean;
+  matchingExtensions: MatchedExtension[];
 }

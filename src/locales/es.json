@@ -2,6 +2,7 @@
 {
   "appTitle": "TelDirectorio",
   "appSubtitle": "Directorio Telefónico Corporativo",
+  "homePageDescription": "Encuentre rápidamente departamentos y extensiones en toda la organización.",
   "settings": "Configuración",
   "settingsDescription": "Administre la configuración de la aplicación, importe archivos XML y configure la apariencia.",
   "appearanceSettings": "Configuración de Apariencia",
@@ -134,5 +135,12 @@
   "zoneNameLabel": "Nombre de Zona",
   "zoneNamePlaceholder": "Ingrese nombre de zona",
   "zoneNameCannotBeEmpty": "El nombre de la zona no puede estar vacío.",
-  "addZoneButton": "Agregar Zona"
+  "addZoneButton": "Agregar Zona",
+  "globalSearchPlaceholder": "Buscar departamentos o extensiones...",
+  "searchingText": "Buscando",
+  "noResultsFoundTitle": "No Se Encontraron Resultados",
+  "noResultsFoundDescription": "Su búsqueda de \"{searchTerm}\" no coincidió con ningún departamento o extensión.",
+  "searchResultsCount": "{count} resultados encontrados.",
+  "matchingExtensionsLabel": "Extensiones Coincidentes:",
+  "andMoreExtensions": "...y {count} más."
 }
