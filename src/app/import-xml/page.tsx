@@ -192,6 +192,54 @@ export default function SettingsPage() {
         <Card>
           <CardHeader>
             <div className="flex items-center gap-3">
+              <Network className="h-6 w-6 text-primary" />
+              <CardTitle className="text-2xl">{t('networkServiceUrlConfigTitle')}</CardTitle>
+            </div>
+            <CardDescription>
+              {t('networkServiceUrlConfigDescription')}
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="serviceHost">{t('serviceHostLabel')}</Label>
+                <Input
+                  id="serviceHost"
+                  value={serviceHost}
+                  onChange={(e) => setServiceHost(e.target.value)}
+                  placeholder={t('serviceHostPlaceholder')}
+                  disabled={isPending}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="servicePort">{t('servicePortLabel')}</Label>
+                <Input
+                  id="servicePort"
+                  value={servicePort}
+                  onChange={(e) => setServicePort(e.target.value)}
+                  placeholder="e.g., 3128"
+                  disabled={isPending}
+                  type="number"
+                />
+              </div>
+            </div>
+             <div className="flex items-center justify-between mt-4">
+                <p className="text-xs text-muted-foreground flex items-center gap-1">
+                    <Info className="h-3 w-3" />
+                    {t('networkSettingsInfo')}
+                </p>
+                <Button onClick={handleApplyNetworkSettings} disabled={isPending}>
+                    {isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : t('applyNetworkSettingsButton')}
+                </Button>
+            </div>
+          </CardContent>
+        </Card>
+        
+        <Separator />
+
+        <Card>
+          <CardHeader>
+            <div className="flex items-center gap-3">
                 <UploadCloud className="h-6 w-6 text-primary" />
                 <CardTitle className="text-2xl">{t('importXmlFiles')}</CardTitle>
             </div>
