@@ -14,10 +14,10 @@ async function getIvoxsPaths() {
   const ivoxsRoot = await getResolvedIvoxsRootPath();
   return {
     IVOXS_DIR: ivoxsRoot,
-    ZONE_BRANCH_DIR: path.join(ivoxsRoot, 'zonebranch'),   // Changed to lowercase
-    BRANCH_DIR: path.join(ivoxsRoot, 'branch'),           // Changed to lowercase
-    DEPARTMENT_DIR: path.join(ivoxsRoot, 'department'),   // Changed to lowercase
-    MAINMENU_FILENAME: 'mainmenu.xml'                     // Changed to lowercase
+    ZONE_BRANCH_DIR: path.join(ivoxsRoot, 'zonebranch'),   // lowercase
+    BRANCH_DIR: path.join(ivoxsRoot, 'branch'),           // lowercase
+    DEPARTMENT_DIR: path.join(ivoxsRoot, 'department'),   // lowercase
+    MAINMENU_FILENAME: 'MainMenu.xml'                     // Changed to PascalCase
   };
 }
 
@@ -709,7 +709,7 @@ export async function updateDirectoryRootPathAction(newPath: string): Promise<{ 
     if (!stats.isDirectory()) {
       return { success: false, message: `The provided path "${trimmedPath}" is not a directory.` };
     }
-    // Optional: Check for a key file like mainmenu.xml (lowercase)
+    // Optional: Check for a key file like MainMenu.xml (PascalCase)
     const paths = await getIvoxsPaths(); // to get MAINMENU_FILENAME
     await fs.access(path.join(trimmedPath, paths.MAINMENU_FILENAME), fs.constants.F_OK);
 
@@ -727,3 +727,4 @@ export async function updateDirectoryRootPathAction(newPath: string): Promise<{ 
     return { success: false, message: `Failed to update directory path: ${error.message}`, error: error.message };
   }
 }
+

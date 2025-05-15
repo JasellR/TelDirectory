@@ -27,22 +27,18 @@ export default function SettingsPage() {
   const [isPathPending, startPathTransition] = useTransition();
 
   const [serviceHost, setServiceHost] = useState('');
-  const [servicePort, setServicePort] = useState('3000'); // Default to 3000 as per recent changes
+  const [servicePort, setServicePort] = useState('3000'); 
   
-  // State for the directory path input field
   const [directoryRootPath, setDirectoryRootPath] = useState('');
-  // State for displaying the currently *saved/configured* path
   const [currentConfigDisplayPath, setCurrentConfigDisplayPath] = useState<string | null>(null);
   const [isLoadingPath, setIsLoadingPath] = useState(true);
   
   const [pathStatus, setPathStatus] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
 
-  // Effect for setting the document title (depends on t)
   useEffect(() => {
     document.title = `${t('settings')} - TelDirectory`;
   }, [t]);
 
-  // Effect to fetch and set initial directory path (runs once on mount)
   useEffect(() => {
     let isMounted = true;
     setIsLoadingPath(true);
@@ -50,20 +46,20 @@ export default function SettingsPage() {
     getDirectoryConfig().then(config => {
       if (isMounted) {
         const savedPath = config.ivoxsRootPath || '';
-        setDirectoryRootPath(savedPath); // Initialize input field
-        setCurrentConfigDisplayPath(savedPath); // Initialize display for current config
+        setDirectoryRootPath(savedPath); 
+        setCurrentConfigDisplayPath(savedPath); 
         setIsLoadingPath(false);
       }
     }).catch(() => {
       if (isMounted) {
-        setDirectoryRootPath(''); // Default input to empty on error
-        setCurrentConfigDisplayPath(null); // Indicate error for display
+        setDirectoryRootPath(''); 
+        setCurrentConfigDisplayPath(null); 
         setIsLoadingPath(false);
       }
     });
     
-    return () => { isMounted = false; }; // Cleanup function to prevent state updates on unmounted component
-  }, []); // Empty dependency array ensures this runs only once on mount
+    return () => { isMounted = false; }; 
+  }, []); 
 
   const handleApplyNetworkSettings = async () => {
     if (!serviceHost.trim()) {
@@ -106,7 +102,7 @@ export default function SettingsPage() {
         const result = await updateDirectoryRootPathAction(directoryRootPath.trim());
         if (result.success) {
             toast({ title: t('successTitle'), description: result.message });
-            setCurrentConfigDisplayPath(directoryRootPath.trim()); // Update the displayed saved path
+            setCurrentConfigDisplayPath(directoryRootPath.trim()); 
             setPathStatus({type: 'success', message: result.message});
         } else {
             toast({ title: t('errorTitle'), description: result.message + (result.error ? ` ${t('detailsLabel')}: ${result.error}` : ''), variant: 'destructive' });
@@ -287,7 +283,7 @@ export default function SettingsPage() {
                 <CardContent>
                     <FileUploadForm
                       importAction={saveZoneBranchXmlAction}
-                      requiresId={false} // Filename derived from uploaded file
+                      requiresId={false} 
                       allowMultipleFiles={true}
                     />
                 </CardContent>
@@ -302,7 +298,7 @@ export default function SettingsPage() {
                     <FileUploadForm
                       importAction={saveDepartmentXmlAction}
                       allowMultipleFiles={true}
-                      requiresId={false} // Filename derived from uploaded file
+                      requiresId={false} 
                     />
                 </CardContent>
             </Card>
@@ -322,3 +318,4 @@ const path = {
     return p.startsWith('/') || /^[a-zA-Z]:\\/.test(p) || /^[a-zA-Z]:\//.test(p);
   }
 };
+
