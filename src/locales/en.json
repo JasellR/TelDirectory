@@ -1,4 +1,3 @@
-
 {
   "appTitle": "TelDirectory",
   "appSubtitle": "Corporate Phone Directory",
@@ -98,5 +97,17 @@
   "extensionUpdatedSuccess": "Extension \"{oldExtensionName}\" updated successfully.",
   "extensionUpdateNoChange": "No changes detected for the extension.",
   "extensionUpdateConflict": "An extension with the new name and number already exists.",
-  "editExtensionButtonAriaLabel": "Edit extension {extensionName} ({extensionNumber})"
+  "editExtensionButtonAriaLabel": "Edit extension {extensionName} ({extensionNumber})",
+  "networkServiceUrlConfigTitle": "Network & Service URL Configuration",
+  "networkServiceUrlConfigDescription": "Configure the Host IP/Hostname and Port for the URLs embedded in your XML files. This is what IP phones will use to access subsequent directory levels.",
+  "serviceHostLabel": "Service Host IP/Hostname",
+  "serviceHostPlaceholder": "e.g., 192.168.1.100 or directory.example.com",
+  "servicePortLabel": "Service Port",
+  "applyNetworkSettingsButton": "Apply Network Settings to XMLs",
+  "networkSettingsInfo": "This updates URLs in MAINMENU.xml, ZoneBranch/*.xml, and Branch/*.xml.",
+  "exampleServiceUrlTitle": "Example IP Phone Service URL",
+  "exampleServiceUrlNote": "This is the URL your IP phones should be configured to use for accessing the main directory menu. The Next.js application must be running and accessible at this host and port.",
+  "yourIpPlaceholder": "YOUR_IP_OR_HOSTNAME",
+  "hostCannotBeEmpty": "Service Host IP/Hostname cannot be empty.",
+  "portInvalid": "Service Port must be a valid number."
 }

@@ -1,4 +1,3 @@
-
 {
   "appTitle": "TelDirectorio",
   "appSubtitle": "Directorio Telefónico Corporativo",
@@ -98,5 +97,17 @@
   "extensionUpdatedSuccess": "Extensión \"{oldExtensionName}\" actualizada exitosamente.",
   "extensionUpdateNoChange": "No se detectaron cambios para la extensión.",
   "extensionUpdateConflict": "Ya existe una extensión con el nuevo nombre y número.",
-  "editExtensionButtonAriaLabel": "Editar extensión {extensionName} ({extensionNumber})"
+  "editExtensionButtonAriaLabel": "Editar extensión {extensionName} ({extensionNumber})",
+  "networkServiceUrlConfigTitle": "Configuración de Red y URL del Servicio",
+  "networkServiceUrlConfigDescription": "Configure la IP/Hostname del Host y el Puerto para las URLs incrustadas en sus archivos XML. Esto es lo que los teléfonos IP usarán para acceder a los niveles subsiguientes del directorio.",
+  "serviceHostLabel": "IP/Hostname del Host del Servicio",
+  "serviceHostPlaceholder": "Ej: 192.168.1.100 o directorio.ejemplo.com",
+  "servicePortLabel": "Puerto del Servicio",
+  "applyNetworkSettingsButton": "Aplicar Configuración de Red a XMLs",
+  "networkSettingsInfo": "Esto actualiza las URLs en MAINMENU.xml, ZoneBranch/*.xml y Branch/*.xml.",
+  "exampleServiceUrlTitle": "URL de Ejemplo del Servicio para Teléfonos IP",
+  "exampleServiceUrlNote": "Esta es la URL que sus teléfonos IP deben usar para acceder al menú principal del directorio. La aplicación Next.js debe estar en ejecución y accesible en este host y puerto.",
+  "yourIpPlaceholder": "SU_IP_O_HOSTNAME",
+  "hostCannotBeEmpty": "La IP/Hostname del Host del Servicio no puede estar vacío.",
+  "portInvalid": "El Puerto del Servicio debe ser un número válido."
 }

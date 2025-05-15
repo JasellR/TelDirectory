@@ -1,4 +1,3 @@
-
 'use server';
 
 import fs from 'fs/promises';
@@ -80,9 +79,27 @@ export async function addLocalityOrBranchAction(args: AddItemArgs): Promise<{ su
   const sanitizedZoneId = sanitizeFilenamePart(zoneId);
   const newItemId = generateIdFromName(itemName);
 
-  // Placeholder for host and port, as XML service is removed
-  const currentHost = 'YOUR_DEVICE_IP_PLACEHOLDER'; 
-  const currentPort = 'PORT_PLACEHOLDER';
+  // Get current host and port from a persistent configuration or environment variables
+  // For now, using placeholders. This part should ideally read the currently configured values.
+  let currentHost = '127.0.0.1'; // Default or placeholder
+  let currentPort = '3000';    // Default or placeholder
+
+  try {
+    // Attempt to read the current configuration if stored (e.g., in a JSON file or env vars)
+    // This part is illustrative and needs a proper implementation for persistence if desired.
+    const configPath = path.join(IVOXS_DIR, '.config.json');
+    try {
+        const configData = await fs.readFile(configPath, 'utf-8');
+        const config = JSON.parse(configData);
+        if (config.host) currentHost = config.host;
+        if (config.port) currentPort = config.port;
+    } catch (e) {
+        // Config file doesn't exist or is invalid, use defaults
+        console.warn("Could not read .config.json, using default host/port for new item URL.")
+    }
+  } catch (e) {
+    // Error reading config, use defaults
+  }
 
 
   let parentFilePath: string;
@@ -153,8 +170,19 @@ export async function editLocalityOrBranchAction(args: EditItemArgs): Promise<{ 
   const sanitizedOldItemId = sanitizeFilenamePart(oldItemId);
   const newItemId = generateIdFromName(newItemName);
   
-  const currentHost = 'YOUR_DEVICE_IP_PLACEHOLDER';
-  const currentPort = 'PORT_PLACEHOLDER';
+  let currentHost = '127.0.0.1'; // Default or placeholder
+  let currentPort = '3000';    // Default or placeholder
+  try {
+    const configPath = path.join(IVOXS_DIR, '.config.json');
+     try {
+        const configData = await fs.readFile(configPath, 'utf-8');
+        const config = JSON.parse(configData);
+        if (config.host) currentHost = config.host;
+        if (config.port) currentPort = config.port;
+    } catch (e) {
+        console.warn("Could not read .config.json, using default host/port for edited item URL.")
+    }
+  } catch(e) { /* ignore */ }
 
 
   let parentFilePath: string;
@@ -228,8 +256,6 @@ export async function editLocalityOrBranchAction(args: EditItemArgs): Promise<{ 
         }
         await buildAndWriteXML(newChildFilePath, parsedChildXml);
     } else {
-        // If the child file was renamed but couldn't be read (e.g. was empty or deleted by another process)
-        // or if it was a new ID and didn't exist, create it.
         const newChildXmlContent = itemType === 'branch'
             ? { CiscoIPPhoneMenu: { Title: newItemName, Prompt: 'Select a locality' } }
             : { CiscoIPPhoneDirectory: { Title: newItemName, Prompt: 'Select an extension' } };
@@ -402,7 +428,6 @@ export async function editExtensionAction(args: EditExtensionArgs): Promise<{ su
       return { success: false, message: `Original extension "${oldExtensionName} - ${oldExtensionNumber}" not found.` };
     }
 
-    // Check if the new name/number combination already exists (and it's not the current entry)
     const conflictExists = directoryEntries.some(
       (entry, index) =>
         index !== entryIndex &&
@@ -426,7 +451,6 @@ export async function editExtensionAction(args: EditExtensionArgs): Promise<{ su
     parsedDepartmentXml.CiscoIPPhoneDirectory.DirectoryEntry = directoryEntries;
     await buildAndWriteXML(departmentFilePath, parsedDepartmentXml);
 
-    // Revalidate the specific locality page
     revalidatePath(`/app/[zoneId]/localities/${localityId}`, 'page');
     revalidatePath(`/app/[zoneId]/branches/[branchId]/localities/${localityId}`, 'page');
 
@@ -529,13 +553,14 @@ export async function saveDepartmentXmlAction(departmentFilenameBase: string | n
 async function processSingleXmlFileForHostUpdate(filePath: string, newHost: string, newPort: string): Promise<{ success: boolean; error?: string; RfilePath: string; changed: boolean }> {
   let fileChanged = false;
   try {
+    console.log(`[processSingleXmlFileForHostUpdate] Processing: ${filePath}`);
     const parsedXml = await readAndParseXML(filePath);
     if (!parsedXml) {
       console.log(`[processSingleXmlFileForHostUpdate] Skipped: File ${filePath} could not be read or was empty.`);
       return { success: true, RfilePath: filePath, changed: fileChanged };
     }
-    if (!parsedXml.CiscoIPPhoneMenu) {
-      console.log(`[processSingleXmlFileForHostUpdate] Skipped: File ${filePath} is not a CiscoIPPhoneMenu type or has no MenuItem root.`);
+    if (!parsedXml.CiscoIPPhoneMenu || !parsedXml.CiscoIPPhoneMenu.MenuItem) {
+      console.log(`[processSingleXmlFileForHostUpdate] Skipped: File ${filePath} is not a CiscoIPPhoneMenu type or has no MenuItem(s).`);
       return { success: true, RfilePath: filePath, changed: fileChanged };
     }
 
@@ -551,11 +576,11 @@ async function processSingleXmlFileForHostUpdate(filePath: string, newHost: stri
         try {
           const urlObj = new URL(menuItem.URL);
           let urlWasUpdated = false;
-          if (urlObj.hostname !== newHost) {
+          if (newHost && urlObj.hostname !== newHost) { // Only update if newHost is provided
             urlObj.hostname = newHost;
             urlWasUpdated = true;
           }
-          if (urlObj.port !== newPort) {
+          if (newPort && urlObj.port !== newPort) { // Only update if newPort is provided
             urlObj.port = newPort;
             urlWasUpdated = true;
           }
@@ -564,7 +589,6 @@ async function processSingleXmlFileForHostUpdate(filePath: string, newHost: stri
             fileChanged = true;
           }
         } catch (urlError) {
-          // Non-fatal, log and continue. This URL might be intentionally malformed or different.
           console.warn(`[processSingleXmlFileForHostUpdate] Skipped malformed URL "${menuItem.URL}" in ${filePath}: ${urlError}`);
         }
       }
@@ -584,13 +608,85 @@ async function processSingleXmlFileForHostUpdate(filePath: string, newHost: stri
 }
 
 
-export async function updateXmlUrlsAction(newHost: string, newPort: string): Promise<{ success: boolean; message: string; error?: string; filesProcessed?: number; filesFailed?: number }> {
-  // This function is no longer relevant as XML service is removed.
-  console.warn("updateXmlUrlsAction called, but XML service is disabled. No action taken.");
+export async function updateXmlUrlsAction(newHost: string, newPort: string): Promise<{ success: boolean; message: string; error?: string; filesProcessed?: number; filesFailed?: number, filesChangedCount?: number }> {
+  if (!newHost.trim() && !newPort.trim()) {
+    return { success: false, message: "Host or Port must be provided to update XML URLs." };
+  }
+  if (newPort.trim() && !/^\d+$/.test(newPort.trim())) {
+    return { success: false, message: "Port must be a valid number." };
+  }
+
+  let filesProcessed = 0;
+  let filesFailed = 0;
+  let filesChangedCount = 0;
+  const revalidatedApiRoutes = new Set<string>();
+
+  const allFilesToProcess: string[] = [];
+
+  // MainMenu
+  allFilesToProcess.push(path.join(IVOXS_DIR, MAINMENU_FILENAME));
+
+  // ZoneBranch files
+  try {
+    const zoneBranchFiles = await fs.readdir(ZONE_BRANCH_DIR);
+    zoneBranchFiles.filter(f => f.endsWith('.xml')).forEach(f => allFilesToProcess.push(path.join(ZONE_BRANCH_DIR, f)));
+  } catch (e) {
+    console.warn(`Could not read ZoneBranch directory: ${ZONE_BRANCH_DIR}`, e);
+  }
+  
+  // Branch files
+  try {
+    const branchFiles = await fs.readdir(BRANCH_DIR);
+    branchFiles.filter(f => f.endsWith('.xml')).forEach(f => allFilesToProcess.push(path.join(BRANCH_DIR, f)));
+  } catch (e) {
+    console.warn(`Could not read Branch directory: ${BRANCH_DIR}`, e);
+  }
+
+  for (const filePath of allFilesToProcess) {
+    filesProcessed++;
+    const result = await processSingleXmlFileForHostUpdate(filePath, newHost.trim(), newPort.trim());
+    if (!result.success) {
+      filesFailed++;
+      console.error(`Failed to process ${filePath}: ${result.error}`);
+    }
+    if (result.changed) {
+        filesChangedCount++;
+        // Add to revalidation if a specific API route mapping exists,
+        // For now, a general revalidation is simpler.
+    }
+  }
+  
+  // General revalidation as specific API routes for these XMLs were removed
+  revalidatePath('/');
+  revalidatePath('/[zoneId]', 'layout'); // Revalidate zone pages
+  revalidatePath('/[zoneId]/branches/[branchId]', 'layout'); // Revalidate branch pages
+
+  // Store the applied configuration (optional, for display or future use)
+  try {
+    const configPath = path.join(IVOXS_DIR, '.config.json');
+    const currentConfig = { host: newHost.trim(), port: newPort.trim() };
+    await fs.writeFile(configPath, JSON.stringify(currentConfig, null, 2));
+    console.log(`Network configuration saved to ${configPath}`);
+  } catch (e) {
+      console.error("Could not save network configuration to .config.json", e);
+  }
+
+
+  if (filesFailed > 0) {
+    return { 
+        success: false, 
+        message: `Processed ${filesProcessed} files. ${filesChangedCount} files updated. ${filesFailed} files failed to update. Check server logs for details.`,
+        filesProcessed, 
+        filesFailed,
+        filesChangedCount
+    };
+  }
   return { 
     success: true, 
-    message: "XML service is disabled. No URLs were updated.",
-    filesProcessed: 0,
-    filesFailed: 0
+    message: `Successfully processed ${filesProcessed} files. ${filesChangedCount} files had their URLs updated.`,
+    filesProcessed,
+    filesFailed,
+    filesChangedCount
   };
 }
+
