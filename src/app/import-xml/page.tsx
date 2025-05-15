@@ -322,4 +322,3 @@ const path = {
     return p.startsWith('/') || /^[a-zA-Z]:\\/.test(p) || /^[a-zA-Z]:\//.test(p);
   }
 };
-

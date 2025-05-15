@@ -14,10 +14,10 @@ async function getIvoxsPaths() {
   const ivoxsRoot = await getResolvedIvoxsRootPath();
   return {
     IVOXS_DIR: ivoxsRoot,
-    ZONE_BRANCH_DIR: path.join(ivoxsRoot, 'ZoneBranch'),
-    BRANCH_DIR: path.join(ivoxsRoot, 'Branch'),
-    DEPARTMENT_DIR: path.join(ivoxsRoot, 'Department'),
-    MAINMENU_FILENAME: 'MAINMENU.xml'
+    ZONE_BRANCH_DIR: path.join(ivoxsRoot, 'zonebranch'),   // Changed to lowercase
+    BRANCH_DIR: path.join(ivoxsRoot, 'branch'),           // Changed to lowercase
+    DEPARTMENT_DIR: path.join(ivoxsRoot, 'department'),   // Changed to lowercase
+    MAINMENU_FILENAME: 'mainmenu.xml'                     // Changed to lowercase
   };
 }
 
@@ -639,14 +639,14 @@ export async function updateXmlUrlsAction(newHost: string, newPort: string): Pro
     const zoneBranchFiles = await fs.readdir(paths.ZONE_BRANCH_DIR);
     zoneBranchFiles.filter(f => f.endsWith('.xml')).forEach(f => allFilesToProcess.push(path.join(paths.ZONE_BRANCH_DIR, f)));
   } catch (e) {
-    console.warn(`Could not read ZoneBranch directory: ${paths.ZONE_BRANCH_DIR}`, e);
+    console.warn(`Could not read zonebranch directory: ${paths.ZONE_BRANCH_DIR}`, e);
   }
   
   try {
     const branchFiles = await fs.readdir(paths.BRANCH_DIR);
     branchFiles.filter(f => f.endsWith('.xml')).forEach(f => allFilesToProcess.push(path.join(paths.BRANCH_DIR, f)));
   } catch (e) {
-    console.warn(`Could not read Branch directory: ${paths.BRANCH_DIR}`, e);
+    console.warn(`Could not read branch directory: ${paths.BRANCH_DIR}`, e);
   }
 
   for (const filePath of allFilesToProcess) {
@@ -709,17 +709,19 @@ export async function updateDirectoryRootPathAction(newPath: string): Promise<{ 
     if (!stats.isDirectory()) {
       return { success: false, message: `The provided path "${trimmedPath}" is not a directory.` };
     }
-    // Optional: Check for a key file like MAINMENU.xml
-    await fs.access(path.join(trimmedPath, 'MAINMENU.xml'), fs.constants.F_OK);
+    // Optional: Check for a key file like mainmenu.xml (lowercase)
+    const paths = await getIvoxsPaths(); // to get MAINMENU_FILENAME
+    await fs.access(path.join(trimmedPath, paths.MAINMENU_FILENAME), fs.constants.F_OK);
 
     await saveDirConfig({ ivoxsRootPath: trimmedPath });
     revalidatePath('/import-xml', 'page'); // Revalidate settings page
     revalidatePath('/', 'layout'); // Revalidate all pages as data source changed
 
-    return { success: true, message: `IVOXS directory path updated to: ${trimmedPath}` };
+    return { success: true, message: `ivoxsdir directory path updated to: ${trimmedPath}` };
   } catch (error: any) {
     if (error.code === 'ENOENT') {
-       return { success: false, message: `The provided path "${trimmedPath}" does not exist or MAINMENU.xml was not found within it.` , error: error.message };
+       const paths = await getIvoxsPaths(); // to get MAINMENU_FILENAME for error message
+       return { success: false, message: `The provided path "${trimmedPath}" does not exist or ${paths.MAINMENU_FILENAME} was not found within it.` , error: error.message };
     }
     console.error('Error updating directory root path:', error);
     return { success: false, message: `Failed to update directory path: ${error.message}`, error: error.message };

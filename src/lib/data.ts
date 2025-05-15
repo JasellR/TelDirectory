@@ -46,10 +46,10 @@ async function getPaths() {
   const ivoxsRoot = await getResolvedIvoxsRootPath();
   return {
     IVOXS_DIR: ivoxsRoot,
-    MAINMENU_PATH: path.join(ivoxsRoot, 'MAINMENU.xml'),
-    ZONE_BRANCH_DIR: path.join(ivoxsRoot, 'ZoneBranch'),
-    BRANCH_DIR: path.join(ivoxsRoot, 'Branch'),
-    DEPARTMENT_DIR: path.join(ivoxsRoot, 'Department'),
+    MAINMENU_PATH: path.join(ivoxsRoot, 'mainmenu.xml'), // Changed to lowercase
+    ZONE_BRANCH_DIR: path.join(ivoxsRoot, 'zonebranch'), // Changed to lowercase
+    BRANCH_DIR: path.join(ivoxsRoot, 'branch'),         // Changed to lowercase
+    DEPARTMENT_DIR: path.join(ivoxsRoot, 'department'), // Changed to lowercase
   };
 }
 
@@ -89,7 +89,7 @@ export async function getZones(): Promise<Omit<Zone, 'items'>[]> {
   const validated = CiscoIPPhoneMenuSchema.safeParse(parsedXml.CiscoIPPhoneMenu);
 
   if (!validated.success) {
-    console.error("Failed to parse MAINMENU.xml:", validated.error.issues);
+    console.error("Failed to parse mainmenu.xml:", validated.error.issues);
     return [];
   }
 
@@ -159,7 +159,7 @@ export async function getBranchItems(branchId: string): Promise<BranchItem[]> {
   return menuItems.map(item => ({
     id: extractIdFromUrl(item.URL),
     name: item.Name,
-    type: 'locality',
+    type: 'locality', 
   }));
 }
 
