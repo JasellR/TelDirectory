@@ -118,6 +118,6 @@
   "directoryPathInfo": "La aplicación leerá los archivos XML desde esta raíz. Asegúrese de que MainMenu.xml (PascalCase) y las subcarpetas (zonebranch, branch, department - todas en minúsculas) existan aquí.",
   "saveDirectoryPathButton": "Guardar Ruta del Directorio",
   "directoryPathCannotBeEmpty": "La ruta del directorio no puede estar vacía.",
-  "directoryPathMustBeAbsolute": "La ruta del directorio debe ser una ruta absoluta."
+  "directoryPathMustBeAbsolute": "La ruta del directorio debe ser una ruta absoluta.",
+  "backButton": "Volver"
 }
-

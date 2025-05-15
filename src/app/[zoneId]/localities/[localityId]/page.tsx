@@ -6,6 +6,10 @@ import { notFound } from 'next/navigation';
 import type { Metadata } from 'next';
 import { Separator } from '@/components/ui/separator';
 import { AddExtensionButton } from '@/components/actions/AddExtensionButton';
+import { Button } from '@/components/ui/button';
+import Link from 'next/link';
+import { ArrowLeft } from 'lucide-react';
+import { getTranslations } from '@/lib/translations-server';
 
 interface LocalityPageProps {
   params: {
@@ -37,6 +41,8 @@ export default async function LocalityPage({ params }: LocalityPageProps) {
   if (!zone || !locality) { 
     notFound();
   }
+  
+  const t = await getTranslations();
 
   return (
     <div className="space-y-8">
@@ -47,6 +53,14 @@ export default async function LocalityPage({ params }: LocalityPageProps) {
             { label: localityDisplayName }
           ]} 
         />
+        <div className="mb-4">
+          <Button asChild variant="outline" size="sm">
+            <Link href={`/${zoneId}`}>
+              <ArrowLeft className="mr-2 h-4 w-4" />
+              {t('backButton') || 'Back'}
+            </Link>
+          </Button>
+        </div>
         <div className="flex justify-between items-center mb-6">
           <h1 className="text-3xl font-bold text-foreground">Extensions in {localityDisplayName}</h1>
           <AddExtensionButton 
@@ -68,7 +82,7 @@ export default async function LocalityPage({ params }: LocalityPageProps) {
       <div>
         <h2 className="text-2xl font-bold text-foreground mb-2">Data Management for {localityDisplayName}</h2>
         <p className="text-muted-foreground">
-          Extensions for the <strong>{localityDisplayName}</strong> locality (within <strong>{zone.name}</strong> zone) are managed by editing the XML file at <code>IVOXS/Department/{locality.id}.xml</code>.
+          Extensions for the <strong>{localityDisplayName}</strong> locality (within <strong>{zone.name}</strong> zone) are managed by editing the XML file at <code>ivoxsdir/department/{locality.id}.xml</code>.
           Ensure this file has a <code>&lt;CiscoIPPhoneDirectory&gt;</code> root element, containing <code>&lt;DirectoryEntry&gt;</code> items. Deleting an extension will remove its entry from this file.
         </p>
       </div>

@@ -5,12 +5,13 @@ import { notFound } from 'next/navigation';
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { Card, CardContent } from '@/components/ui/card';
-import { MapPin, PlusCircle, Building, Inbox } from 'lucide-react';
+import { MapPin, PlusCircle, Building, Inbox, ArrowLeft } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
 import { DeleteLocalityButton } from '@/components/actions/DeleteLocalityButton';
 import { EditLocalityButton } from '@/components/actions/EditLocalityButton';
 import { AddLocalityButton } from '@/components/actions/AddLocalityButton';
 import { getTranslations } from '@/lib/translations-server';
+import { Button } from '@/components/ui/button';
 
 
 interface BranchPageProps {
@@ -54,6 +55,14 @@ export default async function BranchPage({ params }: BranchPageProps) {
             { label: branch.name }
           ]} 
         />
+        <div className="mb-4">
+          <Button asChild variant="outline" size="sm">
+            <Link href={`/${zoneId}`}>
+              <ArrowLeft className="mr-2 h-4 w-4" />
+              {t('backButton') || 'Back'}
+            </Link>
+          </Button>
+        </div>
         <div className="flex justify-between items-center mb-8">
           <h1 className="text-3xl font-bold text-foreground">{t('localitiesInBranchTitle', { branchName: branch.name }) || `Localities in ${branch.name}`}</h1>
           <AddLocalityButton 

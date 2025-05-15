@@ -118,6 +118,6 @@
   "directoryPathInfo": "The application will read XML files from this root. Ensure MainMenu.xml (PascalCase) and subfolders (zonebranch, branch, department - all lowercase) exist here.",
   "saveDirectoryPathButton": "Save Directory Path",
   "directoryPathCannotBeEmpty": "Directory path cannot be empty.",
-  "directoryPathMustBeAbsolute": "Directory path must be an absolute path."
+  "directoryPathMustBeAbsolute": "Directory path must be an absolute path.",
+  "backButton": "Back"
 }
-
