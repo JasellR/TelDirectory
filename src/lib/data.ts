@@ -4,6 +4,7 @@ import fs from 'fs/promises';
 import path from 'path';
 import { parseStringPromise } from 'xml2js';
 import { z } from 'zod';
+import { getResolvedIvoxsRootPath } from '@/lib/config';
 
 // Helper to ensure an element is an array, useful for xml2js when explicitArray: false
 const ensureArray = <T,>(item: T | T[] | undefined | null): T[] => {
@@ -13,15 +14,9 @@ const ensureArray = <T,>(item: T | T[] | undefined | null): T[] => {
 
 // Helper to generate URL-friendly IDs from names, also used for extension IDs from their names
 const toUrlFriendlyId = (name: string): string => {
-  if (!name) return `unnamed-${Date.now()}`; // Handle cases where name might be undefined or empty
+  if (!name) return `unnamed-${Date.now()}`;
   return name.trim().replace(/\s+/g, '-').replace(/[^a-zA-Z0-9-]/g, '').toLowerCase();
 };
-
-const IVOXS_DIR = path.join(process.cwd(), 'IVOXS');
-const MAINMENU_PATH = path.join(IVOXS_DIR, 'MAINMENU.xml');
-const ZONE_BRANCH_DIR = path.join(IVOXS_DIR, 'ZoneBranch');
-const BRANCH_DIR = path.join(IVOXS_DIR, 'Branch'); 
-const DEPARTMENT_DIR = path.join(IVOXS_DIR, 'Department');
 
 // Schemas for parsing XML
 const MenuItemSchema = z.object({
@@ -36,7 +31,7 @@ export const CiscoIPPhoneMenuSchema = z.object({
 });
 
 const CiscoIPPhoneDirectoryEntrySchema = z.object({
-  Name: z.string().min(1), 
+  Name: z.string().min(1),
   Telephone: z.string().min(1),
 });
 
@@ -46,6 +41,18 @@ export const CiscoIPPhoneDirectorySchema = z.object({
   DirectoryEntry: z.preprocess(ensureArray, z.array(CiscoIPPhoneDirectoryEntrySchema).optional()),
 });
 
+// Dynamic path getters
+async function getPaths() {
+  const ivoxsRoot = await getResolvedIvoxsRootPath();
+  return {
+    IVOXS_DIR: ivoxsRoot,
+    MAINMENU_PATH: path.join(ivoxsRoot, 'MAINMENU.xml'),
+    ZONE_BRANCH_DIR: path.join(ivoxsRoot, 'ZoneBranch'),
+    BRANCH_DIR: path.join(ivoxsRoot, 'Branch'),
+    DEPARTMENT_DIR: path.join(ivoxsRoot, 'Department'),
+  };
+}
+
 
 async function readFileContent(filePath: string): Promise<string> {
   try {
@@ -53,7 +60,7 @@ async function readFileContent(filePath: string): Promise<string> {
   } catch (error: any) {
     if (error.code === 'ENOENT') {
       console.warn(`File not found: ${filePath}`);
-      return ''; 
+      return '';
     }
     console.error(`Error reading file ${filePath}:`, error);
     throw error;
@@ -74,7 +81,8 @@ function getItemTypeFromUrl(url: string): 'branch' | 'locality' | 'unknown' {
 
 
 export async function getZones(): Promise<Omit<Zone, 'items'>[]> {
-  const xmlContent = await readFileContent(MAINMENU_PATH);
+  const paths = await getPaths();
+  const xmlContent = await readFileContent(paths.MAINMENU_PATH);
   if (!xmlContent) return [];
 
   const parsedXml = await parseStringPromise(xmlContent, { explicitArray: false, trim: true });
@@ -98,7 +106,8 @@ export async function getZoneDetails(zoneId: string): Promise<Omit<Zone, 'items'
 }
 
 export async function getZoneItems(zoneId: string): Promise<ZoneItem[]> {
-  const zoneFilePath = path.join(ZONE_BRANCH_DIR, `${zoneId}.xml`);
+  const paths = await getPaths();
+  const zoneFilePath = path.join(paths.ZONE_BRANCH_DIR, `${zoneId}.xml`);
   const xmlContent = await readFileContent(zoneFilePath);
   if (!xmlContent) return [];
 
@@ -119,9 +128,9 @@ export async function getZoneItems(zoneId: string): Promise<ZoneItem[]> {
     return {
         id: extractIdFromUrl(item.URL),
         name: item.Name,
-        type: itemType as 'branch' | 'locality', 
+        type: itemType as 'branch' | 'locality',
     };
-  }).filter(item => item.type === 'branch' || item.type === 'locality'); 
+  }).filter(item => item.type === 'branch' || item.type === 'locality');
 }
 
 
@@ -133,7 +142,8 @@ export async function getBranchDetails(zoneId: string, branchId: string): Promis
 }
 
 export async function getBranchItems(branchId: string): Promise<BranchItem[]> {
-  const branchFilePath = path.join(BRANCH_DIR, `${branchId}.xml`);
+  const paths = await getPaths();
+  const branchFilePath = path.join(paths.BRANCH_DIR, `${branchId}.xml`);
   const xmlContent = await readFileContent(branchFilePath);
   if (!xmlContent) return [];
 
@@ -149,27 +159,28 @@ export async function getBranchItems(branchId: string): Promise<BranchItem[]> {
   return menuItems.map(item => ({
     id: extractIdFromUrl(item.URL),
     name: item.Name,
-    type: 'locality', 
+    type: 'locality',
   }));
 }
 
 export async function getLocalityDetails(
-  localityId: string, 
+  localityId: string,
   context?: { zoneId?: string; branchId?: string }
 ): Promise<Omit<Locality, 'extensions'> | undefined> {
-  let localityName = localityId; 
+  const paths = await getPaths();
+  let localityName = localityId;
 
-  if (context?.branchId && context?.zoneId) { 
+  if (context?.branchId && context?.zoneId) {
     const branchItems = await getBranchItems(context.branchId);
     const itemInfo = branchItems.find(item => item.id === localityId);
     if (itemInfo) localityName = itemInfo.name;
-  } else if (context?.zoneId) { 
+  } else if (context?.zoneId) {
     const zoneItems = await getZoneItems(context.zoneId);
     const itemInfo = zoneItems.find(item => item.id === localityId && item.type === 'locality');
      if (itemInfo) localityName = itemInfo.name;
   }
   
-  const departmentFilePath = path.join(DEPARTMENT_DIR, `${localityId}.xml`);
+  const departmentFilePath = path.join(paths.DEPARTMENT_DIR, `${localityId}.xml`);
   const departmentXmlContent = await readFileContent(departmentFilePath);
   if (departmentXmlContent) {
       try {
@@ -188,7 +199,8 @@ export async function getLocalityDetails(
 
 
 export async function getLocalityWithExtensions(localityId: string): Promise<Locality | undefined> {
-  const departmentFilePath = path.join(DEPARTMENT_DIR, `${localityId}.xml`);
+  const paths = await getPaths();
+  const departmentFilePath = path.join(paths.DEPARTMENT_DIR, `${localityId}.xml`);
   const xmlContent = await readFileContent(departmentFilePath);
   if (!xmlContent) return undefined;
 
@@ -200,13 +212,13 @@ export async function getLocalityWithExtensions(localityId: string): Promise<Loc
     return undefined;
   }
   
-  const title = validated.data.Title || localityId; 
+  const title = validated.data.Title || localityId;
   const directoryEntries = validated.data.DirectoryEntry || [];
   const extensions: Extension[] = directoryEntries.map(entry => ({
-    id: toUrlFriendlyId(`${entry.Name}-${entry.Telephone}`), 
+    id: toUrlFriendlyId(`${entry.Name}-${entry.Telephone}`),
     department: entry.Name,
     number: entry.Telephone,
-    name: entry.Name, // Assuming the 'Name' in DirectoryEntry can be a contact person name or department role
+    name: entry.Name,
   }));
 
   return {
@@ -215,4 +227,3 @@ export async function getLocalityWithExtensions(localityId: string): Promise<Loc
     extensions,
   };
 }
-    

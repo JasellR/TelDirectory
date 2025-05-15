@@ -1,3 +1,4 @@
+
 {
   "appTitle": "TelDirectory",
   "appSubtitle": "Corporate Phone Directory",
@@ -109,5 +110,17 @@
   "exampleServiceUrlNote": "This is the URL your IP phones should be configured to use for accessing the main directory menu. The Next.js application must be running and accessible at this host and port.",
   "yourIpPlaceholder": "YOUR_IP_OR_HOSTNAME",
   "hostCannotBeEmpty": "Service Host IP/Hostname cannot be empty.",
-  "portInvalid": "Service Port must be a valid number."
+  "portInvalid": "Service Port must be a valid number.",
+  "directoryConfigurationTitle": "Directory Configuration",
+  "directoryConfigurationDescription": "Specify the root path where your IVOXS XML directory structure is located.",
+  "directoryRootPathLabel": "IVOXS Directory Root Path",
+  "directoryRootPathPlaceholder": "Enter absolute path (e.g., /mnt/shared/ivoxs_data or C:\\TelDirectory\\IVOXS)",
+  "currentPathLabel": "Currently Configured Path",
+  "defaultPathLabel": "Default: {path}",
+  "loadingPathLabel": "Loading...",
+  "errorFetchingPathLabel": "Error fetching path",
+  "directoryPathInfo": "The application will read XML files from this root. Ensure the subfolders (ZoneBranch, Branch, Department) exist here.",
+  "saveDirectoryPathButton": "Save Directory Path",
+  "directoryPathCannotBeEmpty": "Directory path cannot be empty.",
+  "directoryPathMustBeAbsolute": "Directory path must be an absolute path."
 }
