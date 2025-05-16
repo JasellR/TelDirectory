@@ -14,7 +14,7 @@ import { useTranslation } from '@/hooks/useTranslation';
 
 export default function LoginPage() {
   const router = useRouter();
-  const searchParams = useSearchParams(); 
+  const searchParams = useSearchParams();
   const { toast } = useToast();
   const [password, setPassword] = useState('');
   const [isPending, startTransition] = useTransition();
@@ -27,21 +27,12 @@ export default function LoginPage() {
       if (result.success) {
         toast({
           title: t('loginSuccessTitle'),
-          description: result.message, 
+          description: result.message,
         });
-        
-        // Redirect to homepage after successful login
-        router.push('/'); 
-        // It's often good to refresh after a push that changes auth state
-        // to ensure server components like the header re-render correctly.
-        // This might cause a slightly longer perceived redirect but ensures UI consistency.
-        // router.refresh() will be implicitly handled by the navigation to a new page
-        // if the layout needs to re-render due to auth changes.
-        // However, explicit refresh can sometimes be necessary if issues persist with header updates.
-        // For now, relying on the push to trigger necessary updates.
-        // If header doesn't update, uncomment router.refresh() below.
-        // router.refresh();
-
+        // Perform a full browser navigation to the homepage
+        // This ensures all server components, including the layout and AppHeader,
+        // are re-fetched with the new authentication cookie.
+        window.location.href = '/';
       } else {
         toast({
           title: t('loginFailedTitle'),
@@ -84,4 +75,3 @@ export default function LoginPage() {
     </div>
   );
 }
-
