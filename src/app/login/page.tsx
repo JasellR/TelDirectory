@@ -28,8 +28,11 @@ export default function LoginPage() {
           title: t('loginSuccessTitle'),
           description: result.message,
         });
-        router.push('/'); // Redirect to homepage on successful login
-        router.refresh(); // Refresh to update header auth state
+        // Server action handles redirect.
+        // Refresh the router to ensure layout components like AppHeader re-evaluate auth state.
+        router.refresh();
+        // Forcing a full redirect to the homepage after a slight delay can also work if router.refresh() isn't enough
+        // setTimeout(() => router.push('/'), 100);
       } else {
         toast({
           title: t('loginFailedTitle'),
