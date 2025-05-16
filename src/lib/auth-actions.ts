@@ -18,6 +18,7 @@ export async function loginAction(password: string): Promise<{ success: boolean;
       sameSite: 'lax',
       // secure: process.env.NODE_ENV === 'production', // Enable in production
     });
+    // Return success, client will handle redirect
     return { success: true, message: 'Login successful. Redirecting...' };
   } else {
     return { success: false, message: 'Invalid password.' };
@@ -34,3 +35,4 @@ export async function isAuthenticated(): Promise<boolean> {
   const sessionCookie = cookieStore.get(AUTH_COOKIE_NAME);
   return !!sessionCookie && sessionCookie.value === 'authenticated';
 }
+

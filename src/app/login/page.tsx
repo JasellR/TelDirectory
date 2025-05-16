@@ -33,10 +33,9 @@ export default function LoginPage() {
         const redirectTo = searchParams.get('redirect_to');
         // Redirect to the intended page or default to the settings page
         router.push(redirectTo || '/import-xml'); 
-        // router.refresh() might still be beneficial here if the push alone doesn't always update layout state,
-        // but typically push to a new server-rendered route should suffice.
-        // Forcing a full refresh after a slight delay could be an alternative if issues persist:
-        // setTimeout(() => router.refresh(), 50); // Or router.push with force-dynamic
+        // After push, the new page will render with the correct header due to cookie change.
+        // router.refresh() is not strictly necessary here if the push leads to a server-rendered route
+        // that correctly re-evaluates authentication state.
       } else {
         toast({
           title: t('loginFailedTitle'),
