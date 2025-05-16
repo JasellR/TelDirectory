@@ -14,7 +14,7 @@ import { useTranslation } from '@/hooks/useTranslation';
 
 export default function LoginPage() {
   const router = useRouter();
-  const searchParams = useSearchParams(); // Get search parameters
+  const searchParams = useSearchParams(); // Keep for potential future use or other params
   const { toast } = useToast();
   const [password, setPassword] = useState('');
   const [isPending, startTransition] = useTransition();
@@ -27,15 +27,11 @@ export default function LoginPage() {
       if (result.success) {
         toast({
           title: t('loginSuccessTitle'),
-          description: result.message,
+          description: result.message, // Message from loginAction, e.g., "Login successful."
         });
         
-        const redirectTo = searchParams.get('redirect_to');
-        // Redirect to the intended page or default to the settings page
-        router.push(redirectTo || '/import-xml'); 
-        // After push, the new page will render with the correct header due to cookie change.
-        // router.refresh() is not strictly necessary here if the push leads to a server-rendered route
-        // that correctly re-evaluates authentication state.
+        // Always redirect to settings page upon successful login from this page
+        router.push('/import-xml'); 
       } else {
         toast({
           title: t('loginFailedTitle'),
