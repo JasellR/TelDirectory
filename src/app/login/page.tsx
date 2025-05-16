@@ -29,10 +29,10 @@ export default function LoginPage() {
           title: t('loginSuccessTitle'),
           description: result.message,
         });
-        // Perform a full browser navigation to the homepage
+        // Perform a full browser navigation to the settings page
         // This ensures all server components, including the layout and AppHeader,
         // are re-fetched with the new authentication cookie.
-        window.location.href = '/';
+        window.location.href = '/import-xml'; 
       } else {
         toast({
           title: t('loginFailedTitle'),
