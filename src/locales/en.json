@@ -142,5 +142,15 @@
   "noResultsFoundDescription": "Your search for \"{searchTerm}\" did not match any departments or extensions.",
   "searchResultsCount": "{count} results found.",
   "matchingExtensionsLabel": "Matching Extensions:",
-  "andMoreExtensions": "...and {count} more."
+  "andMoreExtensions": "...and {count} more.",
+  "loginPageTitle": "Admin Login",
+  "loginPageDescription": "Enter your password to access administrative features.",
+  "passwordLabel": "Password",
+  "passwordPlaceholder": "Enter password",
+  "loginButtonText": "Login",
+  "loginSuccessTitle": "Login Successful",
+  "loginFailedTitle": "Login Failed",
+  "logoutButton": "Logout",
+  "accountSettings": "Account",
+  "accountSettingsDescription": "Manage your login session."
 }

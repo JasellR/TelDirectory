@@ -1,38 +1,42 @@
 
-'use client'; 
+'use client';
 
 import { useState, useEffect, useTransition } from 'react';
 import { Breadcrumbs } from '@/components/layout/Breadcrumbs';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { UploadCloud, Palette, Languages, Settings as SettingsIcon, FileCode, Network, Info, FolderCog, CheckCircle, AlertCircleIcon } from 'lucide-react';
+import { UploadCloud, Palette, Languages, Settings as SettingsIcon, FileCode, Network, Info, FolderCog, CheckCircle, AlertCircleIcon, LogOut } from 'lucide-react';
 import { FileUploadForm } from '@/components/import/FileUploadForm';
 import { saveZoneBranchXmlAction, saveDepartmentXmlAction, updateXmlUrlsAction, updateDirectoryRootPathAction } from '@/lib/actions';
 import { ThemeToggle } from '@/components/settings/ThemeToggle';
-import { LanguageToggle } from '@/components/settings/LanguageToggle'; 
+import { LanguageToggle } from '@/components/settings/LanguageToggle';
 import { Separator } from '@/components/ui/separator';
-import { useTranslation } from '@/hooks/useTranslation'; 
+import { useTranslation } from '@/hooks/useTranslation';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2 } from 'lucide-react';
 import { getDirectoryConfig } from '@/lib/config';
-import type { DirectoryConfig } from '@/lib/config';
+import { logoutAction } from '@/lib/auth-actions'; // For logout
+import { useRouter } from 'next/navigation'; // For redirect after logout
 
 export default function SettingsPage() {
   const { t } = useTranslation();
   const { toast } = useToast();
+  const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [isPathPending, startPathTransition] = useTransition();
+  const [isLogoutPending, startLogoutTransition] = useTransition();
+
 
   const [serviceHost, setServiceHost] = useState('');
-  const [servicePort, setServicePort] = useState('3000'); 
-  
+  const [servicePort, setServicePort] = useState('3000');
+
   const [directoryRootPath, setDirectoryRootPath] = useState('');
   const [currentConfigDisplayPath, setCurrentConfigDisplayPath] = useState<string | null>(null);
   const [isLoadingPath, setIsLoadingPath] = useState(true);
-  
+
   const [pathStatus, setPathStatus] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
 
   useEffect(() => {
@@ -42,31 +46,31 @@ export default function SettingsPage() {
   useEffect(() => {
     let isMounted = true;
     setIsLoadingPath(true);
-    
+
     getDirectoryConfig().then(config => {
       if (isMounted) {
         const savedPath = config.ivoxsRootPath || '';
-        setDirectoryRootPath(savedPath); 
-        setCurrentConfigDisplayPath(savedPath); 
+        setDirectoryRootPath(savedPath);
+        setCurrentConfigDisplayPath(savedPath);
         setIsLoadingPath(false);
       }
     }).catch(() => {
       if (isMounted) {
-        setDirectoryRootPath(''); 
-        setCurrentConfigDisplayPath(null); 
+        setDirectoryRootPath('');
+        setCurrentConfigDisplayPath(null);
         setIsLoadingPath(false);
       }
     });
-    
-    return () => { isMounted = false; }; 
-  }, []); 
+
+    return () => { isMounted = false; };
+  }, []);
 
   const handleApplyNetworkSettings = async () => {
     if (!serviceHost.trim()) {
       toast({ title: t('errorTitle'), description: t('hostCannotBeEmpty'), variant: 'destructive' });
       return;
     }
-    if (!servicePort.trim() || !/^\d+$/.test(servicePort.trim())) {
+    if (!servicePort.trim() || !/^\\d+$/.test(servicePort.trim())) {
       toast({ title: t('errorTitle'), description: t('portInvalid'), variant: 'destructive' });
       return;
     }
@@ -93,7 +97,7 @@ export default function SettingsPage() {
         setPathStatus({type: 'error', message: t('directoryPathCannotBeEmpty')});
         return;
     }
-    if (!path.isAbsolute(directoryRootPath.trim())) { 
+    if (!path.isAbsolute(directoryRootPath.trim())) {
         toast({ title: t('errorTitle'), description: t('directoryPathMustBeAbsolute'), variant: 'destructive' });
         setPathStatus({type: 'error', message: t('directoryPathMustBeAbsolute')});
         return;
@@ -102,12 +106,20 @@ export default function SettingsPage() {
         const result = await updateDirectoryRootPathAction(directoryRootPath.trim());
         if (result.success) {
             toast({ title: t('successTitle'), description: result.message });
-            setCurrentConfigDisplayPath(directoryRootPath.trim()); 
+            setCurrentConfigDisplayPath(directoryRootPath.trim());
             setPathStatus({type: 'success', message: result.message});
         } else {
             toast({ title: t('errorTitle'), description: result.message + (result.error ? ` ${t('detailsLabel')}: ${result.error}` : ''), variant: 'destructive' });
             setPathStatus({type: 'error', message: result.message + (result.error ? ` Details: ${result.error}` : '')});
         }
+    });
+  };
+
+  const handleLogout = async () => {
+    startLogoutTransition(async () => {
+        await logoutAction();
+        // The server action handles redirect, but we can refresh client state if needed
+        // router.refresh(); // Not strictly needed as server action redirects
     });
   };
 
@@ -152,11 +164,25 @@ export default function SettingsPage() {
                     <LanguageToggle />
                 </CardContent>
             </Card>
+            <Card className="shadow-none border">
+                <CardHeader>
+                    <div className="flex items-center gap-3">
+                        <LogOut className="h-5 w-5 text-muted-foreground" />
+                        <CardTitle className="text-xl">{t('accountSettings')}</CardTitle>
+                    </div>
+                     <CardDescription>{t('accountSettingsDescription')}</CardDescription>
+                </CardHeader>
+                <CardContent>
+                    <Button onClick={handleLogout} variant="destructive" disabled={isLogoutPending}>
+                        {isLogoutPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : t('logoutButton')}
+                    </Button>
+                </CardContent>
+            </Card>
           </CardContent>
         </Card>
 
         <Separator />
-        
+
         <Card>
           <CardHeader>
             <div className="flex items-center gap-3">
@@ -179,12 +205,12 @@ export default function SettingsPage() {
               />
                <p className="text-sm text-muted-foreground">
                 {t('currentPathLabel')}:{' '}
-                {isLoadingPath 
-                  ? t('loadingPathLabel') 
-                  : currentConfigDisplayPath === null 
-                    ? t('errorFetchingPathLabel') 
-                    : currentConfigDisplayPath 
-                      ? currentConfigDisplayPath 
+                {isLoadingPath
+                  ? t('loadingPathLabel')
+                  : currentConfigDisplayPath === null
+                    ? t('errorFetchingPathLabel')
+                    : currentConfigDisplayPath
+                      ? currentConfigDisplayPath
                       : t('defaultPathLabel', { path: 'ivoxsdir (project root)' })}
               </p>
             </div>
@@ -253,7 +279,7 @@ export default function SettingsPage() {
             </div>
           </CardContent>
         </Card>
-        
+
         <Separator />
 
         <Card>
@@ -274,7 +300,7 @@ export default function SettingsPage() {
                 {t('importOverwriteWarning')}
               </AlertDescription>
             </Alert>
-            
+
             <Card className="shadow-none border">
                 <CardHeader>
                     <CardTitle className="text-xl">{t('importZoneBranchXml')}</CardTitle>
@@ -283,7 +309,7 @@ export default function SettingsPage() {
                 <CardContent>
                     <FileUploadForm
                       importAction={saveZoneBranchXmlAction}
-                      requiresId={false} 
+                      requiresId={false}
                       allowMultipleFiles={true}
                     />
                 </CardContent>
@@ -298,7 +324,7 @@ export default function SettingsPage() {
                     <FileUploadForm
                       importAction={saveDepartmentXmlAction}
                       allowMultipleFiles={true}
-                      requiresId={false} 
+                      requiresId={false}
                     />
                 </CardContent>
             </Card>
@@ -318,4 +344,3 @@ const path = {
     return p.startsWith('/') || /^[a-zA-Z]:\\/.test(p) || /^[a-zA-Z]:\//.test(p);
   }
 };
-

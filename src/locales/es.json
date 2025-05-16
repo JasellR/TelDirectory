@@ -142,5 +142,15 @@
   "noResultsFoundDescription": "Su búsqueda de \"{searchTerm}\" no coincidió con ningún departamento o extensión.",
   "searchResultsCount": "{count} resultados encontrados.",
   "matchingExtensionsLabel": "Extensiones Coincidentes:",
-  "andMoreExtensions": "...y {count} más."
+  "andMoreExtensions": "...y {count} más.",
+  "loginPageTitle": "Inicio de Sesión Admin",
+  "loginPageDescription": "Ingrese su contraseña para acceder a las funciones administrativas.",
+  "passwordLabel": "Contraseña",
+  "passwordPlaceholder": "Ingrese contraseña",
+  "loginButtonText": "Iniciar Sesión",
+  "loginSuccessTitle": "Inicio de Sesión Exitoso",
+  "loginFailedTitle": "Falló el Inicio de Sesión",
+  "logoutButton": "Cerrar Sesión",
+  "accountSettings": "Cuenta",
+  "accountSettingsDescription": "Gestione su sesión."
 }
