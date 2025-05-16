@@ -2,7 +2,7 @@
 'use client';
 
 import { useState, useTransition } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -14,6 +14,7 @@ import { useTranslation } from '@/hooks/useTranslation';
 
 export default function LoginPage() {
   const router = useRouter();
+  const searchParams = useSearchParams(); // Get search parameters
   const { toast } = useToast();
   const [password, setPassword] = useState('');
   const [isPending, startTransition] = useTransition();
@@ -28,11 +29,14 @@ export default function LoginPage() {
           title: t('loginSuccessTitle'),
           description: result.message,
         });
-        // Server action handles redirect.
-        // Refresh the router to ensure layout components like AppHeader re-evaluate auth state.
-        router.refresh();
-        // Forcing a full redirect to the homepage after a slight delay can also work if router.refresh() isn't enough
-        // setTimeout(() => router.push('/'), 100);
+        
+        const redirectTo = searchParams.get('redirect_to');
+        // Redirect to the intended page or default to the settings page
+        router.push(redirectTo || '/import-xml'); 
+        // router.refresh() might still be beneficial here if the push alone doesn't always update layout state,
+        // but typically push to a new server-rendered route should suffice.
+        // Forcing a full refresh after a slight delay could be an alternative if issues persist:
+        // setTimeout(() => router.refresh(), 50); // Or router.push with force-dynamic
       } else {
         toast({
           title: t('loginFailedTitle'),
