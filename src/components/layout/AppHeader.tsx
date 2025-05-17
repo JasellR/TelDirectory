@@ -3,20 +3,12 @@ import Link from 'next/link';
 import { Phone, Settings } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { getTranslations } from '@/lib/translations-server';
-// import { isAuthenticated, logoutAction } from '@/lib/auth-actions'; // Authentication removed
-// import { cookies } from 'next/headers'; // Authentication removed
-
-// Reverted: Auth check removed
-// async function IsUserAuthenticated() {
-//   const cookieStore = cookies();
-//   const sessionCookie = cookieStore.get('teldirectory-auth-session');
-//   return !!sessionCookie && sessionCookie.value === 'authenticated';
-// }
+import { ThemeToggleHeader } from '@/components/settings/ThemeToggleHeader';
+import { LanguageToggleHeader } from '@/components/settings/LanguageToggleHeader';
 
 
 export async function AppHeader() {
   const t = await getTranslations();
-  // const userIsAuthenticated = await IsUserAuthenticated(); // Authentication removed
 
   return (
     <header className="bg-card border-b border-border shadow-sm">
@@ -27,7 +19,8 @@ export async function AppHeader() {
         </Link>
 
         <nav className="flex items-center gap-2">
-          {/* Reverted: Always show Settings icon, remove Login/Logout buttons */}
+          <LanguageToggleHeader />
+          <ThemeToggleHeader />
           <Button variant="ghost" size="icon" asChild aria-label={t('settings')}>
             <Link href="/import-xml">
               <Settings className="h-5 w-5" />
