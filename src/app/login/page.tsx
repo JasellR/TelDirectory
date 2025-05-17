@@ -1,8 +1,8 @@
 
 'use client';
 
-import { useState, useTransition } from 'react';
-import { useRouter } from 'next/navigation'; // useRouter can still be used for other purposes if needed.
+import { useState, useTransition, useEffect } from 'react';
+import { useSearchParams } from 'next/navigation'; // To read query params
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -13,20 +13,37 @@ import { Loader2, LogIn } from 'lucide-react';
 import { useTranslation } from '@/hooks/useTranslation';
 
 export default function LoginPage() {
-  const router = useRouter(); // Keep for potential future use, but not for post-login redirect here
   const { toast } = useToast();
+  const searchParams = useSearchParams(); // Hook to get search params
   const [password, setPassword] = useState('');
   const [isPending, startTransition] = useTransition();
   const { t } = useTranslation();
 
+  // State to hold the redirect path from query parameter
+  const [redirectTo, setRedirectTo] = useState<string | null>(null);
+
+  useEffect(() => {
+    // Get the redirect_to parameter once when the component mounts
+    const redirectParam = searchParams.get('redirect_to');
+    if (redirectParam) {
+      setRedirectTo(redirectParam);
+    }
+  }, [searchParams]);
+
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     startTransition(async () => {
-      // loginAction will either redirect (on success) or return { success: false, ... }
       const result = await loginAction(password);
 
-      // This code should only be reached if loginAction did NOT redirect, i.e., it failed.
-      if (result && result.success === false) { 
+      if (result.success) {
+        toast({
+          title: t('loginSuccessTitle'),
+          description: t('redirectingMessage') || 'Login successful. Redirecting...',
+        });
+        // Perform a full page reload to ensure server components pick up the cookie
+        // And redirect to the intended page or homepage
+        window.location.href = redirectTo || '/';
+      } else {
         toast({
           title: t('loginFailedTitle'),
           description: result.message,
@@ -34,8 +51,6 @@ export default function LoginPage() {
         });
         setPassword('');
       }
-      // If loginAction was successful, it would have already redirected the user.
-      // A success toast here would likely not be seen or would be interrupted.
     });
   };
 

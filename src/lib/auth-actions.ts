@@ -2,7 +2,7 @@
 'use server';
 
 import { cookies } from 'next/headers';
-import { redirect } from 'next/navigation'; // Import redirect
+import { redirect } from 'next/navigation'; // Still needed for logoutAction
 
 const AUTH_COOKIE_NAME = 'teldirectory-auth-session';
 const HARDCODED_PASSWORD = process.env.ADMIN_PASSWORD || 'admin123'; // Use environment variable or default
@@ -11,18 +11,15 @@ export async function loginAction(password: string): Promise<{ success: boolean;
   if (password === HARDCODED_PASSWORD) {
     cookies().set({
       name: AUTH_COOKIE_NAME,
-      value: 'authenticated', // Simple value, could be a JWT in a real app
+      value: 'authenticated',
       httpOnly: true,
       path: '/',
       maxAge: 60 * 60 * 24 * 7, // 7 days
       sameSite: 'lax',
       // secure: process.env.NODE_ENV === 'production', // Enable in production
     });
-    redirect('/import-xml'); // Server-side redirect after setting cookie
-    // Note: redirect() throws an error to stop execution, so this line below might not be reached
-    // or its return value might not be processed by the client if the redirect is successful.
-    // However, returning a consistent shape helps if redirect fails or for typing.
-    // return { success: true, message: 'Login successful. Redirecting...' }; 
+    // DO NOT redirect from here. Let the client handle it.
+    return { success: true, message: 'Login successful.' };
   } else {
     return { success: false, message: 'Invalid password.' };
   }
@@ -30,7 +27,7 @@ export async function loginAction(password: string): Promise<{ success: boolean;
 
 export async function logoutAction(): Promise<void> {
   cookies().delete(AUTH_COOKIE_NAME);
-  redirect('/login');
+  redirect('/login'); // Server-side redirect for logout is fine
 }
 
 export async function isAuthenticated(): Promise<boolean> {
