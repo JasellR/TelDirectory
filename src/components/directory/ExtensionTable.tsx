@@ -22,10 +22,11 @@ interface ExtensionTableProps {
   localityName: string;
   localityId: string; 
   zoneId: string; 
-  branchId?: string; // Optional branch context
+  branchId?: string; 
+  isAuthenticated: boolean; // New prop
 }
 
-export function ExtensionTable({ extensions, localityName, localityId, zoneId, branchId }: ExtensionTableProps) {
+export function ExtensionTable({ extensions, localityName, localityId, zoneId, branchId, isAuthenticated }: ExtensionTableProps) {
   const { t } = useTranslation();
 
   const renderTableContent = () => {
@@ -51,7 +52,7 @@ export function ExtensionTable({ extensions, localityName, localityId, zoneId, b
             <TableHead className="w-[35%]">{t('departmentColumnHeader')}</TableHead>
             <TableHead className="w-[20%]">{t('extensionColumnHeader')}</TableHead>
             <TableHead className="w-[30%]">{t('contactNameColumnHeader')}</TableHead>
-            <TableHead className="w-[15%] text-right">{t('actionsColumnHeader')}</TableHead>
+            {isAuthenticated && <TableHead className="w-[15%] text-right">{t('actionsColumnHeader')}</TableHead>}
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -74,22 +75,24 @@ export function ExtensionTable({ extensions, localityName, localityId, zoneId, b
                   <span className="text-muted-foreground italic">{t('notApplicable')}</span>
                 )}
               </TableCell>
-              <TableCell className="text-right">
-                <div className="flex justify-end space-x-1">
-                  <EditExtensionButton 
-                    localityId={localityId} 
-                    extension={ext} 
-                    zoneId={zoneId}
-                    branchId={branchId}
-                  />
-                  <DeleteExtensionButton 
+              {isAuthenticated && (
+                <TableCell className="text-right">
+                  <div className="flex justify-end space-x-1">
+                    <EditExtensionButton 
                       localityId={localityId} 
-                      zoneId={zoneId} 
-                      branchId={branchId} 
                       extension={ext} 
-                  />
-                </div>
-              </TableCell>
+                      zoneId={zoneId}
+                      branchId={branchId}
+                    />
+                    <DeleteExtensionButton 
+                        localityId={localityId} 
+                        zoneId={zoneId} 
+                        branchId={branchId} 
+                        extension={ext} 
+                    />
+                  </div>
+                </TableCell>
+              )}
             </TableRow>
           ))}
         </TableBody>
@@ -108,3 +111,4 @@ export function ExtensionTable({ extensions, localityName, localityId, zoneId, b
     </Card>
   );
 }
+

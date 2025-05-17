@@ -10,6 +10,7 @@ import { GitBranch, Building, Search as SearchIcon, Inbox, SearchX } from 'lucid
 import { EditLocalityButton } from '@/components/actions/EditLocalityButton';
 import { DeleteLocalityButton } from '@/components/actions/DeleteLocalityButton';
 import { useTranslation } from '@/hooks/useTranslation';
+import { useIsAuthenticatedClient } from '@/hooks/useIsAuthenticatedClient'; // For client-side auth check
 
 interface LocalityBranchSearchProps {
   items: ZoneItem[];
@@ -21,6 +22,7 @@ interface LocalityBranchSearchProps {
 export function LocalityBranchSearch({ items, zoneId, itemType, itemTypePlural }: LocalityBranchSearchProps) {
   const [searchTerm, setSearchTerm] = useState('');
   const { t } = useTranslation();
+  const isAuthenticated = useIsAuthenticatedClient(); // Client-side check for UI elements
 
   const filteredItems = useMemo(() => {
     if (!searchTerm.trim()) {
@@ -76,19 +78,21 @@ export function LocalityBranchSearch({ items, zoneId, itemType, itemTypePlural }
                       {description} (ID: {item.id})
                     </p>
                   </div>
-                  <div className="flex-shrink-0 flex items-center space-x-1">
-                    <EditLocalityButton
-                      zoneId={zoneId}
-                      item={item}
-                      itemType={item.type}
-                    />
-                    <DeleteLocalityButton
-                      zoneId={zoneId}
-                      itemId={item.id}
-                      itemName={item.name}
-                      itemType={item.type}
-                    />
-                  </div>
+                  {isAuthenticated && (
+                    <div className="flex-shrink-0 flex items-center space-x-1">
+                      <EditLocalityButton
+                        zoneId={zoneId}
+                        item={item}
+                        itemType={item.type}
+                      />
+                      <DeleteLocalityButton
+                        zoneId={zoneId}
+                        itemId={item.id}
+                        itemName={item.name}
+                        itemType={item.type}
+                      />
+                    </div>
+                  )}
                 </CardContent>
               </Card>
             );
@@ -118,3 +122,4 @@ export function LocalityBranchSearch({ items, zoneId, itemType, itemTypePlural }
     </div>
   );
 }
+

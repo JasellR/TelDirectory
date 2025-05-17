@@ -6,10 +6,11 @@ import type { Metadata } from 'next';
 import { Separator } from '@/components/ui/separator';
 import { AddLocalityButton } from '@/components/actions/AddLocalityButton';
 import { LocalityBranchSearch } from '@/components/search/LocalityBranchSearch';
-import { Button } from '@/components/ui/button'; // Added
-import Link from 'next/link'; // Added
-import { ArrowLeft } from 'lucide-react'; // Added
-import { getTranslations } from '@/lib/translations-server'; // Added
+import { Button } from '@/components/ui/button'; 
+import Link from 'next/link'; 
+import { ArrowLeft } from 'lucide-react'; 
+import { getTranslations } from '@/lib/translations-server'; 
+import { isAuthenticated } from '@/lib/auth-actions'; // Import isAuthenticated
 
 interface ZonePageProps {
   params: {
@@ -18,7 +19,7 @@ interface ZonePageProps {
 }
 
 export async function generateMetadata({ params }: ZonePageProps): Promise<Metadata> {
-  const resolvedParams = await params; // Await params
+  const resolvedParams = await params; 
   const zone = await getZoneDetails(resolvedParams.zoneId);
   if (!zone) {
     return {
@@ -33,10 +34,11 @@ export async function generateMetadata({ params }: ZonePageProps): Promise<Metad
 }
 
 export default async function ZonePage({ params }: ZonePageProps) {
-  const resolvedParams = await params; // Await params
+  const resolvedParams = await params; 
   const { zoneId } = resolvedParams;
   const zone = await getZoneDetails(zoneId);
-  const t = await getTranslations(); // For server-side translations
+  const t = await getTranslations(); 
+  const userIsAuthenticated = await isAuthenticated(); // Check auth status
   
   if (!zone) { 
     notFound();
@@ -62,11 +64,13 @@ export default async function ZonePage({ params }: ZonePageProps) {
         </div>
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-8 gap-4">
           <h1 className="text-3xl font-bold text-foreground">{itemTypeNamePlural} in {zone.name}</h1>
-          <AddLocalityButton 
-            zoneId={zoneId} 
-            zoneName={zone.name} 
-            itemType={isZonaMetropolitana ? 'branch' : 'locality'}
-          />
+          {userIsAuthenticated && (
+            <AddLocalityButton 
+              zoneId={zoneId} 
+              zoneName={zone.name} 
+              itemType={isZonaMetropolitana ? 'branch' : 'locality'}
+            />
+          )}
         </div>
         
         <LocalityBranchSearch items={items} zoneId={zoneId} itemType={itemTypeName} itemTypePlural={itemTypeNamePlural} />
@@ -92,3 +96,4 @@ function itemTypeHelpText(isZonaMetropolitana: boolean) {
   }
   return "department XML file (in ivoxsdir/department/)";
 }
+

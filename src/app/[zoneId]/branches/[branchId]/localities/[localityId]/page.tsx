@@ -10,6 +10,7 @@ import { Button } from '@/components/ui/button';
 import Link from 'next/link';
 import { ArrowLeft } from 'lucide-react';
 import { getTranslations } from '@/lib/translations-server';
+import { isAuthenticated } from '@/lib/auth-actions'; // Import isAuthenticated
 
 interface BranchLocalityPageProps {
   params: {
@@ -39,6 +40,7 @@ export default async function BranchLocalityPage({ params }: BranchLocalityPageP
   const branch = await getBranchDetails(zoneId, branchId);
   const locality = await getLocalityWithExtensions(localityId);
   const localityDisplayName = (await getLocalityDetails(localityId, { zoneId, branchId }))?.name || localityId;
+  const userIsAuthenticated = await isAuthenticated(); // Check auth status
 
 
   if (!zone || !branch || !locality) { 
@@ -67,12 +69,14 @@ export default async function BranchLocalityPage({ params }: BranchLocalityPageP
         </div>
         <div className="flex justify-between items-center mb-6">
           <h1 className="text-3xl font-bold text-foreground">Extensions in {localityDisplayName}</h1>
-          <AddExtensionButton 
-            localityId={localityId} 
-            localityName={localityDisplayName} 
-            zoneId={zoneId}
-            branchId={branchId} 
-          />
+          {userIsAuthenticated && (
+            <AddExtensionButton 
+              localityId={localityId} 
+              localityName={localityDisplayName} 
+              zoneId={zoneId}
+              branchId={branchId} 
+            />
+          )}
         </div>
         <ExtensionTable 
           extensions={locality.extensions || []} 
@@ -80,6 +84,7 @@ export default async function BranchLocalityPage({ params }: BranchLocalityPageP
           localityId={localityId}
           zoneId={zoneId}
           branchId={branchId}
+          isAuthenticated={userIsAuthenticated} // Pass auth status
         />
       </div>
 
@@ -95,3 +100,4 @@ export default async function BranchLocalityPage({ params }: BranchLocalityPageP
     </div>
   );
 }
+
