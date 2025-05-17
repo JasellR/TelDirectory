@@ -14,7 +14,7 @@ import { useTranslation } from '@/hooks/useTranslation';
 import Link from 'next/link';
 
 export default function LoginPage() {
-  const router = useRouter(); // Keep for potential future use if needed, but not for post-login redirect here
+  const router = useRouter(); 
   const searchParams = useSearchParams();
   const { toast } = useToast();
   const [isPending, startTransition] = useTransition();
@@ -38,7 +38,7 @@ export default function LoginPage() {
           
           const redirectTo = searchParams.get('redirect_to');
           if (redirectTo) {
-            console.log('[Login Page] Redirecting to:', redirectTo);
+            console.log('[Login Page] Redirecting to original destination:', redirectTo);
             window.location.href = redirectTo; // Full page reload to the intended destination
           } else {
             console.log('[Login Page] Redirecting to homepage /');
@@ -53,8 +53,6 @@ export default function LoginPage() {
           });
         }
       } catch (e: any) {
-        // This catch block generally shouldn't be hit if loginAction handles its own errors
-        // and doesn't throw, but it's good for unexpected issues.
         console.error("Login page encountered an unexpected error during login attempt:", e);
         const errorMessage = e.message || t('loginUnexpectedError'); 
         setError(errorMessage);
