@@ -1,16 +1,17 @@
 
 import Link from 'next/link';
-import { Phone, Settings, LogIn, LogOut } from 'lucide-react';
+import { Phone, Settings, LogIn } from 'lucide-react'; // LogOut removed, handled by UserMenu
 import { Button } from '@/components/ui/button';
 import { getTranslations } from '@/lib/translations-server';
 import { ThemeToggleHeader } from '@/components/settings/ThemeToggleHeader';
 import { LanguageToggleHeader } from '@/components/settings/LanguageToggleHeader';
-import { getCurrentUser } from '@/lib/auth-actions'; // Updated import
-import { UserMenu } from './UserMenu'; // Assuming UserMenu component exists or will be created
+import { getCurrentUser } from '@/lib/auth-actions';
+import { UserMenu } from './UserMenu';
 
 export async function AppHeader() {
   const t = await getTranslations();
-  const user = await getCurrentUser(); // Fetches user session
+  const user = await getCurrentUser();
+  // console.log('[AppHeader] Current user from getCurrentUser():', user);
 
   return (
     <header className="bg-card border-b border-border shadow-sm">
@@ -30,7 +31,7 @@ export async function AppHeader() {
                   <Settings className="h-5 w-5" />
                 </Link>
               </Button>
-              <UserMenu username={user.username} /> 
+              <UserMenu username={user.username} />
             </>
           ) : (
             <Button variant="outline" asChild size="sm">

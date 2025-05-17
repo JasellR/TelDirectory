@@ -2,7 +2,7 @@
 'use client';
 
 import { useState, useTransition, useEffect } from 'react';
-import { useSearchParams, useRouter } from 'next/navigation';
+import { useSearchParams, useRouter } from 'next/navigation'; // Keep useRouter for potential future use if window.location is problematic
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -14,7 +14,6 @@ import { useTranslation } from '@/hooks/useTranslation';
 import Link from 'next/link';
 
 export default function LoginPage() {
-  const router = useRouter(); 
   const searchParams = useSearchParams();
   const { toast } = useToast();
   const [isPending, startTransition] = useTransition();
@@ -28,20 +27,20 @@ export default function LoginPage() {
 
     startTransition(async () => {
       try {
-        const result = await loginAction(formData); 
-        
+        const result = await loginAction(formData);
+
         if (result.success) {
           toast({
             title: t('loginSucceeded'),
-            description: result.message || t('loginSucceeded'), 
+            description: result.message || t('loginSucceeded'),
           });
-          
+
           const redirectTo = searchParams.get('redirect_to');
           if (redirectTo) {
-            console.log('[Login Page] Redirecting to original destination:', redirectTo);
+            console.log('[Login Page] Login success, redirecting to original destination:', redirectTo);
             window.location.href = redirectTo; // Full page reload to the intended destination
           } else {
-            console.log('[Login Page] Redirecting to homepage /');
+            console.log('[Login Page] Login success, redirecting to homepage /');
             window.location.href = '/'; // Full page reload to homepage
           }
         } else {
@@ -53,8 +52,10 @@ export default function LoginPage() {
           });
         }
       } catch (e: any) {
+        // This catch is for unexpected errors during the loginAction call itself,
+        // though loginAction is designed to return error objects rather than throw.
         console.error("Login page encountered an unexpected error during login attempt:", e);
-        const errorMessage = e.message || t('loginUnexpectedError'); 
+        const errorMessage = e.message || t('loginUnexpectedError');
         setError(errorMessage);
         toast({
           title: t('loginFailedTitle'),

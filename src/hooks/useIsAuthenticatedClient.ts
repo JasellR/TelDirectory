@@ -2,7 +2,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import Cookies from 'js-cookie'; 
+import Cookies from 'js-cookie';
 import type { UserSession } from '@/types';
 
 const AUTH_COOKIE_NAME = 'teldirectory-session';
@@ -16,21 +16,19 @@ export function useIsAuthenticatedClient(): boolean {
 
   useEffect(() => {
     const sessionCookie = Cookies.get(AUTH_COOKIE_NAME);
+    // console.log('[useIsAuthenticatedClient] Cookie check on mount. Value:', sessionCookie);
     if (sessionCookie) {
       try {
         const session = JSON.parse(sessionCookie) as UserSession;
         setIsAuthenticated(!!session.userId);
       } catch (error) {
-        console.warn('[AuthClient] Error parsing session cookie:', error);
+        console.warn('[AuthClient - useIsAuthenticatedClient] Error parsing session cookie:', error);
         setIsAuthenticated(false);
       }
     } else {
       setIsAuthenticated(false);
     }
-    // This effect should re-run if the cookie potentially changes,
-    // but direct cookie changes don't trigger React re-renders.
-    // Navigation or router.refresh() after login/logout should cause components using this hook to re-mount or re-render.
-  }, []); // Re-run if cookie value could change by external means, though typically on navigation.
+  }, []); // Runs once on component mount
 
   return isAuthenticated;
 }
@@ -40,6 +38,7 @@ export function useCurrentUserClient(): UserSession | null {
 
   useEffect(() => {
     const sessionCookie = Cookies.get(AUTH_COOKIE_NAME);
+    // console.log('[useCurrentUserClient] Cookie check on mount. Value:', sessionCookie);
     if (sessionCookie) {
       try {
         const session = JSON.parse(sessionCookie) as UserSession;
@@ -49,12 +48,12 @@ export function useCurrentUserClient(): UserSession | null {
           setUser(null);
         }
       } catch (error) {
-        console.warn('[AuthClient] Error parsing session cookie for currentUser:', error);
+        console.warn('[AuthClient - useCurrentUserClient] Error parsing session cookie for currentUser:', error);
         setUser(null);
       }
     } else {
       setUser(null);
     }
-  }, []);
+  }, []); // Runs once on component mount
   return user;
 }
