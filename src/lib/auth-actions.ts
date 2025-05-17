@@ -2,7 +2,7 @@
 'use server';
 
 import { cookies } from 'next/headers';
-import { redirect } from 'next/navigation';
+import { redirect } from 'next/navigation'; // Keep for logoutAction
 import { getDb, bcrypt } from './db';
 import type { UserSession } from '@/types';
 
@@ -60,25 +60,20 @@ export async function loginAction(formData: FormData): Promise<{ success: boolea
           maxAge: 60 * 60 * 24 * 7, // 1 week
         });
         console.log('[Auth] Session cookie set for user:', username);
+        return { success: true, message: 'Login successful. Redirecting...' }; // Return success
       } catch (cookieError: any) {
         console.error('[Auth] Error setting session cookie:', cookieError);
         return { success: false, message: 'Error finalizing login session. Please try again.'};
       }
-      
-      console.log('[Auth] Login successful for user:', username, '. Redirecting to /import-xml');
-      redirect('/import-xml'); 
-      // redirect() throws an error that Next.js catches, so this line below won't be reached.
-      // For type consistency, though, some might add: return { success: true, message: 'Login successful' };
     } else {
       console.log('[Auth] Invalid password for user:', username);
       return { success: false, message: 'Invalid username or password.' };
     }
   } catch (error: any) {
-    // This catch block is for truly unexpected errors or if redirect() itself throws something other than NEXT_REDIRECT
+    // This catch block is for truly unexpected errors.
+    // Note: redirect() called in a try/catch block needs special handling for the NEXT_REDIRECT error.
+    // Since we removed redirect() from here, this is simpler.
     console.error('[Auth] General login error caught in loginAction:', error);
-    if (typeof error === 'object' && error !== null && 'digest' in error && typeof error.digest === 'string' && error.digest.startsWith('NEXT_REDIRECT')) {
-      throw error; // Re-throw NEXT_REDIRECT to let Next.js handle it
-    }
     return { success: false, message: 'An unexpected critical error occurred during login.' };
   }
 }

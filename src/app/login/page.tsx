@@ -1,8 +1,8 @@
 
 'use client';
 
-import { useState, useTransition } from 'react';
-import { useSearchParams, useRouter } from 'next/navigation'; // Keep useRouter for potential future use if needed
+import { useState, useTransition, useEffect } from 'react';
+import { useSearchParams, useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -14,9 +14,8 @@ import { useTranslation } from '@/hooks/useTranslation';
 import Link from 'next/link';
 
 export default function LoginPage() {
-  // useRouter is not strictly needed if loginAction handles all redirects, but good to have for other potential client nav
-  const router = useRouter(); 
-  const searchParams = useSearchParams(); // Keep for potential future use (e.g., error messages in URL)
+  const router = useRouter(); // Keep for potential future use if needed, but not for post-login redirect here
+  const searchParams = useSearchParams();
   const { toast } = useToast();
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
@@ -29,11 +28,23 @@ export default function LoginPage() {
 
     startTransition(async () => {
       try {
-        // loginAction will either redirect on success or return an error object on failure.
         const result = await loginAction(formData); 
         
-        // If loginAction returns, it means it failed (because successful login would have redirected).
-        if (result && !result.success) {
+        if (result.success) {
+          toast({
+            title: t('loginSucceeded'),
+            description: result.message || t('loginSucceeded'), 
+          });
+          
+          const redirectTo = searchParams.get('redirect_to');
+          if (redirectTo) {
+            console.log('[Login Page] Redirecting to:', redirectTo);
+            window.location.href = redirectTo; // Full page reload to the intended destination
+          } else {
+            console.log('[Login Page] Redirecting to homepage /');
+            window.location.href = '/'; // Full page reload to homepage
+          }
+        } else {
           setError(result.message || t('loginFailedError'));
           toast({
             title: t('loginFailedTitle'),
@@ -41,22 +52,11 @@ export default function LoginPage() {
             variant: 'destructive',
           });
         }
-        // If loginAction was successful, it would have already redirected.
-        // No client-side navigation (like router.push or window.location.href) is needed here.
       } catch (e: any) {
-        // This catch block handles errors thrown by loginAction (like NEXT_REDIRECT)
-        // or errors during the call to loginAction itself.
-        if (e.digest?.startsWith('NEXT_REDIRECT')) {
-          // This error is expected when redirect() is called in a server action.
-          // Next.js handles this to perform the actual redirection.
-          // We re-throw it so Next.js can continue its process.
-          // console.log("Login page caught NEXT_REDIRECT, re-throwing for Next.js to handle.");
-          throw e; 
-        }
-        
-        // For any other unexpected errors during the action call.
+        // This catch block generally shouldn't be hit if loginAction handles its own errors
+        // and doesn't throw, but it's good for unexpected issues.
         console.error("Login page encountered an unexpected error during login attempt:", e);
-        const errorMessage = e.message || t('loginUnexpectedError'); // Or a more generic client-side error
+        const errorMessage = e.message || t('loginUnexpectedError'); 
         setError(errorMessage);
         toast({
           title: t('loginFailedTitle'),
@@ -125,4 +125,3 @@ export default function LoginPage() {
     </div>
   );
 }
-
