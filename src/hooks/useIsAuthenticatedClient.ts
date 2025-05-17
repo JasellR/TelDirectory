@@ -1,23 +1,12 @@
 
-'use client';
-
-import { useState, useEffect } from 'react';
-import Cookies from 'js-cookie'; // Using js-cookie for easier client-side cookie access
-
-const AUTH_COOKIE_NAME = 'teldirectory-auth-session';
+// This hook is being reverted and its authentication logic removed.
+// It can be reinstated if client-side authentication checks are needed again.
 
 /**
- * Custom hook to check authentication status on the client-side.
- * Reads the authentication cookie.
- * @returns boolean - true if authenticated, false otherwise.
+ * Placeholder hook. Authentication functionality has been temporarily removed.
+ * @returns boolean - currently always returns true for UI compatibility.
  */
 export function useIsAuthenticatedClient(): boolean {
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
-
-  useEffect(() => {
-    const sessionCookie = Cookies.get(AUTH_COOKIE_NAME);
-    setIsAuthenticated(!!sessionCookie && sessionCookie === 'authenticated');
-  }, []);
-
-  return isAuthenticated;
+  // console.warn("useIsAuthenticatedClient: Authentication checks are temporarily removed. Defaulting to true.");
+  return true; // Defaulting to true so UI elements that might use this don't break.
 }

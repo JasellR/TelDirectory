@@ -1,21 +1,22 @@
 
 import Link from 'next/link';
-import { Phone, Settings, LogOut } from 'lucide-react';
+import { Phone, Settings } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { getTranslations } from '@/lib/translations-server';
-import { isAuthenticated, logoutAction } from '@/lib/auth-actions';
-import { cookies } from 'next/headers'; // To read cookies on server component
+// import { isAuthenticated, logoutAction } from '@/lib/auth-actions'; // Authentication removed
+// import { cookies } from 'next/headers'; // Authentication removed
 
-async function IsUserAuthenticated() {
-  const cookieStore = cookies();
-  const sessionCookie = cookieStore.get('teldirectory-auth-session');
-  return !!sessionCookie && sessionCookie.value === 'authenticated';
-}
+// Reverted: Auth check removed
+// async function IsUserAuthenticated() {
+//   const cookieStore = cookies();
+//   const sessionCookie = cookieStore.get('teldirectory-auth-session');
+//   return !!sessionCookie && sessionCookie.value === 'authenticated';
+// }
 
 
 export async function AppHeader() {
   const t = await getTranslations();
-  const userIsAuthenticated = await IsUserAuthenticated();
+  // const userIsAuthenticated = await IsUserAuthenticated(); // Authentication removed
 
   return (
     <header className="bg-card border-b border-border shadow-sm">
@@ -26,27 +27,12 @@ export async function AppHeader() {
         </Link>
 
         <nav className="flex items-center gap-2">
-          {userIsAuthenticated && (
-            <form action={logoutAction}>
-              <Button variant="ghost" size="icon" type="submit" aria-label={t('logoutButton')}>
-                <LogOut className="h-5 w-5" />
-              </Button>
-            </form>
-          )}
-          {userIsAuthenticated && (
-             <Button variant="ghost" size="icon" asChild aria-label={t('settings')}>
-               <Link href="/import-xml">
-                 <Settings className="h-5 w-5" />
-               </Link>
-             </Button>
-          )}
-          {!userIsAuthenticated && (
-            <Button asChild variant="outline" size="sm">
-              <Link href="/login">
-                {t('loginButtonText')}
-              </Link>
-            </Button>
-          )}
+          {/* Reverted: Always show Settings icon, remove Login/Logout buttons */}
+          <Button variant="ghost" size="icon" asChild aria-label={t('settings')}>
+            <Link href="/import-xml">
+              <Settings className="h-5 w-5" />
+            </Link>
+          </Button>
         </nav>
       </div>
     </header>

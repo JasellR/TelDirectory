@@ -9,8 +9,7 @@ import type { CiscoIPPhoneMenu, CiscoIPPhoneDirectory, MenuItem as XmlMenuItem }
 import { CiscoIPPhoneMenuSchema, CiscoIPPhoneDirectorySchema, getZones, getZoneItems, getBranchItems, getLocalityWithExtensions } from '@/lib/data';
 import { getResolvedIvoxsRootPath, saveDirectoryConfig as saveDirConfig } from '@/lib/config';
 import type { Zone, BranchItem, ZoneItem, GlobalSearchResult, MatchedExtension } from '@/types';
-import { isAuthenticated } from '@/lib/auth-actions'; // Import isAuthenticated
-
+// import { isAuthenticated } from '@/lib/auth-actions'; // Authentication removed
 
 // Helper to get all dynamic paths based on the resolved IVOXS root
 async function getIvoxsPaths() {
@@ -81,10 +80,10 @@ function extractIdFromUrl(url: string): string {
 }
 
 export async function addZoneAction(zoneName: string): Promise<{ success: boolean; message: string; error?: string }> {
-  const authenticated = await isAuthenticated();
-  if (!authenticated) {
-    return { success: false, message: 'Authentication required. Please log in to add a zone.', error: 'User not authenticated' };
-  }
+  // const authenticated = await isAuthenticated(); // Authentication removed
+  // if (!authenticated) {
+  //   return { success: false, message: 'Authentication required. Please log in to add a zone.', error: 'User not authenticated' };
+  // }
 
   const paths = await getIvoxsPaths();
   const newZoneId = generateIdFromName(zoneName);
@@ -155,10 +154,10 @@ interface AddItemArgs {
   itemType: 'branch' | 'locality';
 }
 export async function addLocalityOrBranchAction(args: AddItemArgs): Promise<{ success: boolean; message: string; error?: string }> {
-  const authenticated = await isAuthenticated();
-  if (!authenticated) {
-    return { success: false, message: 'Authentication required. Please log in to add items.', error: 'User not authenticated' };
-  }
+  // const authenticated = await isAuthenticated(); // Authentication removed
+  // if (!authenticated) {
+  //   return { success: false, message: 'Authentication required. Please log in to add items.', error: 'User not authenticated' };
+  // }
 
   const paths = await getIvoxsPaths();
   const { zoneId, branchId, itemName, itemType } = args;
@@ -247,10 +246,10 @@ interface EditItemArgs {
   itemType: 'branch' | 'locality';
 }
 export async function editLocalityOrBranchAction(args: EditItemArgs): Promise<{ success: boolean; message: string; error?: string }> {
-  const authenticated = await isAuthenticated();
-  if (!authenticated) {
-    return { success: false, message: 'Authentication required. Please log in to edit items.', error: 'User not authenticated' };
-  }
+  // const authenticated = await isAuthenticated(); // Authentication removed
+  // if (!authenticated) {
+  //   return { success: false, message: 'Authentication required. Please log in to edit items.', error: 'User not authenticated' };
+  // }
   const paths = await getIvoxsPaths();
   const { zoneId, branchId, oldItemId, newItemName, itemType } = args;
   const sanitizedZoneId = sanitizeFilenamePart(zoneId);
@@ -377,10 +376,10 @@ interface DeleteItemArgs {
   itemType: 'branch' | 'locality';
 }
 export async function deleteLocalityOrBranchAction(args: DeleteItemArgs): Promise<{ success: boolean; message: string }> {
-  const authenticated = await isAuthenticated();
-  if (!authenticated) {
-    return { success: false, message: 'Authentication required. Please log in to delete items.' };
-  }
+  // const authenticated = await isAuthenticated(); // Authentication removed
+  // if (!authenticated) {
+  //   return { success: false, message: 'Authentication required. Please log in to delete items.' };
+  // }
   const paths = await getIvoxsPaths();
   const { zoneId, branchId, itemId, itemType } = args;
   if (!zoneId || !itemId) {
@@ -443,10 +442,10 @@ export async function deleteLocalityOrBranchAction(args: DeleteItemArgs): Promis
 }
 
 export async function addExtensionAction(localityId: string, name: string, telephone: string): Promise<{ success: boolean; message: string; error?: string }> {
-  const authenticated = await isAuthenticated();
-  if (!authenticated) {
-    return { success: false, message: 'Authentication required. Please log in to add extensions.', error: 'User not authenticated' };
-  }
+  // const authenticated = await isAuthenticated(); // Authentication removed
+  // if (!authenticated) {
+  //   return { success: false, message: 'Authentication required. Please log in to add extensions.', error: 'User not authenticated' };
+  // }
   const paths = await getIvoxsPaths();
   const sanitizedLocalityId = sanitizeFilenamePart(localityId);
   if (!sanitizedLocalityId) return { success: false, message: 'Invalid Locality ID.' };
@@ -502,10 +501,10 @@ interface EditExtensionArgs {
 }
 
 export async function editExtensionAction(args: EditExtensionArgs): Promise<{ success: boolean; message: string; error?: string }> {
-  const authenticated = await isAuthenticated();
-  if (!authenticated) {
-    return { success: false, message: 'Authentication required. Please log in to edit extensions.', error: 'User not authenticated' };
-  }
+  // const authenticated = await isAuthenticated(); // Authentication removed
+  // if (!authenticated) {
+  //   return { success: false, message: 'Authentication required. Please log in to edit extensions.', error: 'User not authenticated' };
+  // }
   const paths = await getIvoxsPaths();
   const { localityId, oldExtensionName, oldExtensionNumber, newExtensionName, newExtensionNumber } = args;
 
@@ -572,10 +571,10 @@ export async function editExtensionAction(args: EditExtensionArgs): Promise<{ su
 
 
 export async function deleteExtensionAction(localityId: string, extensionDepartment: string, extensionNumber: string): Promise<{ success: boolean; message: string }> {
-  const authenticated = await isAuthenticated();
-  if (!authenticated) {
-    return { success: false, message: 'Authentication required. Please log in to delete extensions.' };
-  }
+  // const authenticated = await isAuthenticated(); // Authentication removed
+  // if (!authenticated) {
+  //   return { success: false, message: 'Authentication required. Please log in to delete extensions.' };
+  // }
   const paths = await getIvoxsPaths();
   if (!localityId || !extensionDepartment || !extensionNumber) {
     return { success: false, message: 'Locality ID, extension department, and number are required.' };
@@ -603,10 +602,10 @@ export async function deleteExtensionAction(localityId: string, extensionDepartm
 }
 
 export async function saveZoneBranchXmlAction(zoneFilenameBase: string | null, xmlContent: string): Promise<{ success: boolean; message: string; error?: string }> {
-  const authenticated = await isAuthenticated();
-  if (!authenticated) {
-    return { success: false, message: 'Authentication required. Please log in to import files.', error: 'User not authenticated' };
-  }
+  // const authenticated = await isAuthenticated(); // Authentication removed
+  // if (!authenticated) {
+  //   return { success: false, message: 'Authentication required. Please log in to import files.', error: 'User not authenticated' };
+  // }
   const paths = await getIvoxsPaths();
   if (!zoneFilenameBase) return { success: false, message: 'Zone filename is required.' };
   const sanitizedFilenameBase = sanitizeFilenamePart(zoneFilenameBase);
@@ -630,10 +629,10 @@ export async function saveZoneBranchXmlAction(zoneFilenameBase: string | null, x
 }
 
 export async function saveDepartmentXmlAction(departmentFilenameBase: string | null, xmlContent: string): Promise<{ success: boolean; message: string; error?: string }> {
-  const authenticated = await isAuthenticated();
-  if (!authenticated) {
-    return { success: false, message: 'Authentication required. Please log in to import files.', error: 'User not authenticated' };
-  }
+  // const authenticated = await isAuthenticated(); // Authentication removed
+  // if (!authenticated) {
+  //   return { success: false, message: 'Authentication required. Please log in to import files.', error: 'User not authenticated' };
+  // }
   const paths = await getIvoxsPaths();
   if (!departmentFilenameBase) return { success: false, message: 'Department filename is required.' };
   const sanitizedFilenameBase = sanitizeFilenamePart(departmentFilenameBase);
@@ -713,10 +712,10 @@ async function processSingleXmlFileForHostUpdate(filePath: string, newHost: stri
 }
 
 export async function updateXmlUrlsAction(newHost: string, newPort: string): Promise<{ success: boolean; message: string; error?: string; filesProcessed?: number; filesFailed?: number, filesChangedCount?: number }> {
-  const authenticated = await isAuthenticated();
-  if (!authenticated) {
-    return { success: false, message: 'Authentication required. Please log in to update XML URLs.', error: 'User not authenticated' };
-  }
+  // const authenticated = await isAuthenticated(); // Authentication removed
+  // if (!authenticated) {
+  //   return { success: false, message: 'Authentication required. Please log in to update XML URLs.', error: 'User not authenticated' };
+  // }
 
   const paths = await getIvoxsPaths();
   if (!newHost.trim() && !newPort.trim()) {
@@ -797,10 +796,10 @@ export async function updateXmlUrlsAction(newHost: string, newPort: string): Pro
 }
 
 export async function updateDirectoryRootPathAction(newPath: string): Promise<{ success: boolean; message: string; error?: string }> {
-  const authenticated = await isAuthenticated();
-  if (!authenticated) {
-    return { success: false, message: 'Authentication required. Please log in to update directory path.', error: 'User not authenticated' };
-  }
+  // const authenticated = await isAuthenticated(); // Authentication removed
+  // if (!authenticated) {
+  //   return { success: false, message: 'Authentication required. Please log in to update directory path.', error: 'User not authenticated' };
+  // }
 
   if (!newPath || !newPath.trim()) {
     return { success: false, message: "Directory path cannot be empty." };
@@ -941,4 +940,3 @@ export async function searchAllDepartmentsAndExtensionsAction(query: string): Pr
 
   return results.slice(0, 20); // Limit results for performance and UI reasons
 }
-

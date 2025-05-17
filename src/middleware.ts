@@ -2,32 +2,15 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 
-const AUTH_COOKIE_NAME = 'teldirectory-auth-session';
-const PROTECTED_ROUTES = ['/import-xml']; // Add other routes as needed
-const LOGIN_ROUTE = '/login';
+// Reverting to a simple middleware that doesn't perform authentication checks.
+// The settings page will be directly accessible.
 
 export function middleware(request: NextRequest) {
-  const { pathname } = request.nextUrl;
-
-  // Check if the current route is protected
-  if (PROTECTED_ROUTES.some(route => pathname.startsWith(route))) {
-    const sessionCookie = request.cookies.get(AUTH_COOKIE_NAME);
-
-    // If no session cookie or not authenticated, redirect to login
-    if (!sessionCookie || sessionCookie.value !== 'authenticated') {
-      const loginUrl = new URL(LOGIN_ROUTE, request.url);
-      // If trying to access a protected route, store it for redirect after login
-      if (pathname !== LOGIN_ROUTE) {
-        loginUrl.searchParams.set('redirect_to', pathname);
-      }
-      return NextResponse.redirect(loginUrl);
-    }
-  }
-
+  // No specific authentication checks for now.
+  // Future middleware logic can be added here if needed.
   return NextResponse.next();
 }
 
-// See "Matching Paths" below to learn more
 export const config = {
   matcher: [
     /*

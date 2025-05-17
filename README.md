@@ -10,12 +10,7 @@ TelDirectory is a Next.js web application designed to manage and display a corpo
 *   **XML-Based Data**: Directory data is stored in XML files, following Cisco IP Phone standards.
 *   **Web Interface**: Browse the directory through a user-friendly web interface.
 *   **Global Search**: A search bar on the homepage allows users to quickly find departments (localities) by name, or specific extensions by their name/role or number, across the entire directory.
-*   **Authentication**:
-    *   A simple login system protects administrative features.
-    *   The default password for initial setup is `admin123`. **It is strongly recommended to change this** by setting the `ADMIN_PASSWORD` environment variable in your production environment.
-    *   Authenticated users can access the "Settings" page for XML import, configuration, and data management.
-    *   Guest users can only browse the directory.
-*   **Data Management (Authenticated Users Only)**:
+*   **Data Management**:
     *   Import XML files for zone branches and departments.
     *   Add, edit, and delete zones, branches, localities, and extensions directly through the web UI.
 *   **Customization**:
@@ -28,14 +23,13 @@ TelDirectory is a Next.js web application designed to manage and display a corpo
 
 *   `src/app/`: Contains the Next.js App Router pages.
     *   `src/app/[zoneId]/...`: Dynamic routes for displaying zone, branch, and locality pages.
-    *   `src/app/import-xml/`: Page for settings, XML import, and application configuration (protected).
-    *   `src/app/login/`: Login page.
+    *   `src/app/import-xml/`: Page for settings, XML import, and application configuration.
 *   `src/components/`: Reusable React components, including global search (`src/components/search/GlobalSearch.tsx`).
-*   `src/lib/`: Core logic, data fetching utilities (`data.ts`), server actions (`actions.ts`, `auth-actions.ts`), and configuration management (`config.ts`).
+*   `src/lib/`: Core logic, data fetching utilities (`data.ts`), server actions (`actions.ts`), and configuration management (`config.ts`).
 *   `src/context/`: React context for language management.
 *   `src/hooks/`: Custom React hooks.
 *   `src/locales/`: JSON files for internationalization (i18n).
-*   `src/middleware.ts`: Handles route protection for authenticated areas.
+*   `src/middleware.ts`: Basic middleware setup (currently no specific route protection).
 *   `ivoxsdir/` (Default location, configurable): **Crucial directory** for storing all XML data.
     *   `ivoxsdir/MainMenu.xml`: The root XML file for the directory structure (ensure this filename is PascalCase: `MainMenu.xml`).
     *   `ivoxsdir/zonebranch/`: Contains XML files for each zone (e.g., `ZonaEste.xml`, `ZonaMetropolitana.xml`) (ensure this directory name is lowercase: `zonebranch`).
@@ -68,7 +62,7 @@ yarn install
 
 ### 3. `ivoxsdir` Directory Setup
 
-The application relies on XML files. By default, it looks for a directory named `ivoxsdir` at the root of your project. You can change this path via the application's Settings page (after logging in).
+The application relies on XML files. By default, it looks for a directory named `ivoxsdir` at the root of your project. You can change this path via the application's Settings page.
 
 *   **Create the `ivoxsdir` directory** (or your custom named directory) at the root of your project or at your chosen custom location.
 *   Inside `ivoxsdir`, create the following subdirectories **using lowercase names**:
@@ -95,34 +89,27 @@ The application relies on XML files. By default, it looks for a directory named 
 
 2.  **Accessing the App:**
     *   Web UI: Open `http://localhost:3000` in your browser.
-    *   To access administrative features, navigate to `/login` and use the password `admin123` (or the one set via `ADMIN_PASSWORD` environment variable).
+    *   Access administrative features via the Settings page.
 
 3.  **Data Management:**
     *   The application reads XML files from the configured `ivoxsdir` path.
-    *   Any changes made via the UI (adding/editing/deleting items by an authenticated user) will directly modify these XML files.
+    *   Any changes made via the UI (adding/editing/deleting items) will directly modify these XML files.
 
 ### Production Environment (Productivo)
 
-1.  **Set Environment Variables (Recommended):**
-    *   Create a `.env.local` file in your project root (this file should not be committed to Git).
-    *   Set the `ADMIN_PASSWORD` to a strong, unique password:
-        ```
-        ADMIN_PASSWORD=your_secure_password_here
-        ```
-
-2.  **Build the Application:**
+1.  **Build the Application:**
     ```bash
     npm run build
     ```
     This command creates an optimized production build in the `.next` directory.
 
-3.  **Start the Production Server:**
+2.  **Start the Production Server:**
     ```bash
     npm run start
     ```
     The application will start on port `3000` (as configured in `package.json`).
 
-4.  **Deployment Considerations:**
+3.  **Deployment Considerations:**
     *   **`ivoxsdir` Directory**: The `ivoxsdir` directory (with all its XML files and correct casing for subfolders: `zonebranch`, `branch`, `department` as lowercase, and `MainMenu.xml` as PascalCase) **must be present at the location specified in the application's settings** (or at the project root if using the default). The application reads these files at runtime. If you configured a custom absolute path in settings, ensure that path is accessible to the production server process and the user running the Node.js process has read and write permissions to this directory and its contents.
     *   **Firewall**: Make sure your server's firewall allows incoming connections on the port the application is running on (e.g., port 3000).
     *   **Process Manager**: For long-running production deployments, use a process manager like PM2.
@@ -130,13 +117,12 @@ The application relies on XML files. By default, it looks for a directory named 
         pm2 start npm --name "teldirectory" -- run start
         ```
 
-5.  **Accessing in Production:**
+4.  **Accessing in Production:**
     *   Web UI: `http://YOUR_SERVER_IP_OR_DOMAIN:3000`
-    *   Login at `http://YOUR_SERVER_IP_OR_DOMAIN:3000/login` using the password set in `ADMIN_PASSWORD`.
 
-## Using the Import Feature (Authenticated Users)
+## Using the Import Feature
 
-The "Settings" page (`/import-xml`) allows authenticated users to upload XML files directly:
+The "Settings" page (`/import-xml`) allows users to upload XML files directly:
 
 *   **Import Zone Branch XML**: Upload XML files for specific zones (e.g., `ZonaEste.xml`). These will be saved to `[ivoxsdir_root]/zonebranch/`. The filename (without `.xml`) is used as the ID.
 *   **Import Department XML Files**: Upload XML files for departments/localities (e.g., `Bavaro.xml`). These will be saved to `[ivoxsdir_root]/department/`. The filename (without `.xml`) is used as the ID.

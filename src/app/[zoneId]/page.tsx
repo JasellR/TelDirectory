@@ -10,7 +10,7 @@ import { Button } from '@/components/ui/button';
 import Link from 'next/link'; 
 import { ArrowLeft } from 'lucide-react'; 
 import { getTranslations } from '@/lib/translations-server'; 
-import { isAuthenticated } from '@/lib/auth-actions'; // Import isAuthenticated
+// import { isAuthenticated } from '@/lib/auth-actions'; // Authentication removed
 
 interface ZonePageProps {
   params: {
@@ -38,7 +38,7 @@ export default async function ZonePage({ params }: ZonePageProps) {
   const { zoneId } = resolvedParams;
   const zone = await getZoneDetails(zoneId);
   const t = await getTranslations(); 
-  const userIsAuthenticated = await isAuthenticated(); // Check auth status
+  // const userIsAuthenticated = await isAuthenticated(); // Authentication removed
   
   if (!zone) { 
     notFound();
@@ -64,13 +64,12 @@ export default async function ZonePage({ params }: ZonePageProps) {
         </div>
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-8 gap-4">
           <h1 className="text-3xl font-bold text-foreground">{itemTypeNamePlural} in {zone.name}</h1>
-          {userIsAuthenticated && (
-            <AddLocalityButton 
-              zoneId={zoneId} 
-              zoneName={zone.name} 
-              itemType={isZonaMetropolitana ? 'branch' : 'locality'}
-            />
-          )}
+          {/* Reverted: Always show AddLocalityButton */}
+          <AddLocalityButton 
+            zoneId={zoneId} 
+            zoneName={zone.name} 
+            itemType={isZonaMetropolitana ? 'branch' : 'locality'}
+          />
         </div>
         
         <LocalityBranchSearch items={items} zoneId={zoneId} itemType={itemTypeName} itemTypePlural={itemTypeNamePlural} />
@@ -96,4 +95,3 @@ function itemTypeHelpText(isZonaMetropolitana: boolean) {
   }
   return "department XML file (in ivoxsdir/department/)";
 }
-

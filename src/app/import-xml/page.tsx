@@ -5,7 +5,7 @@ import { useState, useEffect, useTransition } from 'react';
 import { Breadcrumbs } from '@/components/layout/Breadcrumbs';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { UploadCloud, Palette, Languages, Settings as SettingsIcon, FileCode, Network, Info, FolderCog, CheckCircle, AlertCircleIcon, LogOut } from 'lucide-react';
+import { UploadCloud, Palette, Languages, Settings as SettingsIcon, FileCode, Network, Info, FolderCog, CheckCircle, AlertCircleIcon } from 'lucide-react';
 import { FileUploadForm } from '@/components/import/FileUploadForm';
 import { saveZoneBranchXmlAction, saveDepartmentXmlAction, updateXmlUrlsAction, updateDirectoryRootPathAction } from '@/lib/actions';
 import { ThemeToggle } from '@/components/settings/ThemeToggle';
@@ -18,16 +18,16 @@ import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2 } from 'lucide-react';
 import { getDirectoryConfig } from '@/lib/config';
-import { logoutAction } from '@/lib/auth-actions'; // For logout
-import { useRouter } from 'next/navigation'; // For redirect after logout
+// import { logoutAction } from '@/lib/auth-actions'; // Authentication removed
+// import { useRouter } from 'next/navigation'; // Authentication removed
 
 export default function SettingsPage() {
   const { t } = useTranslation();
   const { toast } = useToast();
-  const router = useRouter();
+  // const router = useRouter(); // Authentication removed
   const [isPending, startTransition] = useTransition();
   const [isPathPending, startPathTransition] = useTransition();
-  const [isLogoutPending, startLogoutTransition] = useTransition();
+  // const [isLogoutPending, startLogoutTransition] = useTransition(); // Authentication removed
 
 
   const [serviceHost, setServiceHost] = useState('');
@@ -115,13 +115,12 @@ export default function SettingsPage() {
     });
   };
 
-  const handleLogout = async () => {
-    startLogoutTransition(async () => {
-        await logoutAction();
-        // The server action handles redirect, but we can refresh client state if needed
-        // router.refresh(); // Not strictly needed as server action redirects
-    });
-  };
+  // Reverted: Logout functionality removed
+  // const handleLogout = async () => {
+  //   startLogoutTransition(async () => {
+  //       await logoutAction();
+  //   });
+  // };
 
 
   return (
@@ -164,20 +163,7 @@ export default function SettingsPage() {
                     <LanguageToggle />
                 </CardContent>
             </Card>
-            <Card className="shadow-none border">
-                <CardHeader>
-                    <div className="flex items-center gap-3">
-                        <LogOut className="h-5 w-5 text-muted-foreground" />
-                        <CardTitle className="text-xl">{t('accountSettings')}</CardTitle>
-                    </div>
-                     <CardDescription>{t('accountSettingsDescription')}</CardDescription>
-                </CardHeader>
-                <CardContent>
-                    <Button onClick={handleLogout} variant="destructive" disabled={isLogoutPending}>
-                        {isLogoutPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : t('logoutButton')}
-                    </Button>
-                </CardContent>
-            </Card>
+            {/* Reverted: Logout button and Account Settings card removed */}
           </CardContent>
         </Card>
 

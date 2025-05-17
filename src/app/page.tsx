@@ -6,12 +6,12 @@ import { AddZoneButton } from '@/components/actions/AddZoneButton';
 import { getTranslations } from '@/lib/translations-server';
 import { GlobalSearch } from '@/components/search/GlobalSearch';
 import { Separator } from '@/components/ui/separator';
-import { isAuthenticated } from '@/lib/auth-actions'; // Import isAuthenticated
+// import { isAuthenticated } from '@/lib/auth-actions'; // Authentication removed
 
 export default async function HomePage() {
   const zones = await getZones();
   const t = await getTranslations();
-  const userIsAuthenticated = await isAuthenticated(); // Check authentication status
+  // const userIsAuthenticated = await isAuthenticated(); // Authentication removed
 
   return (
     <div>
@@ -26,7 +26,8 @@ export default async function HomePage() {
 
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-8 gap-4">
         <h2 className="text-2xl font-bold text-foreground">{t('browseByZoneTitle')}</h2>
-        {userIsAuthenticated && <AddZoneButton />} {/* Conditionally render AddZoneButton */}
+        {/* Reverted: Always show AddZoneButton */}
+        <AddZoneButton />
       </div>
       {zones.length > 0 ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">

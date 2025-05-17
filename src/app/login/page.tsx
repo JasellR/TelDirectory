@@ -1,87 +1,21 @@
 
-'use client';
-
-import { useState, useTransition, useEffect } from 'react';
-import { useSearchParams } from 'next/navigation'; // To read query params
+// This page is being reverted and its authentication logic removed.
+// It can be reinstated if authentication is added back later.
+import { AlertTriangle } from 'lucide-react';
+import Link from 'next/link';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { useToast } from '@/hooks/use-toast';
-import { loginAction } from '@/lib/auth-actions';
-import { Loader2, LogIn } from 'lucide-react';
-import { useTranslation } from '@/hooks/useTranslation';
 
-export default function LoginPage() {
-  const { toast } = useToast();
-  const searchParams = useSearchParams(); // Hook to get search params
-  const [password, setPassword] = useState('');
-  const [isPending, startTransition] = useTransition();
-  const { t } = useTranslation();
-
-  // State to hold the redirect path from query parameter
-  const [redirectTo, setRedirectTo] = useState<string | null>(null);
-
-  useEffect(() => {
-    // Get the redirect_to parameter once when the component mounts
-    const redirectParam = searchParams.get('redirect_to');
-    if (redirectParam) {
-      setRedirectTo(redirectParam);
-    }
-  }, [searchParams]);
-
-  const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    startTransition(async () => {
-      const result = await loginAction(password);
-
-      if (result.success) {
-        toast({
-          title: t('loginSuccessTitle'),
-          description: t('redirectingMessage') || 'Login successful. Redirecting...',
-        });
-        // Perform a full page reload to ensure server components pick up the cookie
-        // And redirect to the intended page or homepage
-        window.location.href = redirectTo || '/';
-      } else {
-        toast({
-          title: t('loginFailedTitle'),
-          description: result.message,
-          variant: 'destructive',
-        });
-        setPassword('');
-      }
-    });
-  };
-
+export default function LoginPageReverted() {
   return (
-    <div className="flex min-h-[calc(100vh-10rem)] items-center justify-center py-12">
-      <Card className="w-full max-w-sm shadow-xl">
-        <CardHeader className="text-center">
-          <LogIn className="mx-auto h-10 w-10 text-primary mb-3" />
-          <CardTitle className="text-2xl font-bold">{t('loginPageTitle')}</CardTitle>
-          <CardDescription>{t('loginPageDescription')}</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <form onSubmit={handleSubmit} className="space-y-6">
-            <div className="space-y-2">
-              <Label htmlFor="password">{t('passwordLabel')}</Label>
-              <Input
-                id="password"
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required
-                disabled={isPending}
-                placeholder={t('passwordPlaceholder')}
-              />
-            </div>
-            <Button type="submit" className="w-full" disabled={isPending}>
-              {isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : t('loginButtonText')}
-            </Button>
-          </form>
-        </CardContent>
-      </Card>
+    <div className="flex flex-col items-center justify-center text-center py-12">
+      <AlertTriangle className="h-16 w-16 text-destructive mb-4" />
+      <h1 className="text-3xl font-bold text-foreground mb-2">Login Disabled</h1>
+      <p className="text-md text-muted-foreground mb-6 max-w-md">
+        The login functionality is currently disabled in this version of the application.
+      </p>
+       <Button asChild>
+        <Link href="/">Go to Homepage</Link>
+      </Button>
     </div>
   );
 }
