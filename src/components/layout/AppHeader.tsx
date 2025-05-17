@@ -1,18 +1,14 @@
 
 import Link from 'next/link';
-import { Phone, Settings, LogIn } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { getTranslations } from '@/lib/translations-server';
+import { Phone } from 'lucide-react';
 import { ThemeToggleHeader } from '@/components/settings/ThemeToggleHeader';
 import { LanguageToggleHeader } from '@/components/settings/LanguageToggleHeader';
 import { getCurrentUser } from '@/lib/auth-actions';
-import { UserMenu } from './UserMenu';
+import { AuthNav } from './AuthNav'; // New import
 
 export async function AppHeader() {
-  const t = await getTranslations();
   console.log(`[AppHeader @ ${new Date().toISOString()}] Component rendering. Attempting to get current user...`);
   const user = await getCurrentUser();
-  // The detailed log for user object is now inside getCurrentUser itself.
   console.log(`[AppHeader @ ${new Date().toISOString()}] User object received by AppHeader:`, user ? { userId: user.userId, username: user.username } : null);
 
 
@@ -27,25 +23,10 @@ export async function AppHeader() {
         <nav className="flex items-center gap-2">
           <LanguageToggleHeader />
           <ThemeToggleHeader />
-          {user ? (
-            <>
-              <Button variant="ghost" size="icon" asChild aria-label={t('settings')}>
-                <Link href="/import-xml">
-                  <Settings className="h-5 w-5" />
-                </Link>
-              </Button>
-              <UserMenu username={user.username} />
-            </>
-          ) : (
-            <Button variant="outline" asChild size="sm">
-              <Link href="/login">
-                <LogIn className="mr-2 h-4 w-4" />
-                {t('loginButton')}
-              </Link>
-            </Button>
-          )}
+          <AuthNav user={user} /> {/* Use the new client component */}
         </nav>
       </div>
     </header>
   );
 }
+
