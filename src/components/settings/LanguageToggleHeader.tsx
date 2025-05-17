@@ -1,7 +1,7 @@
 
 'use client';
 
-import { Languages, Check } from 'lucide-react';
+import { Check } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -19,11 +19,13 @@ export function LanguageToggleHeader() {
     setLanguage(lang);
   };
 
+  const currentLanguageAcronym = currentLanguage === 'en' ? 'EN' : 'ES';
+
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button variant="ghost" size="icon" aria-label={t('languageSettings')}>
-          <Languages className="h-5 w-5" />
+        <Button variant="ghost" size="sm" aria-label={t('languageSettings')} className="px-2.5">
+          <span className="font-medium">{currentLanguageAcronym}</span>
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end">
