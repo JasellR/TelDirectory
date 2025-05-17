@@ -1,6 +1,4 @@
 
-'use server';
-
 import sqlite3 from 'sqlite3';
 import { open, type Database } from 'sqlite';
 import path from 'path';
@@ -10,21 +8,12 @@ const DB_FILE = path.join(process.cwd(), 'teldirectory.db');
 const SALT_ROUNDS = 10;
 
 let dbInstance: Database | null = null;
+let dbInitialized = false;
 
-async function getDb(): Promise<Database> {
-  if (!dbInstance) {
-    dbInstance = await open({
-      filename: DB_FILE,
-      driver: sqlite3.Database,
-    });
-  }
-  return dbInstance;
-}
+async function _initializeDbSchema(db: Database): Promise<void> {
+  if (dbInitialized) return;
 
-export async function initializeDb(): Promise<void> {
-  const db = await getDb();
-  console.log('[DB] Initializing database...');
-
+  console.log('[DB] Initializing database schema and seeding if necessary...');
   await db.exec(`
     CREATE TABLE IF NOT EXISTS users (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -52,12 +41,33 @@ export async function initializeDb(): Promise<void> {
     } catch (hashError) {
       console.error('[DB] Error hashing default admin password during seed:', hashError);
     }
+  } else if (userCount) {
+    console.log(`[DB] Users table already has ${userCount.count} entries. No seeding needed.`);
   } else {
-    console.log('[DB] Users table already has entries or count could not be retrieved.');
+     console.warn('[DB] Could not retrieve user count. Seeding check skipped.');
   }
+  dbInitialized = true;
+  console.log('[DB] Database schema initialization complete.');
 }
 
-// Initialize DB when this module is loaded
-initializeDb().catch(console.error);
+async function getDb(): Promise<Database> {
+  if (!dbInstance) {
+    console.log('[DB] Opening database connection...');
+    dbInstance = await open({
+      filename: DB_FILE,
+      driver: sqlite3.Database,
+    });
+    console.log('[DB] Database connection opened.');
+    // Initialize schema and seed data on first connection
+    await _initializeDbSchema(dbInstance);
+  } else if (!dbInitialized) {
+    // This case might occur if dbInstance was somehow set but initialization didn't complete
+    // or if multiple near-simultaneous calls happen before dbInitialized is true.
+    // The dbInitialized flag inside _initializeDbSchema should prevent redundant DDL execution.
+    console.log('[DB] Database instance exists, ensuring schema is initialized...');
+    await _initializeDbSchema(dbInstance);
+  }
+  return dbInstance;
+}
 
 export { getDb, bcrypt, SALT_ROUNDS };
