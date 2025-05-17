@@ -24,26 +24,16 @@ export default function LoginPage() {
     event.preventDefault();
     setError(null);
     const formData = new FormData(event.currentTarget);
+    const redirectTo = searchParams.get('redirect_to'); // Get the redirect_to param
 
     startTransition(async () => {
       try {
-        const result = await loginAction(formData);
+        // Pass formData and redirectTo to loginAction
+        // loginAction will handle the redirect if successful
+        const result = await loginAction(formData, redirectTo);
 
-        if (result.success) {
-          toast({
-            title: t('loginSucceeded'),
-            description: result.message || t('loginSucceeded'),
-          });
-
-          const redirectTo = searchParams.get('redirect_to');
-          if (redirectTo) {
-            console.log('[Login Page] Login success, redirecting to original destination:', redirectTo);
-            window.location.href = redirectTo; // Full page reload to the intended destination
-          } else {
-            console.log('[Login Page] Login success, redirecting to homepage /');
-            window.location.href = '/'; // Full page reload to homepage
-          }
-        } else {
+        // If loginAction returns a result, it means login failed before redirecting
+        if (result && !result.success) {
           setError(result.message || t('loginFailedError'));
           toast({
             title: t('loginFailedTitle'),
@@ -51,7 +41,14 @@ export default function LoginPage() {
             variant: 'destructive',
           });
         }
+        // No client-side redirect needed here if loginAction succeeds, as it will throw a NEXT_REDIRECT error
       } catch (e: any) {
+        // Catch errors that are NOT Next.js redirect errors
+        // Next.js redirect errors are handled by Next.js itself and should not be caught here
+        if (typeof e === 'object' && e !== null && 'digest' in e && e.digest?.startsWith('NEXT_REDIRECT')) {
+          // This is a redirect error, let Next.js handle it
+          throw e;
+        }
         console.error("Login page encountered an unexpected error during login attempt:", e);
         const errorMessage = e.message || t('loginUnexpectedError');
         setError(errorMessage);
