@@ -108,7 +108,7 @@ export async function logoutAction(): Promise<void> {
   } catch (error) {
     console.error(`[Auth @ ${new Date().toISOString()}] Error during logout (clearing cookie):`, error);
   }
-  redirect('/login');
+  redirect('/'); // Redirect to homepage after logout
 }
 
 export async function isAuthenticated(): Promise<boolean> {
@@ -121,14 +121,15 @@ export async function getCurrentUser(): Promise<UserSession | null> {
   const sessionCookie = cookieStore.get(AUTH_COOKIE_NAME);
   const cookieValue = sessionCookie?.value;
   
+  // More verbose logging for getCurrentUser
   console.log(`[Auth - getCurrentUser @ ${new Date().toISOString()}] Attempting to read cookie "${AUTH_COOKIE_NAME}". Has value: ${!!cookieValue}`);
   if (cookieValue) {
-    // console.log(`[Auth - getCurrentUser] Cookie value found: ${cookieValue.substring(0, 50)}${cookieValue.length > 50 ? '...' : ''}`);
+    // console.log(`[Auth - getCurrentUser @ ${new Date().toISOString()}] Cookie value found: ${cookieValue.substring(0, 50)}${cookieValue.length > 50 ? '...' : ''}`);
   }
 
   if (!cookieValue) {
     console.log(`[Auth - getCurrentUser @ ${new Date().toISOString()}] Cookie "${AUTH_COOKIE_NAME}" not found or value is empty.`);
-    const allCookies = cookieStore.getAll(); 
+    const allCookies = cookieStore.getAll(); // This gets all cookies available to the server for THIS request
     if (allCookies.length > 0) {
         console.log(`[Auth - getCurrentUser @ ${new Date().toISOString()}] All cookies received by server for this request:`, allCookies.map(c => ({ name: c.name, value: c.value.substring(0, 50) + (c.value.length > 50 ? '...' : '') })));
     } else {
