@@ -1,6 +1,6 @@
 
 import Link from 'next/link';
-import { Phone, Settings, LogIn } from 'lucide-react'; // LogOut removed, handled by UserMenu
+import { Phone, Settings, LogIn } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { getTranslations } from '@/lib/translations-server';
 import { ThemeToggleHeader } from '@/components/settings/ThemeToggleHeader';
@@ -10,8 +10,11 @@ import { UserMenu } from './UserMenu';
 
 export async function AppHeader() {
   const t = await getTranslations();
+  console.log('[AppHeader] Component rendering. Attempting to get current user...');
   const user = await getCurrentUser();
-  // console.log('[AppHeader] Current user from getCurrentUser():', user);
+  // The detailed log for user object is now inside getCurrentUser itself.
+  console.log('[AppHeader] User object received by AppHeader:', user ? { userId: user.userId, username: user.username } : null);
+
 
   return (
     <header className="bg-card border-b border-border shadow-sm">

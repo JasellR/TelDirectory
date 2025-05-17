@@ -2,7 +2,7 @@
 'use client';
 
 import { useState, useTransition, useEffect } from 'react';
-import { useSearchParams, useRouter } from 'next/navigation'; // Keep useRouter for potential future use if window.location is problematic
+import { useSearchParams } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -52,8 +52,6 @@ export default function LoginPage() {
           });
         }
       } catch (e: any) {
-        // This catch is for unexpected errors during the loginAction call itself,
-        // though loginAction is designed to return error objects rather than throw.
         console.error("Login page encountered an unexpected error during login attempt:", e);
         const errorMessage = e.message || t('loginUnexpectedError');
         setError(errorMessage);
