@@ -107,16 +107,16 @@
   "extensionUpdateConflict": "An extension with the new name and number already exists.",
   "editExtensionButtonAriaLabel": "Edit extension {extensionName} ({extensionNumber})",
   "networkServiceUrlConfigTitle": "Network & Service URL Configuration",
-  "networkServiceUrlConfigDescription": "Configure the Host IP/Hostname and Port for URLs embedded in your XMLs (MainMenu.xml, zonebranch/*.xml, branch/*.xml) within your configured ivoxsdir path. This is generally only relevant if you intend to serve these XMLs directly to IP phones from this application.",
+  "networkServiceUrlConfigDescription": "Configure the Host IP/Hostname and Port for URLs embedded in your XMLs (MainMenu.xml, zonebranch/*.xml, branch/*.xml) within your configured {dirPath} path. This is generally only relevant if you intend to serve these XMLs directly to IP phones from this application.",
   "serviceHostLabel": "Service Host IP/Hostname",
   "serviceHostPlaceholder": "e.g., 192.168.1.100 or directory.example.com",
   "servicePortLabel": "Service Port",
   "applyNetworkSettingsButton": "Apply Network Settings to XMLs",
-  "networkSettingsInfo": "This updates URLs in MainMenu.xml, zonebranch/*.xml, and branch/*.xml files located within your configured ivoxsdir path.",
+  "networkSettingsInfo": "This updates URLs in MainMenu.xml, zonebranch/*.xml, and branch/*.xml files located within your configured {dirPath} path.",
   "hostCannotBeEmpty": "Service Host IP/Hostname cannot be empty.",
   "portInvalid": "Service Port must be a valid number.",
   "directoryConfigurationTitle": "Directory Configuration",
-  "directoryConfigurationDescription": "Specify the absolute root path where your 'ivoxsdir' XML directory structure is located. The application will read XML files from this path. Ensure the MainMenu.xml file (PascalCase) and structural subdirectories 'zonebranch', 'branch', 'department' (all lowercase) exist within this path.",
+  "directoryConfigurationDescription": "Specify the absolute root path where your '{dirPath}' XML directory structure is located. The application will read XML files from this path. Ensure the MainMenu.xml file (PascalCase) and structural subdirectories 'zonebranch', 'branch', 'department' (all lowercase) exist within this path.",
   "directoryRootPathLabel": "ivoxsdir Directory Root Path",
   "directoryRootPathPlaceholder": "Enter absolute path (e.g., /mnt/shared/ivoxsdir or C:\\TelDirectory\\data\\ivoxsdir)",
   "currentPathLabel": "Currently Configured Path",
@@ -144,5 +144,6 @@
   "noResultsFoundDescription": "Your search for \"{searchTerm}\" did not match any departments or extensions.",
   "searchResultsCount": "{count} results found.",
   "matchingExtensionsLabel": "Matching Extensions:",
-  "andMoreExtensions": "...and {count} more."
+  "andMoreExtensions": "...and {count} more.",
+  "switchToLanguage": "Switch to {languageName}"
 }

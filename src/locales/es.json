@@ -107,16 +107,16 @@
   "extensionUpdateConflict": "Ya existe una extensión con el nuevo nombre y número.",
   "editExtensionButtonAriaLabel": "Editar extensión {extensionName} ({extensionNumber})",
   "networkServiceUrlConfigTitle": "Configuración de Red y URL del Servicio",
-  "networkServiceUrlConfigDescription": "Configure la IP/Hostname del Host y el Puerto para las URLs incrustadas en sus XMLs (MainMenu.xml, zonebranch/*.xml, branch/*.xml) dentro de su ruta ivoxsdir configurada. Esto generalmente solo es relevante si tiene la intención de servir estos XMLs directamente a teléfonos IP desde esta aplicación.",
+  "networkServiceUrlConfigDescription": "Configure la IP/Hostname del Host y el Puerto para las URLs incrustadas en sus XMLs (MainMenu.xml, zonebranch/*.xml, branch/*.xml) dentro de su ruta {dirPath} configurada. Esto generalmente solo es relevante si tiene la intención de servir estos XMLs directamente a teléfonos IP desde esta aplicación.",
   "serviceHostLabel": "IP/Hostname del Host del Servicio",
   "serviceHostPlaceholder": "Ej: 192.168.1.100 o directorio.ejemplo.com",
   "servicePortLabel": "Puerto del Servicio",
   "applyNetworkSettingsButton": "Aplicar Configuración de Red a XMLs",
-  "networkSettingsInfo": "Esto actualiza las URLs en los archivos MainMenu.xml, zonebranch/*.xml y branch/*.xml ubicados dentro de su ruta ivoxsdir configurada.",
+  "networkSettingsInfo": "Esto actualiza las URLs en los archivos MainMenu.xml, zonebranch/*.xml y branch/*.xml ubicados dentro de su ruta {dirPath} configurada.",
   "hostCannotBeEmpty": "La IP/Hostname del Host del Servicio no puede estar vacío.",
   "portInvalid": "El Puerto del Servicio debe ser un número válido.",
   "directoryConfigurationTitle": "Configuración del Directorio",
-  "directoryConfigurationDescription": "Especifique la ruta raíz absoluta donde se encuentra su estructura de directorio XML 'ivoxsdir'. La aplicación leerá los archivos XML desde esta ruta. Asegúrese de que el archivo MainMenu.xml (PascalCase) y los subdirectorios estructurales 'zonebranch', 'branch', 'department' (todos en minúsculas) existan dentro de esta ruta.",
+  "directoryConfigurationDescription": "Especifique la ruta raíz absoluta donde se encuentra su estructura de directorio XML '{dirPath}'. La aplicación leerá los archivos XML desde esta ruta. Asegúrese de que el archivo MainMenu.xml (PascalCase) y los subdirectorios estructurales 'zonebranch', 'branch', 'department' (todos en minúsculas) existan dentro de esta ruta.",
   "directoryRootPathLabel": "Ruta Raíz del Directorio ivoxsdir",
   "directoryRootPathPlaceholder": "Ingrese la ruta absoluta (ej: /mnt/shared/ivoxsdir o C:\\TelDirectorio\\data\\ivoxsdir)",
   "currentPathLabel": "Ruta Configurada Actualmente",
@@ -144,5 +144,6 @@
   "noResultsFoundDescription": "Su búsqueda de \"{searchTerm}\" no coincidió con ningún departamento o extensión.",
   "searchResultsCount": "{count} resultados encontrados.",
   "matchingExtensionsLabel": "Extensiones Coincidentes:",
-  "andMoreExtensions": "...y {count} más."
+  "andMoreExtensions": "...y {count} más.",
+  "switchToLanguage": "Cambiar a {languageName}"
 }
