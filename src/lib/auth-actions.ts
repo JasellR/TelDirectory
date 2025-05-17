@@ -10,8 +10,8 @@ const AUTH_COOKIE_NAME = 'teldirectory-session';
 
 export async function loginAction(
   formData: FormData,
-  redirectTo?: string | null // Added redirectTo parameter
-): Promise<{ success: boolean; message: string } | void> { // Return type can be void due to redirect
+  redirectTo?: string | null
+): Promise<{ success: boolean; message: string } | void> {
   const username = formData.get('username') as string;
   const password = formData.get('password') as string;
 
@@ -65,6 +65,7 @@ export async function loginAction(
         });
         console.log(`[Auth] Session cookie SET for user: ${username}. Value: ${JSON.stringify(sessionData)}`);
         
+        // Test read immediately after setting
         const cookieJustSet = cookies().get(AUTH_COOKIE_NAME);
         if (cookieJustSet) {
           console.log(`[Auth] Successfully read cookie "${AUTH_COOKIE_NAME}" immediately after setting. Value:`, cookieJustSet.value);
@@ -72,13 +73,12 @@ export async function loginAction(
           console.warn(`[Auth] FAILED to read cookie "${AUTH_COOKIE_NAME}" immediately after setting.`);
         }
 
-        const targetRedirectPath = redirectTo || '/import-xml';
+        const targetRedirectPath = redirectTo || '/import-xml'; // Default to settings if no specific redirect
         console.log(`[Auth] Login successful for ${username}. Redirecting to: ${targetRedirectPath}`);
         redirect(targetRedirectPath); // Perform server-side redirect
         // Code below redirect() will not be executed.
       } catch (cookieError: any) {
         console.error('[Auth] Error setting session cookie or redirecting:', cookieError);
-        // Check if it's a redirect error, if so, let Next.js handle it
         if (typeof cookieError === 'object' && cookieError !== null && 'digest' in cookieError && (cookieError as any).digest?.startsWith('NEXT_REDIRECT')) {
           throw cookieError;
         }
@@ -89,7 +89,6 @@ export async function loginAction(
       return { success: false, message: 'Invalid username or password.' };
     }
   } catch (error: any) {
-    // If it's a redirect error, re-throw it so Next.js can handle it
     if (typeof error === 'object' && error !== null && 'digest' in error && (error as any).digest?.startsWith('NEXT_REDIRECT')) {
       throw error;
     }
@@ -116,25 +115,30 @@ export async function isAuthenticated(): Promise<boolean> {
 export async function getCurrentUser(): Promise<UserSession | null> {
   const sessionCookie = cookies().get(AUTH_COOKIE_NAME);
   const cookieValue = sessionCookie?.value;
-  // console.log(`[Auth - getCurrentUser] Attempting to read cookie "${AUTH_COOKIE_NAME}". Value:`, cookieValue);
+  // More verbose logging for getCurrentUser
+  console.log(`[Auth - getCurrentUser @ ${new Date().toISOString()}] Attempting to read cookie "${AUTH_COOKIE_NAME}". Has value: ${!!cookieValue}`);
+  if (cookieValue) {
+    console.log(`[Auth - getCurrentUser] Cookie value found: ${cookieValue.substring(0, 50)}${cookieValue.length > 50 ? '...' : ''}`);
+  }
+
 
   if (!cookieValue) {
-    // console.log(`[Auth - getCurrentUser] Cookie "${AUTH_COOKIE_NAME}" not found or value is empty.`);
+    console.log(`[Auth - getCurrentUser] Cookie "${AUTH_COOKIE_NAME}" not found or value is empty this time.`);
     const allCookies = cookies().getAll();
     if (allCookies.length > 0) {
-        // console.log("[Auth - getCurrentUser] All cookies received by server:", allCookies.map(c => ({ name: c.name, value: c.value.substring(0, 50) + (c.value.length > 50 ? '...' : '') })));
+        console.log("[Auth - getCurrentUser] All cookies received by server for this request:", allCookies.map(c => ({ name: c.name, value: c.value.substring(0, 50) + (c.value.length > 50 ? '...' : '') })));
     } else {
-        // console.log("[Auth - getCurrentUser] No cookies received by server.");
+        console.log("[Auth - getCurrentUser] No cookies received by server for this request.");
     }
     return null;
   }
   try {
     const session = JSON.parse(cookieValue) as UserSession;
     if (session.userId && session.username) {
-      // console.log('[Auth - getCurrentUser] Cookie found, parsed, returning user:', session);
+      console.log('[Auth - getCurrentUser] Cookie found, parsed, returning user:', {userId: session.userId, username: session.username});
       return session;
     }
-    // console.warn('[Auth - getCurrentUser] Cookie found, parsed, but invalid session structure:', session);
+    console.warn('[Auth - getCurrentUser] Cookie found, parsed, but invalid session structure:', session);
     return null;
   } catch (error) {
     console.error('[Auth - getCurrentUser] Error parsing session cookie:', error, "Cookie Value was:", cookieValue);

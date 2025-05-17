@@ -10,10 +10,10 @@ import { UserMenu } from './UserMenu';
 
 export async function AppHeader() {
   const t = await getTranslations();
-  console.log('[AppHeader] Component rendering. Attempting to get current user...');
+  console.log(`[AppHeader @ ${new Date().toISOString()}] Component rendering. Attempting to get current user...`);
   const user = await getCurrentUser();
   // The detailed log for user object is now inside getCurrentUser itself.
-  console.log('[AppHeader] User object received by AppHeader:', user ? { userId: user.userId, username: user.username } : null);
+  console.log(`[AppHeader @ ${new Date().toISOString()}] User object received by AppHeader:`, user ? { userId: user.userId, username: user.username } : null);
 
 
   return (
