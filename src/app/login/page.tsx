@@ -2,7 +2,7 @@
 'use client';
 
 import { useState, useTransition } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useRouter } from 'next/navigation'; // useRouter can still be used for other purposes if needed.
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -13,8 +13,7 @@ import { Loader2, LogIn } from 'lucide-react';
 import { useTranslation } from '@/hooks/useTranslation';
 
 export default function LoginPage() {
-  const router = useRouter();
-  const searchParams = useSearchParams();
+  const router = useRouter(); // Keep for potential future use, but not for post-login redirect here
   const { toast } = useToast();
   const [password, setPassword] = useState('');
   const [isPending, startTransition] = useTransition();
@@ -23,17 +22,11 @@ export default function LoginPage() {
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     startTransition(async () => {
+      // loginAction will either redirect (on success) or return { success: false, ... }
       const result = await loginAction(password);
-      if (result.success) {
-        toast({
-          title: t('loginSuccessTitle'),
-          description: result.message,
-        });
-        // Perform a full browser navigation to the settings page
-        // This ensures all server components, including the layout and AppHeader,
-        // are re-fetched with the new authentication cookie.
-        window.location.href = '/import-xml'; 
-      } else {
+
+      // This code should only be reached if loginAction did NOT redirect, i.e., it failed.
+      if (result && result.success === false) { 
         toast({
           title: t('loginFailedTitle'),
           description: result.message,
@@ -41,6 +34,8 @@ export default function LoginPage() {
         });
         setPassword('');
       }
+      // If loginAction was successful, it would have already redirected the user.
+      // A success toast here would likely not be seen or would be interrupted.
     });
   };
 

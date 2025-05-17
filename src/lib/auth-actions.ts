@@ -2,7 +2,7 @@
 'use server';
 
 import { cookies } from 'next/headers';
-import { redirect } from 'next/navigation';
+import { redirect } from 'next/navigation'; // Import redirect
 
 const AUTH_COOKIE_NAME = 'teldirectory-auth-session';
 const HARDCODED_PASSWORD = process.env.ADMIN_PASSWORD || 'admin123'; // Use environment variable or default
@@ -18,8 +18,11 @@ export async function loginAction(password: string): Promise<{ success: boolean;
       sameSite: 'lax',
       // secure: process.env.NODE_ENV === 'production', // Enable in production
     });
-    // Return success, client will handle redirect
-    return { success: true, message: 'Login successful. Redirecting...' };
+    redirect('/import-xml'); // Server-side redirect after setting cookie
+    // Note: redirect() throws an error to stop execution, so this line below might not be reached
+    // or its return value might not be processed by the client if the redirect is successful.
+    // However, returning a consistent shape helps if redirect fails or for typing.
+    // return { success: true, message: 'Login successful. Redirecting...' }; 
   } else {
     return { success: false, message: 'Invalid password.' };
   }
@@ -35,4 +38,3 @@ export async function isAuthenticated(): Promise<boolean> {
   const sessionCookie = cookieStore.get(AUTH_COOKIE_NAME);
   return !!sessionCookie && sessionCookie.value === 'authenticated';
 }
-
