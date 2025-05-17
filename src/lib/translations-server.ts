@@ -14,7 +14,8 @@ const translations = {
 };
 
 export async function getTranslations() {
-  const langCookie = cookies().get('language');
+  const cookieStore = await cookies();
+  const langCookie = cookieStore.get('language');
   const currentLanguage: Language = (langCookie?.value === 'es' || langCookie?.value === 'en') ? langCookie.value : 'en';
   
   const currentTranslations = translations[currentLanguage];

@@ -21,12 +21,12 @@ export async function loginAction(
   }
 
   try {
-    console.log('[Auth] Attempting login for user:', username);
+    console.log(`[Auth @ ${new Date().toISOString()}] Attempting login for user:`, username);
     let db;
     try {
       db = await getDb();
     } catch (dbError: any) {
-      console.error('[Auth] Error connecting to database:', dbError);
+      console.error(`[Auth @ ${new Date().toISOString()}] Error connecting to database:`, dbError);
       return { success: false, message: 'Error connecting to the database. Please try again later.' };
     }
 
@@ -34,75 +34,79 @@ export async function loginAction(
     try {
       user = await db.get('SELECT * FROM users WHERE username = ?', username);
     } catch (dbQueryError: any) {
-      console.error('[Auth] Error querying user from database:', dbQueryError);
+      console.error(`[Auth @ ${new Date().toISOString()}] Error querying user from database:`, dbQueryError);
       return { success: false, message: 'Error retrieving user information. Please try again later.' };
     }
 
     if (!user) {
-      console.log('[Auth] User not found:', username);
+      console.log(`[Auth @ ${new Date().toISOString()}] User not found:`, username);
       return { success: false, message: 'Invalid username or password.' };
     }
 
-    console.log('[Auth] User found, comparing password for:', username);
+    console.log(`[Auth @ ${new Date().toISOString()}] User found, comparing password for:`, username);
     let passwordMatch;
     try {
       passwordMatch = await bcrypt.compare(password, user.hashedPassword);
     } catch (bcryptError: any) {
-      console.error('[Auth] Error comparing password with bcrypt:', bcryptError);
+      console.error(`[Auth @ ${new Date().toISOString()}] Error comparing password with bcrypt:`, bcryptError);
       return { success: false, message: 'Error during authentication process. Please try again.' };
     }
 
     if (passwordMatch) {
-      console.log('[Auth] Password match for user:', username);
+      console.log(`[Auth @ ${new Date().toISOString()}] Password match for user:`, username);
       const sessionData: UserSession = { userId: user.id, username: user.username };
+      const cookieStore = await cookies();
       try {
-        cookies().set(AUTH_COOKIE_NAME, JSON.stringify(sessionData), {
+        cookieStore.set(AUTH_COOKIE_NAME, JSON.stringify(sessionData), {
           httpOnly: true,
           secure: process.env.NODE_ENV === 'production',
           path: '/',
           sameSite: 'lax',
           maxAge: 60 * 60 * 24 * 7, // 1 week
         });
-        console.log(`[Auth] Session cookie SET for user: ${username}. Value: ${JSON.stringify(sessionData)}`);
+        console.log(`[Auth @ ${new Date().toISOString()}] Session cookie SET for user: ${username}. Value: ${JSON.stringify(sessionData)}`);
         
-        // Test read immediately after setting
-        const cookieJustSet = cookies().get(AUTH_COOKIE_NAME);
+        const cookieJustSet = cookieStore.get(AUTH_COOKIE_NAME);
         if (cookieJustSet) {
-          console.log(`[Auth] Successfully read cookie "${AUTH_COOKIE_NAME}" immediately after setting. Value:`, cookieJustSet.value);
+          console.log(`[Auth @ ${new Date().toISOString()}] Successfully read cookie "${AUTH_COOKIE_NAME}" immediately after setting. Value:`, cookieJustSet.value);
         } else {
-          console.warn(`[Auth] FAILED to read cookie "${AUTH_COOKIE_NAME}" immediately after setting.`);
+          console.warn(`[Auth @ ${new Date().toISOString()}] FAILED to read cookie "${AUTH_COOKIE_NAME}" immediately after setting.`);
         }
-
-        const targetRedirectPath = redirectTo || '/import-xml'; // Default to settings if no specific redirect
-        console.log(`[Auth] Login successful for ${username}. Redirecting to: ${targetRedirectPath}`);
-        redirect(targetRedirectPath); // Perform server-side redirect
-        // Code below redirect() will not be executed.
+        
       } catch (cookieError: any) {
-        console.error('[Auth] Error setting session cookie or redirecting:', cookieError);
+        console.error(`[Auth @ ${new Date().toISOString()}] Error setting session cookie:`, cookieError);
+         // Check if it's a redirect error, if so, rethrow it
         if (typeof cookieError === 'object' && cookieError !== null && 'digest' in cookieError && (cookieError as any).digest?.startsWith('NEXT_REDIRECT')) {
           throw cookieError;
         }
         return { success: false, message: 'Error finalizing login session. Please try again.'};
       }
+      
+      const targetRedirectPath = redirectTo || '/import-xml';
+      console.log(`[Auth @ ${new Date().toISOString()}] Login successful for ${username}. Redirecting to: ${targetRedirectPath}`);
+      redirect(targetRedirectPath); // Perform server-side redirect
+
     } else {
-      console.log(`[Auth] Invalid password for user: ${username}`);
+      console.log(`[Auth @ ${new Date().toISOString()}] Invalid password for user: ${username}`);
       return { success: false, message: 'Invalid username or password.' };
     }
   } catch (error: any) {
+    // If it's a redirect error from a nested call (like redirect itself), rethrow it
     if (typeof error === 'object' && error !== null && 'digest' in error && (error as any).digest?.startsWith('NEXT_REDIRECT')) {
       throw error;
     }
-    console.error('[Auth] General login error caught in loginAction:', error);
+    console.error(`[Auth @ ${new Date().toISOString()}] General login error caught in loginAction:`, error);
     return { success: false, message: 'An unexpected critical error occurred during login.' };
   }
 }
 
 export async function logoutAction(): Promise<void> {
   try {
-    cookies().delete(AUTH_COOKIE_NAME);
-    console.log('[Auth] User logged out, cookie deleted.');
+    const cookieStore = await cookies();
+    cookieStore.delete(AUTH_COOKIE_NAME);
+    console.log(`[Auth @ ${new Date().toISOString()}] User logged out, cookie deleted.`);
   } catch (error) {
-    console.error('[Auth] Error during logout (clearing cookie):', error);
+    console.error(`[Auth @ ${new Date().toISOString()}] Error during logout (clearing cookie):`, error);
   }
   redirect('/login');
 }
@@ -113,35 +117,35 @@ export async function isAuthenticated(): Promise<boolean> {
 }
 
 export async function getCurrentUser(): Promise<UserSession | null> {
-  const sessionCookie = cookies().get(AUTH_COOKIE_NAME);
+  const cookieStore = await cookies();
+  const sessionCookie = cookieStore.get(AUTH_COOKIE_NAME);
   const cookieValue = sessionCookie?.value;
-  // More verbose logging for getCurrentUser
+  
   console.log(`[Auth - getCurrentUser @ ${new Date().toISOString()}] Attempting to read cookie "${AUTH_COOKIE_NAME}". Has value: ${!!cookieValue}`);
   if (cookieValue) {
-    console.log(`[Auth - getCurrentUser] Cookie value found: ${cookieValue.substring(0, 50)}${cookieValue.length > 50 ? '...' : ''}`);
+    // console.log(`[Auth - getCurrentUser] Cookie value found: ${cookieValue.substring(0, 50)}${cookieValue.length > 50 ? '...' : ''}`);
   }
 
-
   if (!cookieValue) {
-    console.log(`[Auth - getCurrentUser] Cookie "${AUTH_COOKIE_NAME}" not found or value is empty this time.`);
-    const allCookies = cookies().getAll();
+    console.log(`[Auth - getCurrentUser @ ${new Date().toISOString()}] Cookie "${AUTH_COOKIE_NAME}" not found or value is empty.`);
+    const allCookies = cookieStore.getAll(); 
     if (allCookies.length > 0) {
-        console.log("[Auth - getCurrentUser] All cookies received by server for this request:", allCookies.map(c => ({ name: c.name, value: c.value.substring(0, 50) + (c.value.length > 50 ? '...' : '') })));
+        console.log(`[Auth - getCurrentUser @ ${new Date().toISOString()}] All cookies received by server for this request:`, allCookies.map(c => ({ name: c.name, value: c.value.substring(0, 50) + (c.value.length > 50 ? '...' : '') })));
     } else {
-        console.log("[Auth - getCurrentUser] No cookies received by server for this request.");
+        console.log(`[Auth - getCurrentUser @ ${new Date().toISOString()}] No cookies received by server for this request.`);
     }
     return null;
   }
   try {
     const session = JSON.parse(cookieValue) as UserSession;
     if (session.userId && session.username) {
-      console.log('[Auth - getCurrentUser] Cookie found, parsed, returning user:', {userId: session.userId, username: session.username});
+      console.log(`[Auth - getCurrentUser @ ${new Date().toISOString()}] Cookie found, parsed, returning user:`, {userId: session.userId, username: session.username});
       return session;
     }
-    console.warn('[Auth - getCurrentUser] Cookie found, parsed, but invalid session structure:', session);
+    console.warn(`[Auth - getCurrentUser @ ${new Date().toISOString()}] Cookie found, parsed, but invalid session structure:`, session);
     return null;
   } catch (error) {
-    console.error('[Auth - getCurrentUser] Error parsing session cookie:', error, "Cookie Value was:", cookieValue);
+    console.error(`[Auth - getCurrentUser @ ${new Date().toISOString()}] Error parsing session cookie:`, error, "Cookie Value was:", cookieValue);
     return null;
   }
 }
