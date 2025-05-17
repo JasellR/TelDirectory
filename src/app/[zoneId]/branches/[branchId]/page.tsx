@@ -12,7 +12,7 @@ import { EditLocalityButton } from '@/components/actions/EditLocalityButton';
 import { AddLocalityButton } from '@/components/actions/AddLocalityButton';
 import { getTranslations } from '@/lib/translations-server';
 import { Button } from '@/components/ui/button';
-// import { isAuthenticated } from '@/lib/auth-actions'; // Authentication removed
+import { isAuthenticated } from '@/lib/auth-actions';
 
 interface BranchPageProps {
   params: {
@@ -38,7 +38,7 @@ export default async function BranchPage({ params }: BranchPageProps) {
   const { zoneId, branchId } = params;
   const zone = await getZoneDetails(zoneId);
   const branch = await getBranchDetails(zoneId, branchId);
-  // const userIsAuthenticated = await isAuthenticated(); // Authentication removed
+  const userIsAuthenticated = await isAuthenticated();
   
   if (!zone || !branch) { 
     notFound();
@@ -66,14 +66,15 @@ export default async function BranchPage({ params }: BranchPageProps) {
         </div>
         <div className="flex justify-between items-center mb-8">
           <h1 className="text-3xl font-bold text-foreground">{t('localitiesInBranchTitle', { branchName: branch.name }) || `Localities in ${branch.name}`}</h1>
-          {/* Reverted: Always show AddLocalityButton */}
-          <AddLocalityButton 
-            zoneId={zoneId} 
-            zoneName={zone.name} 
-            branchId={branchId}
-            branchName={branch.name}
-            itemType='locality' 
-          />
+          {userIsAuthenticated && (
+            <AddLocalityButton 
+              zoneId={zoneId} 
+              zoneName={zone.name} 
+              branchId={branchId}
+              branchName={branch.name}
+              itemType='locality' 
+            />
+          )}
         </div>
         {localities.length > 0 ? (
           <div className="space-y-4">
@@ -96,22 +97,23 @@ export default async function BranchPage({ params }: BranchPageProps) {
                       {t('viewExtensionsAndDetails', { localityName: locality.name })} (ID: {locality.id})
                     </p>
                   </div>
-                  {/* Reverted: Always show Edit/Delete buttons */}
-                  <div className="flex-shrink-0 flex items-center space-x-1">
-                    <EditLocalityButton 
-                        zoneId={zoneId} 
-                        branchId={branchId} 
-                        item={{id: locality.id, name: locality.name, type: 'locality'}}
-                        itemType='locality'
-                    />
-                    <DeleteLocalityButton 
-                        zoneId={zoneId} 
-                        branchId={branchId}
-                        itemId={locality.id} 
-                        itemName={locality.name} 
-                        itemType='locality'
-                    />
-                  </div>
+                  {userIsAuthenticated && (
+                    <div className="flex-shrink-0 flex items-center space-x-1">
+                      <EditLocalityButton 
+                          zoneId={zoneId} 
+                          branchId={branchId} 
+                          item={{id: locality.id, name: locality.name, type: 'locality'}}
+                          itemType='locality'
+                      />
+                      <DeleteLocalityButton 
+                          zoneId={zoneId} 
+                          branchId={branchId}
+                          itemId={locality.id} 
+                          itemName={locality.name} 
+                          itemType='locality'
+                      />
+                    </div>
+                  )}
                 </CardContent>
               </Card>
             ))}

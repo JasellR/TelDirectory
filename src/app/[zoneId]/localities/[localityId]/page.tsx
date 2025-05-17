@@ -10,7 +10,7 @@ import { Button } from '@/components/ui/button';
 import Link from 'next/link';
 import { ArrowLeft } from 'lucide-react';
 import { getTranslations } from '@/lib/translations-server';
-// import { isAuthenticated } from '@/lib/auth-actions'; // Authentication removed
+import { isAuthenticated } from '@/lib/auth-actions';
 
 interface LocalityPageProps {
   params: {
@@ -36,7 +36,7 @@ export default async function LocalityPage({ params }: LocalityPageProps) {
   const { zoneId, localityId } = params;
   const zone = await getZoneDetails(zoneId);
   const locality = await getLocalityWithExtensions(localityId);
-  // const userIsAuthenticated = await isAuthenticated(); // Authentication removed
+  const userIsAuthenticated = await isAuthenticated();
   
   const localityDisplayName = (await getLocalityDetails(localityId, { zoneId }))?.name || localityId;
 
@@ -65,19 +65,20 @@ export default async function LocalityPage({ params }: LocalityPageProps) {
         </div>
         <div className="flex justify-between items-center mb-6">
           <h1 className="text-3xl font-bold text-foreground">Extensions in {localityDisplayName}</h1>
-          {/* Reverted: Always show AddExtensionButton */}
-          <AddExtensionButton 
-            localityId={localityId} 
-            localityName={localityDisplayName} 
-            zoneId={zoneId} 
-          />
+          {userIsAuthenticated && (
+            <AddExtensionButton 
+              localityId={localityId} 
+              localityName={localityDisplayName} 
+              zoneId={zoneId} 
+            />
+          )}
         </div>
         <ExtensionTable 
           extensions={locality.extensions || []} 
           localityName={localityDisplayName} 
           localityId={localityId}
           zoneId={zoneId}
-          // isAuthenticated={userIsAuthenticated} // Reverted: prop removed
+          isAuthenticated={userIsAuthenticated}
         />
       </div>
 

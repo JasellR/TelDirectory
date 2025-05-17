@@ -1,14 +1,16 @@
 
 import Link from 'next/link';
-import { Phone, Settings } from 'lucide-react';
+import { Phone, Settings, LogIn, LogOut } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { getTranslations } from '@/lib/translations-server';
 import { ThemeToggleHeader } from '@/components/settings/ThemeToggleHeader';
 import { LanguageToggleHeader } from '@/components/settings/LanguageToggleHeader';
-
+import { getCurrentUser } from '@/lib/auth-actions'; // Updated import
+import { UserMenu } from './UserMenu'; // Assuming UserMenu component exists or will be created
 
 export async function AppHeader() {
   const t = await getTranslations();
+  const user = await getCurrentUser(); // Fetches user session
 
   return (
     <header className="bg-card border-b border-border shadow-sm">
@@ -21,11 +23,23 @@ export async function AppHeader() {
         <nav className="flex items-center gap-2">
           <LanguageToggleHeader />
           <ThemeToggleHeader />
-          <Button variant="ghost" size="icon" asChild aria-label={t('settings')}>
-            <Link href="/import-xml">
-              <Settings className="h-5 w-5" />
-            </Link>
-          </Button>
+          {user ? (
+            <>
+              <Button variant="ghost" size="icon" asChild aria-label={t('settings')}>
+                <Link href="/import-xml">
+                  <Settings className="h-5 w-5" />
+                </Link>
+              </Button>
+              <UserMenu username={user.username} /> 
+            </>
+          ) : (
+            <Button variant="outline" asChild size="sm">
+              <Link href="/login">
+                <LogIn className="mr-2 h-4 w-4" />
+                {t('loginButton')}
+              </Link>
+            </Button>
+          )}
         </nav>
       </div>
     </header>
