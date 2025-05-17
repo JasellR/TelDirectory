@@ -2,7 +2,7 @@
 'use server';
 
 import { cookies } from 'next/headers';
-import { redirect } from 'next/navigation'; // Keep for logoutAction
+import { redirect } from 'next/navigation';
 import { getDb, bcrypt } from './db';
 import type { UserSession } from '@/types';
 
@@ -59,8 +59,18 @@ export async function loginAction(formData: FormData): Promise<{ success: boolea
           sameSite: 'lax',
           maxAge: 60 * 60 * 24 * 7, // 1 week
         });
-        console.log('[Auth] Session cookie SET for user:', username, 'Session data:', JSON.stringify(sessionData));
-        return { success: true, message: 'Login successful.' }; // DO NOT redirect from server action
+        console.log(`[Auth] Attempted to set cookie "${AUTH_COOKIE_NAME}" with value:`, JSON.stringify(sessionData));
+        
+        // Try to read the cookie immediately after setting
+        const cookieJustSet = cookies().get(AUTH_COOKIE_NAME);
+        if (cookieJustSet) {
+          console.log(`[Auth] Successfully read cookie "${AUTH_COOKIE_NAME}" immediately after setting. Value:`, cookieJustSet.value);
+        } else {
+          console.warn(`[Auth] FAILED to read cookie "${AUTH_COOKIE_NAME}" immediately after setting.`);
+        }
+
+        console.log('[Auth] Login action successful for user:', username);
+        return { success: true, message: 'Login successful.' };
       } catch (cookieError: any) {
         console.error('[Auth] Error setting session cookie:', cookieError);
         return { success: false, message: 'Error finalizing login session. Please try again.'};
@@ -82,7 +92,6 @@ export async function logoutAction(): Promise<void> {
   } catch (error) {
     console.error('[Auth] Error during logout (clearing cookie):', error);
   }
-  // Redirect to login page after logout
   redirect('/login');
 }
 
@@ -93,24 +102,29 @@ export async function isAuthenticated(): Promise<boolean> {
 
 export async function getCurrentUser(): Promise<UserSession | null> {
   const sessionCookie = cookies().get(AUTH_COOKIE_NAME);
-  console.log(`[Auth - getCurrentUser] Attempting to read cookie "${AUTH_COOKIE_NAME}". Value:`, sessionCookie?.value);
+  const cookieValue = sessionCookie?.value;
+  console.log(`[Auth - getCurrentUser] Attempting to read cookie "${AUTH_COOKIE_NAME}". Value:`, cookieValue);
 
-  if (!sessionCookie?.value) {
-    console.log('[Auth - getCurrentUser] No session cookie found or value is empty.');
+  if (!cookieValue) {
+    console.log(`[Auth - getCurrentUser] Cookie "${AUTH_COOKIE_NAME}" not found or value is empty.`);
+    const allCookies = cookies().getAll();
+    if (allCookies.length > 0) {
+        console.log("[Auth - getCurrentUser] All cookies received by server:", allCookies.map(c => ({ name: c.name, value: c.value.substring(0, 50) + (c.value.length > 50 ? '...' : '') })));
+    } else {
+        console.log("[Auth - getCurrentUser] No cookies received by server.");
+    }
     return null;
   }
   try {
-    const session = JSON.parse(sessionCookie.value) as UserSession;
+    const session = JSON.parse(cookieValue) as UserSession;
     if (session.userId && session.username) {
       console.log('[Auth - getCurrentUser] Cookie found, parsed, returning user:', session);
       return session;
     }
-    console.log('[Auth - getCurrentUser] Cookie found, parsed, but invalid session structure:', session);
+    console.warn('[Auth - getCurrentUser] Cookie found, parsed, but invalid session structure:', session);
     return null;
   } catch (error) {
-    console.error('[Auth - getCurrentUser] Error parsing session cookie:', error, "Cookie Value was:", sessionCookie.value);
-    // Optionally delete invalid cookie
-    // cookies().delete(AUTH_COOKIE_NAME);
+    console.error('[Auth - getCurrentUser] Error parsing session cookie:', error, "Cookie Value was:", cookieValue);
     return null;
   }
 }
