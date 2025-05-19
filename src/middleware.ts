@@ -1,4 +1,6 @@
 
+'use server';
+
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { cookies } from 'next/headers';
@@ -10,7 +12,8 @@ const LOGIN_PATH = '/login';
 
 // Helper function to check authentication status from cookies (used only by middleware)
 async function checkAuthFromCookiesForMiddleware(): Promise<boolean> {
-  const sessionCookie = cookies().get(AUTH_COOKIE_NAME);
+  const cookieStore = await cookies();
+  const sessionCookie = cookieStore.get(AUTH_COOKIE_NAME);
   if (!sessionCookie?.value) {
     // console.log('[Middleware Auth Check] No session cookie.');
     return false;

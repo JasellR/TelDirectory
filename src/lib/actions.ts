@@ -6,7 +6,7 @@ import path from 'path';
 import { parseStringPromise, Builder } from 'xml2js';
 import { revalidatePath } from 'next/cache';
 import type { CiscoIPPhoneMenu, CiscoIPPhoneDirectory, MenuItem as XmlMenuItem } from '@/types/xml';
-import { CiscoIPPhoneMenuSchema, CiscoIPPhoneDirectorySchema } from '@/lib/data'; // getZones etc removed, using fs directly
+import { CiscoIPPhoneMenuSchema, CiscoIPPhoneDirectorySchema } from '@/lib/data';
 import { getResolvedIvoxsRootPath, saveDirectoryConfig as saveDirConfig } from '@/lib/config';
 import { isAuthenticated } from '@/lib/auth-actions';
 
@@ -15,10 +15,10 @@ async function getIvoxsPaths() {
   const ivoxsRoot = await getResolvedIvoxsRootPath();
   return {
     IVOXS_DIR: ivoxsRoot,
-    ZONE_BRANCH_DIR: path.join(ivoxsRoot, 'zonebranch'),   
-    BRANCH_DIR: path.join(ivoxsRoot, 'branch'),           
-    DEPARTMENT_DIR: path.join(ivoxsRoot, 'department'),   
-    MAINMENU_FILENAME: 'MainMenu.xml'                     
+    ZONE_BRANCH_DIR: path.join(ivoxsRoot, 'zonebranch'),
+    BRANCH_DIR: path.join(ivoxsRoot, 'branch'),
+    DEPARTMENT_DIR: path.join(ivoxsRoot, 'department'),
+    MAINMENU_FILENAME: 'MainMenu.xml'
   };
 }
 
@@ -34,12 +34,12 @@ const sanitizeFilenamePart = (filenamePart: string): string => {
 
 
 function generateIdFromName(name: string): string {
-  const cleanedName = name.replace(/[^a-zA-Z0-9\\s_.-]/g, ''); 
+  const cleanedName = name.replace(/[^a-zA-Z0-9\\s_.-]/g, '');
   if (!cleanedName.trim()) return `UnnamedItem${Date.now()}`;
   return cleanedName
-    .replace(/\\s+/g, '') 
-    .replace(/_{2,}/g, '_') 
-    .replace(/-{2,}/g, '-'); 
+    .replace(/\\s+/g, '')
+    .replace(/_{2,}/g, '_')
+    .replace(/-{2,}/g, '-');
 }
 
 
@@ -88,13 +88,13 @@ export async function addZoneAction(zoneName: string): Promise<{ success: boolea
   const mainMenuPath = path.join(paths.IVOXS_DIR, paths.MAINMENU_FILENAME);
   const newZoneBranchFilePath = path.join(paths.ZONE_BRANCH_DIR, `${newZoneId}.xml`);
 
-  let currentHost = '127.0.0.1'; // Default, will be overridden by .config.json if present
-  let currentPort = '3000';   // Default
+  let currentHost = '127.0.0.1';
+  let currentPort = '3000';
 
 
   try {
     const mainMenuDir = path.dirname(mainMenuPath);
-    const hostConfigPath = path.join(mainMenuDir, '.config.json'); // Look for .config.json in the same dir as MainMenu.xml
+    const hostConfigPath = path.join(mainMenuDir, '.config.json');
     try {
         const configData = await fs.readFile(hostConfigPath, 'utf-8');
         const config = JSON.parse(configData);
@@ -112,7 +112,7 @@ export async function addZoneAction(zoneName: string): Promise<{ success: boolea
     if (!parsedMainMenu || !parsedMainMenu.CiscoIPPhoneMenu) {
       const newMainMenuContent = {
         CiscoIPPhoneMenu: {
-          Title: "Farmacia Carol", 
+          Title: "Farmacia Carol",
           Prompt: "Select a Zone Branch",
           MenuItem: [{ Name: zoneName, URL: newZoneUrl }]
         }
@@ -417,13 +417,13 @@ export async function deleteLocalityOrBranchAction(args: DeleteItemArgs): Promis
     }
     let menuItems = ensureArray(parsedParentXml.CiscoIPPhoneMenu.MenuItem);
     menuItems = menuItems.filter(item => !(item && typeof item.URL === 'string' && extractIdFromUrl(item.URL) === sanitizedItemId));
-    parsedParentXml.CiscoIPPhoneMenu.MenuItem = menuItems.length > 0 ? menuItems : undefined; 
+    parsedParentXml.CiscoIPPhoneMenu.MenuItem = menuItems.length > 0 ? menuItems : undefined;
     await buildAndWriteXML(parentFilePath, parsedParentXml);
 
     try {
       await fs.unlink(childFilePath);
     } catch (unlinkError: any) {
-      if (unlinkError.code !== 'ENOENT') { 
+      if (unlinkError.code !== 'ENOENT') {
         console.warn(`Could not delete child file ${childFilePath}: ${unlinkError.message}`);
       }
     }
@@ -443,41 +443,57 @@ export async function deleteLocalityOrBranchAction(args: DeleteItemArgs): Promis
 }
 
 export async function addExtensionAction(localityId: string, name: string, telephone: string): Promise<{ success: boolean; message: string; error?: string }> {
-  const authenticated = await isAuthenticated();
-  if (!authenticated) {
-    return { success: false, message: 'Authentication required.', error: 'User not authenticated' };
-  }
-  const paths = await getIvoxsPaths();
-  const sanitizedLocalityId = sanitizeFilenamePart(localityId);
-  if (!sanitizedLocalityId) return { success: false, message: 'Invalid Locality ID.' };
-  if (!name.trim()) return { success: false, message: 'Extension name cannot be empty.' };
-  if (!telephone.trim()) return { success: false, message: 'Extension telephone cannot be empty.' };
-  if (!/^\\d+$/.test(telephone.trim())) return { success: false, message: 'Extension telephone must be a valid number.' };
-
-  const departmentFilePath = path.join(paths.DEPARTMENT_DIR, `${sanitizedLocalityId}.xml`);
   try {
+    const authenticated = await isAuthenticated();
+    if (!authenticated) {
+      return { success: false, message: 'Authentication required.', error: 'User not authenticated' };
+    }
+    const paths = await getIvoxsPaths();
+    const sanitizedLocalityId = sanitizeFilenamePart(localityId);
+    if (!sanitizedLocalityId) return { success: false, message: 'Invalid Locality ID.' };
+    if (!name.trim()) return { success: false, message: 'Extension name cannot be empty.' };
+    if (!telephone.trim()) return { success: false, message: 'Extension telephone cannot be empty.' };
+
+    const trimmedTelephone = telephone.trim();
+    // Enhanced debugging for telephone validation
+    let charDetails = '';
+    for (let i = 0; i < trimmedTelephone.length; i++) {
+      charDetails += `char[${i}]: ${trimmedTelephone[i]} (code: ${trimmedTelephone.charCodeAt(i).toString(16)}) `;
+    }
+    console.log(`[Debug AddExtension] Validating telephone. Raw: "[${telephone}]", Trimmed: "[${trimmedTelephone}]", Length: ${trimmedTelephone.length}, CharDetails: ${charDetails.trim()}`);
+
+    const isDigitsOnly = /^\d+$/.test(trimmedTelephone);
+    console.log(`[Debug AddExtension] Result of /^\d+$/.test(trimmedTelephone) for "[${trimmedTelephone}]" = ${isDigitsOnly}`);
+
+    if (!isDigitsOnly) {
+      console.error(`[Debug AddExtension] Regex test failed for telephone: "[${trimmedTelephone}]". Returning 'invalid number' error.`);
+      return { success: false, message: 'SERVER: Extension telephone must be a valid number.' };
+    }
+
+    const departmentFilePath = path.join(paths.DEPARTMENT_DIR, `${sanitizedLocalityId}.xml`);
+
     const parsedDepartmentXml = await readAndParseXML(departmentFilePath);
     if (!parsedDepartmentXml || !parsedDepartmentXml.CiscoIPPhoneDirectory) {
       const newDirectory: CiscoIPPhoneDirectory = {
-        Title: sanitizedLocalityId, 
+        Title: sanitizedLocalityId,
         Prompt: 'Select an extension',
-        DirectoryEntry: [{ Name: name.trim(), Telephone: telephone.trim() }],
+        DirectoryEntry: [{ Name: name.trim(), Telephone: trimmedTelephone }],
       };
       await buildAndWriteXML(departmentFilePath, { CiscoIPPhoneDirectory: newDirectory });
-      revalidatePath(`/app/[zoneId]/localities/${localityId}`, 'page'); 
+      revalidatePath(`/app/[zoneId]/localities/${localityId}`, 'page');
       revalidatePath(`/app/[zoneId]/branches/[branchId]/localities/${localityId}`, 'page');
       return { success: true, message: `Extension "${name}" added to new locality "${sanitizedLocalityId}".` };
     }
 
     let directoryEntries = ensureArray(parsedDepartmentXml.CiscoIPPhoneDirectory.DirectoryEntry);
-    if (directoryEntries.some(entry => entry.Name === name.trim() && entry.Telephone === telephone.trim())) {
-      return { success: false, message: `An extension with Name "${name}" and Telephone "${telephone}" already exists.` };
+    if (directoryEntries.some(entry => entry.Name === name.trim() && entry.Telephone === trimmedTelephone)) {
+      return { success: false, message: `An extension with Name "${name}" and Telephone "${trimmedTelephone}" already exists.` };
     }
-    directoryEntries.push({ Name: name.trim(), Telephone: telephone.trim() });
+    directoryEntries.push({ Name: name.trim(), Telephone: trimmedTelephone });
     directoryEntries.sort((a, b) => {
       const nameComparison = a.Name.localeCompare(b.Name);
       if (nameComparison !== 0) return nameComparison;
-      return a.Telephone.localeCompare(b.Telephone); 
+      return a.Telephone.localeCompare(b.Telephone);
     });
     parsedDepartmentXml.CiscoIPPhoneDirectory.DirectoryEntry = directoryEntries;
     await buildAndWriteXML(departmentFilePath, parsedDepartmentXml);
@@ -487,8 +503,8 @@ export async function addExtensionAction(localityId: string, name: string, telep
 
     return { success: true, message: `Extension "${name}" added to locality "${sanitizedLocalityId}".` };
   } catch (error: any) {
-    console.error(`Error adding extension to ${sanitizedLocalityId}:`, error);
-    return { success: false, message: `Failed to add extension: ${error.message}`, error: error.toString() };
+    console.error(`[AddExtensionAction Error] Failed to add extension to ${localityId}:`, error);
+    return { success: false, message: `An unexpected error occurred while adding the extension. ${error.message}`, error: error.toString() };
   }
 }
 
@@ -501,22 +517,26 @@ interface EditExtensionArgs {
 }
 
 export async function editExtensionAction(args: EditExtensionArgs): Promise<{ success: boolean; message: string; error?: string }> {
-  const authenticated = await isAuthenticated();
-  if (!authenticated) {
-    return { success: false, message: 'Authentication required.', error: 'User not authenticated' };
-  }
-  const paths = await getIvoxsPaths();
-  const { localityId, oldExtensionName, oldExtensionNumber, newExtensionName, newExtensionNumber } = args;
-
-  const sanitizedLocalityId = sanitizeFilenamePart(localityId);
-  if (!sanitizedLocalityId) return { success: false, message: 'Invalid Locality ID.' };
-  if (!newExtensionName.trim()) return { success: false, message: 'New extension name cannot be empty.' };
-  if (!newExtensionNumber.trim()) return { success: false, message: 'New extension telephone cannot be empty.' };
-  if (!/^\\d+$/.test(newExtensionNumber.trim())) return { success: false, message: 'New extension telephone must be a valid number.' };
-
-  const departmentFilePath = path.join(paths.DEPARTMENT_DIR, `${sanitizedLocalityId}.xml`);
-
   try {
+    const authenticated = await isAuthenticated();
+    if (!authenticated) {
+      return { success: false, message: 'Authentication required.', error: 'User not authenticated' };
+    }
+    const paths = await getIvoxsPaths();
+    const { localityId, oldExtensionName, oldExtensionNumber, newExtensionName, newExtensionNumber } = args;
+
+    const sanitizedLocalityId = sanitizeFilenamePart(localityId);
+    if (!sanitizedLocalityId) return { success: false, message: 'Invalid Locality ID.' };
+    if (!newExtensionName.trim()) return { success: false, message: 'New extension name cannot be empty.' };
+    if (!newExtensionNumber.trim()) return { success: false, message: 'New extension telephone cannot be empty.' };
+
+    const trimmedNewNumber = newExtensionNumber.trim();
+    if (!/^\d+$/.test(trimmedNewNumber)) {
+      return { success: false, message: 'SERVER: New extension telephone must be a valid number.' };
+    }
+
+    const departmentFilePath = path.join(paths.DEPARTMENT_DIR, `${sanitizedLocalityId}.xml`);
+
     const parsedDepartmentXml = await readAndParseXML(departmentFilePath);
     if (!parsedDepartmentXml || !parsedDepartmentXml.CiscoIPPhoneDirectory) {
       return { success: false, message: `Department file ${sanitizedLocalityId}.xml not found or invalid.` };
@@ -531,22 +551,22 @@ export async function editExtensionAction(args: EditExtensionArgs): Promise<{ su
       return { success: false, message: `Original extension "${oldExtensionName} - ${oldExtensionNumber}" not found.` };
     }
 
-    if (newExtensionName.trim() !== oldExtensionName || newExtensionNumber.trim() !== oldExtensionNumber) {
+    if (newExtensionName.trim() !== oldExtensionName || trimmedNewNumber !== oldExtensionNumber) {
       const conflictExists = directoryEntries.some(
         (entry, index) =>
-          index !== entryIndex && 
+          index !== entryIndex &&
           entry.Name === newExtensionName.trim() &&
-          entry.Telephone === newExtensionNumber.trim()
+          entry.Telephone === trimmedNewNumber
       );
 
       if (conflictExists) {
-        return { success: false, message: `Another extension with name "${newExtensionName}" and number "${newExtensionNumber}" already exists.` };
+        return { success: false, message: `Another extension with name "${newExtensionName}" and number "${trimmedNewNumber}" already exists.` };
       }
     }
 
 
     directoryEntries[entryIndex].Name = newExtensionName.trim();
-    directoryEntries[entryIndex].Telephone = newExtensionNumber.trim();
+    directoryEntries[entryIndex].Telephone = trimmedNewNumber;
 
     directoryEntries.sort((a, b) => {
       const nameComparison = a.Name.localeCompare(b.Name);
@@ -563,8 +583,8 @@ export async function editExtensionAction(args: EditExtensionArgs): Promise<{ su
 
     return { success: true, message: `Extension "${oldExtensionName}" updated to "${newExtensionName}".` };
   } catch (error: any) {
-    console.error(`Error editing extension in ${sanitizedLocalityId}:`, error);
-    return { success: false, message: `Failed to edit extension: ${error.message}`, error: error.toString() };
+    console.error(`[EditExtensionAction Error] Failed to edit extension in ${localityId}:`, error);
+    return { success: false, message: `An unexpected error occurred while editing the extension. ${error.message}`, error: error.toString() };
   }
 }
 
@@ -587,7 +607,7 @@ export async function deleteExtensionAction(localityId: string, extensionDepartm
     }
     let directoryEntries = ensureArray(parsedDepartmentXml.CiscoIPPhoneDirectory.DirectoryEntry);
     directoryEntries = directoryEntries.filter(entry => !(entry.Name === extensionDepartment && entry.Telephone === extensionNumber));
-    parsedDepartmentXml.CiscoIPPhoneDirectory.DirectoryEntry = directoryEntries.length > 0 ? directoryEntries : undefined; 
+    parsedDepartmentXml.CiscoIPPhoneDirectory.DirectoryEntry = directoryEntries.length > 0 ? directoryEntries : undefined;
     await buildAndWriteXML(departmentFilePath, parsedDepartmentXml);
 
     revalidatePath(`/app/[zoneId]/localities/${localityId}`, 'page');
@@ -646,8 +666,8 @@ export async function saveDepartmentXmlAction(departmentFilenameBase: string | n
     const filePath = path.join(paths.DEPARTMENT_DIR, filename);
     await fs.mkdir(paths.DEPARTMENT_DIR, { recursive: true });
     await buildAndWriteXML(filePath, { CiscoIPPhoneDirectory: validationResult.data });
-    revalidatePath('/*/[localityId]', 'page'); 
-    revalidatePath('/*/*/[localityId]', 'page'); 
+    revalidatePath('/*/[localityId]', 'page');
+    revalidatePath('/*/*/[localityId]', 'page');
     return { success: true, message: `Department file ${filename} imported successfully.` };
   } catch (error: any) {
     return { success: false, message: `Failed to save Department file ${filename}.`, error: error.message };
@@ -655,23 +675,24 @@ export async function saveDepartmentXmlAction(departmentFilenameBase: string | n
 }
 
 
-async function processSingleXmlFileForHostUpdate(filePath: string, newHost: string, newPort: string): Promise<{ success: boolean; error?: string; RfilePath: string; changed: boolean }> {
+async function processSingleXmlFileForHostUpdate(filePath: string, newHost: string, newPort: string): Promise<{ success: boolean; error?: string; filePath: string; changed: boolean }> {
   let fileChanged = false;
   try {
+    console.log(`[processSingleXmlFileForHostUpdate] Processing: ${filePath}`);
     const parsedXml = await readAndParseXML(filePath);
     if (!parsedXml) {
       console.log(`[processSingleXmlFileForHostUpdate] Skipped (read error or empty): ${filePath}`);
-      return { success: true, RfilePath: filePath, changed: fileChanged };
+      return { success: true, filePath: filePath, changed: fileChanged };
     }
     if (!parsedXml.CiscoIPPhoneMenu || !parsedXml.CiscoIPPhoneMenu.MenuItem) {
       console.log(`[processSingleXmlFileForHostUpdate] Skipped (not Menu type or no MenuItems): ${filePath}`);
-      return { success: true, RfilePath: filePath, changed: fileChanged };
+      return { success: true, filePath: filePath, changed: fileChanged };
     }
 
     const menuItems = ensureArray(parsedXml.CiscoIPPhoneMenu.MenuItem);
      if (!menuItems || menuItems.length === 0) {
         console.log(`[processSingleXmlFileForHostUpdate] Skipped (no MenuItems array): ${filePath}`);
-        return { success: true, RfilePath: filePath, changed: fileChanged };
+        return { success: true, filePath: filePath, changed: fileChanged };
     }
 
     for (const menuItem of menuItems) {
@@ -703,10 +724,10 @@ async function processSingleXmlFileForHostUpdate(filePath: string, newHost: stri
     } else {
       console.log(`[processSingleXmlFileForHostUpdate] No URL changes needed for: ${filePath}`);
     }
-    return { success: true, RfilePath: filePath, changed: fileChanged };
+    return { success: true, filePath: filePath, changed: fileChanged };
   } catch (error: any) {
     console.error(`[processSingleXmlFileForHostUpdate] Error processing file ${filePath} for host update:`, error);
-    return { success: false, error: error.message, RfilePath: filePath, changed: fileChanged };
+    return { success: false, error: error.message, filePath: filePath, changed: fileChanged };
   }
 }
 
@@ -731,12 +752,12 @@ export async function updateXmlUrlsAction(newHost: string, newPort: string): Pro
   const allFilesToProcess: string[] = [];
   const mainMenuPath = path.join(paths.IVOXS_DIR, paths.MAINMENU_FILENAME);
   try {
-    await fs.access(mainMenuPath); // Check if MainMenu.xml exists
+    await fs.access(mainMenuPath);
     allFilesToProcess.push(mainMenuPath);
   } catch (e) {
     console.warn(`MainMenu.xml not found at ${mainMenuPath}, skipping URL update for it.`);
   }
-  
+
   try {
     const zoneBranchFiles = await fs.readdir(paths.ZONE_BRANCH_DIR);
     zoneBranchFiles.filter(f => f.endsWith('.xml')).forEach(f => allFilesToProcess.push(path.join(paths.ZONE_BRANCH_DIR, f)));
@@ -763,13 +784,13 @@ export async function updateXmlUrlsAction(newHost: string, newPort: string): Pro
     }
   }
 
-  revalidatePath('/', 'layout'); 
+  revalidatePath('/', 'layout');
 
   try {
     const ivoxsDir = paths.IVOXS_DIR;
-    const hostConfigPath = path.join(ivoxsDir, '.config.json'); 
+    const hostConfigPath = path.join(ivoxsDir, '.config.json');
     const currentConfig = { host: newHost.trim(), port: newPort.trim() };
-    await fs.mkdir(ivoxsDir, { recursive: true }); 
+    await fs.mkdir(ivoxsDir, { recursive: true });
     await fs.writeFile(hostConfigPath, JSON.stringify(currentConfig, null, 2));
      console.log(`Network configuration (host/port for XML URLs) saved to ${hostConfigPath}`);
   } catch (e) {
@@ -804,7 +825,7 @@ export async function updateDirectoryRootPathAction(newPath: string): Promise<{ 
   if (!newPath || !newPath.trim()) {
     return { success: false, message: "Directory path cannot be empty." };
   }
-  
+
   const isAbsolutePath = (p: string) => p.startsWith('/') || /^[a-zA-Z]:[\\/]/.test(p);
   if (!isAbsolutePath(newPath.trim())) {
     return { success: false, message: "Directory path must be an absolute path." };
@@ -817,12 +838,12 @@ export async function updateDirectoryRootPathAction(newPath: string): Promise<{ 
     if (!stats.isDirectory()) {
       return { success: false, message: `The provided path "${trimmedPath}" is not a directory.` };
     }
-    const pathsInfo = await getIvoxsPaths(); 
-    await fs.access(path.join(trimmedPath, pathsInfo.MAINMENU_FILENAME), fs.constants.F_OK); 
+    const pathsInfo = await getIvoxsPaths();
+    await fs.access(path.join(trimmedPath, pathsInfo.MAINMENU_FILENAME), fs.constants.F_OK);
 
     await saveDirConfig({ ivoxsRootPath: trimmedPath });
-    revalidatePath('/import-xml', 'page'); 
-    revalidatePath('/', 'layout'); 
+    revalidatePath('/import-xml', 'page');
+    revalidatePath('/', 'layout');
 
     return { success: true, message: `ivoxsdir directory path updated to: ${trimmedPath}` };
   } catch (error: any) {
@@ -838,13 +859,13 @@ export async function updateDirectoryRootPathAction(newPath: string): Promise<{ 
 async function processLocalityForSearch(
   zone: { id: string; name: string },
   branch: { id: string; name: string } | null,
-  localityItem: { id: string; name: string }, 
+  localityItem: { id: string; name: string },
   query: string,
   results: GlobalSearchResult[],
   processedLocalityIds: Set<string>
 ) {
   const lowerQuery = query.toLowerCase();
-  const { getLocalityWithExtensions } = await import('@/lib/data'); // Dynamic import for data functions
+  const { getLocalityWithExtensions } = await import('@/lib/data');
 
   const localityData = await getLocalityWithExtensions(localityItem.id);
 
@@ -900,24 +921,23 @@ export async function searchAllDepartmentsAndExtensionsAction(query: string): Pr
   if (!query || query.trim().length < 2) {
     return [];
   }
-  // Dynamic import for data functions to avoid circular dependency issues at module load time
   const { getZones, getZoneItems, getBranchItems } = await import('@/lib/data');
 
 
   const results: GlobalSearchResult[] = [];
-  const processedLocalityIds = new Set<string>(); 
+  const processedLocalityIds = new Set<string>();
 
   try {
-    const zones = await getZones(); 
+    const zones = await getZones();
 
     for (const zone of zones) {
-      const zoneItems = await getZoneItems(zone.id); 
+      const zoneItems = await getZoneItems(zone.id);
       for (const item of zoneItems) {
         if (item.type === 'locality') {
           await processLocalityForSearch(zone, null, item, query, results, processedLocalityIds);
         } else if (item.type === 'branch') {
           const branchContext = { id: item.id, name: item.name };
-          const branchLocalities = await getBranchItems(item.id); 
+          const branchLocalities = await getBranchItems(item.id);
           for (const loc of branchLocalities) {
             await processLocalityForSearch(zone, branchContext, loc, query, results, processedLocalityIds);
           }
@@ -934,5 +954,5 @@ export async function searchAllDepartmentsAndExtensionsAction(query: string): Pr
     return a.localityName.localeCompare(b.localityName);
   });
 
-  return results.slice(0, 20); 
+  return results.slice(0, 20);
 }
