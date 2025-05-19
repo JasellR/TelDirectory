@@ -20,7 +20,8 @@ interface BranchLocalityPageProps {
   };
 }
 
-export async function generateMetadata({ params }: BranchLocalityPageProps): Promise<Metadata> {
+export async function generateMetadata({ params: paramsPromise }: BranchLocalityPageProps): Promise<Metadata> {
+  const params = await paramsPromise;
   const locality = await getLocalityDetails(params.localityId, { zoneId: params.zoneId, branchId: params.branchId });
   if (!locality) {
     return {
@@ -33,7 +34,8 @@ export async function generateMetadata({ params }: BranchLocalityPageProps): Pro
   };
 }
 
-export default async function BranchLocalityPage({ params }: BranchLocalityPageProps) {
+export default async function BranchLocalityPage({ params: paramsPromise }: BranchLocalityPageProps) {
+  const params = await paramsPromise;
   const { zoneId, branchId, localityId } = params;
   
   const zone = await getZoneDetails(zoneId);
