@@ -1,3 +1,4 @@
+
 'use server';
 
 import fs from 'fs/promises';
@@ -57,28 +58,22 @@ async function readAndParseXML(filePath: string): Promise<any> {
 
 async function buildAndWriteXML(filePath: string, jsObject: any): Promise<void> {
   const builder = new Builder({
-    headless: false, 
-    renderOpts: { pretty: true, indent: '  ', newline: '\n' }, // Use '\n' for newline
-    xmldec: { version: '1.0', encoding: 'UTF-8', standalone: false } // Explicitly manage XML declaration
+    headless: false,
+    renderOpts: { pretty: true, indent: '  ', newline: '\n' },
+    xmldec: { version: '1.0', encoding: 'UTF-8', standalone: false }
   });
 
-  // Ensure jsObject has the root tag (e.g., CiscoIPPhoneMenu or CiscoIPPhoneDirectory)
   let xmlContentBuiltByBuilder;
   if (jsObject.CiscoIPPhoneMenu || jsObject.CiscoIPPhoneDirectory) {
     xmlContentBuiltByBuilder = builder.buildObject(jsObject);
   } else {
-    console.warn("[buildAndWriteXML] jsObject does not seem to contain a root XML tag. This might lead to invalid XML.");
-    // Fallback: try to build what's given, but this is risky
-    xmlContentBuiltByBuilder = builder.buildObject({ Document: jsObject }); // Generic root if actual is missing
+    console.warn("[buildAndWriteXML] jsObject does not seem to contain a root XML tag for CiscoIPPhoneMenu or CiscoIPPhoneDirectory. Building object as-is.");
+    xmlContentBuiltByBuilder = builder.buildObject(jsObject);
   }
-
-  // The builder with xmldec should already include the declaration.
-  // If not, or for fine-tuning, you can prepend it:
-  // const xmlDeclaration = '<?xml version="1.0" encoding="UTF-8" standalone="no"?>\n';
-  // const finalXmlString = xmlDeclaration + xmlContentBuiltByBuilder.trim();
-  // However, if xmldec is used, builder.buildObject() often returns the full XML string including the declaration.
-
-  const finalXmlString = xmlContentBuiltByBuilder; // Assuming builder handles declaration correctly
+  
+  // The builder with xmldec includes the declaration.
+  // No need to prepend `xmlDeclaration` if `xmldec` is correctly configured in the Builder.
+  const finalXmlString = xmlContentBuiltByBuilder;
 
   await fs.mkdir(path.dirname(filePath), { recursive: true });
   await fs.writeFile(filePath, finalXmlString, 'utf-8');
@@ -865,7 +860,7 @@ export async function updateDirectoryRootPathAction(newPath: string): Promise<{ 
     if (!stats.isDirectory()) {
       return { success: false, message: `The provided path "${trimmedPath}" is not a directory.` };
     }
-    const pathsInfo = await getIvoxsPaths();
+    const pathsInfo = await getIvoxsPaths(); // This will use the *new* path if it's already saved, or default
     await fs.access(path.join(trimmedPath, pathsInfo.MAINMENU_FILENAME), fs.constants.F_OK);
 
     await saveDirConfig({ ivoxsRootPath: trimmedPath });
@@ -875,7 +870,7 @@ export async function updateDirectoryRootPathAction(newPath: string): Promise<{ 
     return { success: true, message: `ivoxsdir directory path updated to: ${trimmedPath}` };
   } catch (error: any) {
     if (error.code === 'ENOENT') {
-       const pathsInfo = await getIvoxsPaths();
+       const pathsInfo = await getIvoxsPaths(); // Re-fetch with potentially new context
        return { success: false, message: `The provided path "${trimmedPath}" does not exist or ${pathsInfo.MAINMENU_FILENAME} was not found within it.` , error: error.message };
     }
     console.error('Error updating directory root path:', error);
@@ -914,6 +909,7 @@ async function processLocalityForSearch(
   const localityData = await getLocalityWithExtensions(localityItem.id); 
 
   if (!localityData) {
+    // console.warn(`[GlobalSearch] Could not fetch locality data for ID: ${localityItem.id}`);
     return;
   }
 
@@ -963,10 +959,8 @@ async function processLocalityForSearch(
 
 export async function searchAllDepartmentsAndExtensionsAction(query: string): Promise<GlobalSearchResult[]> {
   const authenticated = await isAuthenticated();
-  if (!authenticated) {
-    // Optionally handle unauthenticated search, for now, returning empty as if no results.
-    // return [];
-  }
+  // No explicit authentication check for search as it's a read-only operation.
+  // If access to even viewing data needs to be restricted, add the check here.
 
   if (!query || query.trim().length < 2) {
     return [];
@@ -1024,7 +1018,14 @@ export async function syncNamesFromXmlFeedAction(feedUrlsString: string): Promis
 
   const paths = await getIvoxsPaths();
   const departmentDir = paths.DEPARTMENT_DIR;
-  const urls = feedUrlsString.split('\n').map(url => url.trim()).filter(url => URL.canParse(url));
+  const urls = feedUrlsString.split('\n').map(url => url.trim()).filter(url => {
+    try {
+      new URL(url); // Basic URL validation
+      return true;
+    } catch {
+      return false;
+    }
+  });
 
   if (urls.length === 0) {
     return {
@@ -1056,14 +1057,19 @@ export async function syncNamesFromXmlFeedAction(feedUrlsString: string): Promis
         const entries = ensureArray(feedDirectory.DirectoryEntry);
         for (const entry of entries) {
           if (entry.Telephone && entry.Name) {
-            const existingEntries = aggregatedFeedExtensions.get(entry.Telephone) || [];
-            existingEntries.push({ name: entry.Name, sourceFeed: feedUrl });
-            aggregatedFeedExtensions.set(entry.Telephone, existingEntries);
+            const trimmedTel = String(entry.Telephone).trim();
+            const trimmedName = String(entry.Name).trim();
+            if (trimmedTel && trimmedName) {
+                const existingEntries = aggregatedFeedExtensions.get(trimmedTel) || [];
+                existingEntries.push({ name: trimmedName, sourceFeed: feedUrl });
+                aggregatedFeedExtensions.set(trimmedTel, existingEntries);
+            }
           }
         }
       }
     } catch (error: any) {
       console.error(`[Sync] Error processing feed ${feedUrl}:`, error);
+      // Optionally continue to next feed or add to a list of failed feeds
     }
   }
   
@@ -1078,6 +1084,8 @@ export async function syncNamesFromXmlFeedAction(feedUrlsString: string): Promis
       uniqueFeedExtensions.set(number, entries[0]); // All names are the same, pick the first one
     }
   }
+  console.log(`[Sync] Total unique (non-conflicted) extensions from feeds: ${uniqueFeedExtensions.size}`);
+
 
   let updatedCount = 0;
   let filesModified = 0;
@@ -1103,12 +1111,18 @@ export async function syncNamesFromXmlFeedAction(feedUrlsString: string): Promis
 
         for (const localEntry of localEntries) {
           if (localEntry.Telephone) {
-            localExtensionsFoundNumbers.add(localEntry.Telephone);
-            const feedEntry = uniqueFeedExtensions.get(localEntry.Telephone);
-            if (feedEntry && localEntry.Name !== feedEntry.name) {
-              localEntry.Name = feedEntry.name;
-              localDataModified = true;
-              updatedCount++;
+            const trimmedLocalTel = String(localEntry.Telephone).trim();
+            localExtensionsFoundNumbers.add(trimmedLocalTel);
+            const feedEntry = uniqueFeedExtensions.get(trimmedLocalTel);
+            
+            if (feedEntry) {
+              const trimmedLocalName = String(localEntry.Name).trim();
+              if (trimmedLocalName !== feedEntry.name) { // feedEntry.name is already trimmed
+                console.log(`[Sync] Updating name for ${trimmedLocalTel} in ${localDeptFilename}: "${trimmedLocalName}" -> "${feedEntry.name}"`);
+                localEntry.Name = feedEntry.name;
+                localDataModified = true;
+                updatedCount++;
+              }
             }
           }
         }
@@ -1122,8 +1136,7 @@ export async function syncNamesFromXmlFeedAction(feedUrlsString: string): Promis
         filesFailedToUpdate++;
       }
     }
-  } catch (error: any)
-{
+  } catch (error: any) {
     console.error(`[Sync] Error reading department directory ${departmentDir}:`, error);
     return {
       success: false,
@@ -1136,6 +1149,8 @@ export async function syncNamesFromXmlFeedAction(feedUrlsString: string): Promis
       error: error.message,
     };
   }
+  console.log(`[Sync] Total unique extension numbers found locally: ${localExtensionsFoundNumbers.size}`);
+
 
   const missingExtensions: Array<{ number: string; name: string; sourceFeed: string }> = [];
   for (const [number, data] of uniqueFeedExtensions.entries()) {
@@ -1145,14 +1160,16 @@ export async function syncNamesFromXmlFeedAction(feedUrlsString: string): Promis
   }
   
   let message = `Sync complete. ${updatedCount} names updated in ${filesModified} files. `;
-  message += `Found ${conflictedExtensions.length} conflicted extensions and ${missingExtensions.length} extensions in feeds that are missing locally.`;
+  message += `Found ${conflictedExtensions.length} conflicted extensions. `;
+  message += `Found ${missingExtensions.length} extensions in feeds that are missing locally.`;
+
   if (filesFailedToUpdate > 0) {
     message += ` Failed to update ${filesFailedToUpdate} local files due to errors (check server logs).`;
   }
 
 
   return {
-    success: filesFailedToUpdate === 0,
+    success: filesFailedToUpdate === 0, // Consider overall success if critical errors occurred
     message,
     updatedCount,
     filesModified,
@@ -1161,4 +1178,3 @@ export async function syncNamesFromXmlFeedAction(feedUrlsString: string): Promis
     missingExtensions,
   };
 }
-
