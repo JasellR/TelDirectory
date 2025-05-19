@@ -5,9 +5,9 @@ import { useState, useEffect, useTransition } from 'react';
 import { Breadcrumbs } from '@/components/layout/Breadcrumbs';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { UploadCloud, Palette, Languages, Settings as SettingsIcon, FileCode, Info, FolderCog, CheckCircle, AlertCircleIcon, UserCog } from 'lucide-react';
+import { UploadCloud, Palette, Languages, Settings as SettingsIcon, FileCode, Info, FolderCog, CheckCircle, AlertCircleIcon, UserCog, Rss, RefreshCw } from 'lucide-react';
 import { FileUploadForm } from '@/components/import/FileUploadForm';
-import { saveZoneBranchXmlAction, saveDepartmentXmlAction, updateDirectoryRootPathAction } from '@/lib/actions';
+import { saveZoneBranchXmlAction, saveDepartmentXmlAction, updateDirectoryRootPathAction, syncNamesFromXmlFeedAction } from '@/lib/actions';
 import { ThemeToggle } from '@/components/settings/ThemeToggle';
 import { LanguageToggle } from '@/components/settings/LanguageToggle';
 import { Separator } from '@/components/ui/separator';
@@ -26,6 +26,7 @@ export default function SettingsPage() {
   const { toast } = useToast();
   const [isPathPending, startPathTransition] = useTransition();
   const [isLogoutPending, startLogoutTransition] = useTransition();
+  const [isSyncPending, startSyncTransition] = useTransition();
   const [currentUser, setCurrentUser] = useState<UserSession | null>(null);
 
 
@@ -33,6 +34,10 @@ export default function SettingsPage() {
   const [currentConfigDisplayPath, setCurrentConfigDisplayPath] = useState<string | null>(null);
   const [isLoadingPath, setIsLoadingPath] = useState(true);
   const [pathStatus, setPathStatus] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
+
+  const [xmlFeedUrl, setXmlFeedUrl] = useState('');
+  const [syncStatus, setSyncStatus] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
+
 
   useEffect(() => {
     document.title = `${t('settings')} - TelDirectory`;
@@ -102,6 +107,33 @@ export default function SettingsPage() {
     });
   };
 
+  const handleSyncNames = async () => {
+    if (!xmlFeedUrl.trim()) {
+      toast({ title: t('errorTitle'), description: t('xmlFeedUrlCannotBeEmpty'), variant: 'destructive' });
+      setSyncStatus({ type: 'error', message: t('xmlFeedUrlCannotBeEmpty') });
+      return;
+    }
+    try {
+      new URL(xmlFeedUrl.trim()); // Validate URL format
+    } catch (_) {
+      toast({ title: t('errorTitle'), description: t('invalidXmlFeedUrl'), variant: 'destructive' });
+      setSyncStatus({ type: 'error', message: t('invalidXmlFeedUrl') });
+      return;
+    }
+
+    setSyncStatus(null);
+    startSyncTransition(async () => {
+      const result = await syncNamesFromXmlFeedAction(xmlFeedUrl.trim());
+      if (result.success) {
+        toast({ title: t('successTitle'), description: result.message });
+        setSyncStatus({ type: 'success', message: result.message });
+      } else {
+        toast({ title: t('errorTitle'), description: result.message + (result.error ? ` ${t('detailsLabel')}: ${result.error}` : ''), variant: 'destructive' });
+        setSyncStatus({ type: 'error', message: result.message + (result.error ? ` Details: ${result.error}` : '') });
+      }
+    });
+  };
+
 
   return (
     <div>
@@ -154,7 +186,7 @@ export default function SettingsPage() {
               <CardContent className="space-y-3">
                 {currentUser && (
                   <p className="text-sm text-muted-foreground">
-                    Logged in as: <strong>{currentUser.username}</strong>
+                    {t('loggedInAsLabel')} <strong>{currentUser.username}</strong>
                   </p>
                 )}
                 <Button onClick={handleLogout} disabled={isLogoutPending} variant="outline" className="w-full sm:w-auto">
@@ -266,6 +298,47 @@ export default function SettingsPage() {
             </Card>
           </CardContent>
         </Card>
+
+        <Separator />
+
+        <Card>
+          <CardHeader>
+            <div className="flex items-center gap-3">
+              <Rss className="h-6 w-6 text-primary" />
+              <CardTitle className="text-2xl">{t('syncNamesFromFeedTitle')}</CardTitle>
+            </div>
+            <CardDescription>
+              {t('syncNamesFromFeedDescription', { departmentDir: `department`})}
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="xmlFeedUrl">{t('xmlFeedUrlLabel')}</Label>
+              <Input
+                id="xmlFeedUrl"
+                value={xmlFeedUrl}
+                onChange={(e) => setXmlFeedUrl(e.target.value)}
+                placeholder={t('xmlFeedUrlPlaceholder')}
+                disabled={isSyncPending}
+              />
+              <p className="text-xs text-muted-foreground flex items-center gap-1">
+                  <Info className="h-3 w-3" />
+                  {t('xmlFeedUrlInfo')}
+              </p>
+            </div>
+            <Button onClick={handleSyncNames} disabled={isSyncPending} className="w-full sm:w-auto">
+              {isSyncPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <RefreshCw className="mr-2 h-4 w-4" />}
+              {t('syncNamesButton')}
+            </Button>
+            {syncStatus && (
+              <Alert variant={syncStatus.type === 'success' ? 'default' : 'destructive'} className="mt-2">
+                {syncStatus.type === 'success' ? <CheckCircle className="h-4 w-4" /> : <AlertCircleIcon className="h-4 w-4" />}
+                <AlertDescription>{syncStatus.message}</AlertDescription>
+              </Alert>
+            )}
+          </CardContent>
+        </Card>
+
       </div>
     </div>
   );

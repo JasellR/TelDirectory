@@ -1,22 +1,24 @@
 
 # TelDirectory - Corporate Phone Directory
 
-TelDirectory is a Next.js web application designed to manage and display a corporate phone directory. It reads directory data from XML files, allowing users to navigate through zones, branches (for specific zones like "Zona Metropolitana"), and localities to find phone extensions. The application also provides an interface to import and manage these XML files, and a search feature to quickly find departments (localities) or extensions. Administrative features like XML import, data modification, and settings are protected by a simple username/password authentication system backed by an SQLite database.
+TelDirectory is a Next.js web application designed to manage and display a corporate phone directory. It reads directory data from XML files, allowing users to navigate through zones, branches (for specific zones like "Zona Metropolitana"), and localities to find phone extensions. The application also provides an interface to import and manage these XML files, a search feature, and a mechanism to sync extension names from an external XML feed. Administrative features like XML import, data modification, and settings are protected by a simple username/password authentication system backed by an SQLite database.
 
 ## Core Features:
 
 *   **Hierarchical Directory**: Navigate through Zones, Branches (where applicable), and Localities.
-*   **Extension Listing**: View department/contact names and their phone extensions.
+*   **Extension Listing**: View department/contact names and their phone extensions. Clickable extension numbers (using `tel:` links) to initiate calls via system's default telephony app.
 *   **XML-Based Data**: Directory data is stored in XML files, following Cisco IP Phone standards.
 *   **Web Interface**: Browse the directory through a user-friendly web interface.
 *   **Global Search**: A search bar on the homepage allows users to quickly find departments (localities) by name, or specific extensions by their name/role or number, across the entire directory.
 *   **Authentication**:
     *   A login page (`/login`) protects administrative functionalities.
-    *   Default administrator credentials: `admin` / `admin123` (should be changed in a real environment).
+    *   Default administrator credentials: `admin` / `admin123` (should be changed in a real environment, specifically by setting the `ADMIN_PASSWORD` environment variable or modifying the initial seed in `src/lib/db.ts`).
     *   User data is stored in an SQLite database (`teldirectory.db`).
 *   **Data Management (Authenticated Users Only)**:
     *   Import XML files for zone branches and departments via the Settings page.
     *   Add, edit, and delete zones, branches, localities, and extensions directly through the web UI.
+*   **Extension Name Synchronization (Authenticated Users Only)**:
+    *   Sync extension names from a custom XML feed URL (e.g., a PHP script outputting `<CiscoIPPhoneDirectory>` format). This updates the names in your local department XML files based on matching extension numbers.
 *   **Customization**:
     *   Dark Mode support (toggle in header and Settings).
     *   Language toggle (English/Español - toggle in header and Settings).
@@ -157,6 +159,12 @@ The "Settings" page (`/import-xml`), accessible after logging in, allows users t
 
 **Caution**: Importing files will overwrite existing files with the same name in the target directory.
 
+## Synchronize Extension Names (Authenticated Users)
+
+The "Settings" page also provides a feature to synchronize extension names from an external XML feed:
+*   **XML Feed URL**: Enter the URL of a script (e.g., a PHP script) that outputs an XML file in the `<CiscoIPPhoneDirectory>` format (similar to a department file, containing `<DirectoryEntry>` with `<Name>` and `<Telephone>`).
+*   **Sync Action**: Clicking "Sync Names from Feed" will fetch this external XML. For each extension number found in the feed, the application will check your local `department` XML files. If an extension with the same number exists locally but has a different name, the local name will be updated to match the name from the feed.
+
 ## Search Functionality
 
 *   **Global Search (Homepage)**: The homepage features a prominent search bar. Users can type to search for:
@@ -175,5 +183,3 @@ The application reads and writes XML data structured for Cisco IP Phones:
 *   **Directory Structure (`CiscoIPPhoneDirectory`)**: Used for `department/*.xml`. Contains `<DirectoryEntry>` elements with `<Name>` (department/contact) and `<Telephone>` (extension).
 
 Refer to Cisco IP Phone documentation for detailed XML specifications if needed.
-
-    

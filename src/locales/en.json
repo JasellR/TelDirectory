@@ -49,7 +49,7 @@
   "extensionDialogNumberPlaceholder": "e.g., 1001",
   "extensionNameRequired": "Extension name cannot be empty.",
   "extensionNumberRequired": "Extension number cannot be empty.",
-  "extensionNumberInvalid": "Extension number must contain only digits.",
+  "extensionNumberInvalid": "SERVER: Extension telephone must be a valid number.",
   "detailsLabel": "Details",
   "addBranchButtonLabel": "Add Branch",
   "addBranchButtonAction": "Add Branch",
@@ -155,5 +155,14 @@
   "profileDropdownItem": "Profile",
   "accountSettingsTitle": "Account Settings",
   "accountSettingsDescription": "Manage your account and session.",
-  "authRequiredError": "Authentication required. Please log in."
+  "authRequiredError": "Authentication required. Please log in.",
+  "loggedInAsLabel": "Logged in as:",
+  "syncNamesFromFeedTitle": "Synchronize Extension Names",
+  "syncNamesFromFeedDescription": "Fetch an XML feed (CiscoIPPhoneDirectory format) from a URL and update the names of matching extensions in your local {departmentDir} files.",
+  "xmlFeedUrlLabel": "XML Feed URL",
+  "xmlFeedUrlPlaceholder": "e.g., http://your-server/pbx-directory.php",
+  "xmlFeedUrlInfo": "The URL should provide an XML output similar to a department file.",
+  "syncNamesButton": "Sync Names from Feed",
+  "xmlFeedUrlCannotBeEmpty": "XML Feed URL cannot be empty.",
+  "invalidXmlFeedUrl": "The provided XML Feed URL is not a valid URL."
 }
