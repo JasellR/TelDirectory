@@ -21,7 +21,8 @@ interface BranchPageProps {
   };
 }
 
-export async function generateMetadata({ params }: BranchPageProps): Promise<Metadata> {
+export async function generateMetadata({ params: paramsPromise }: BranchPageProps): Promise<Metadata> {
+  const params = await paramsPromise;
   const branch = await getBranchDetails(params.zoneId, params.branchId);
   if (!branch) {
     return {
@@ -34,7 +35,8 @@ export async function generateMetadata({ params }: BranchPageProps): Promise<Met
   };
 }
 
-export default async function BranchPage({ params }: BranchPageProps) {
+export default async function BranchPage({ params: paramsPromise }: BranchPageProps) {
+  const params = await paramsPromise;
   const { zoneId, branchId } = params;
   const zone = await getZoneDetails(zoneId);
   const branch = await getBranchDetails(zoneId, branchId);

@@ -57,28 +57,22 @@ async function readAndParseXML(filePath: string): Promise<any> {
 }
 
 async function buildAndWriteXML(filePath: string, jsObject: any): Promise<void> {
-  const builder = new Builder({ 
-    headless: true, // This means xml2js will NOT output the <?xml ...?> declaration
+  const builder = new Builder({
+    headless: true,
     renderOpts: { pretty: true, indent: '  ', newline: '\n' } // Use single '\n' for newline
   });
-  
+
   let xmlContentBuiltByBuilder;
-  if (jsObject.CiscoIPPhoneMenu) {
-    xmlContentBuiltByBuilder = builder.buildObject(jsObject.CiscoIPPhoneMenu);
-  } else if (jsObject.CiscoIPPhoneDirectory) {
-     xmlContentBuiltByBuilder = builder.buildObject(jsObject.CiscoIPPhoneDirectory);
-  } else {
-    // Fallback for other structures, assuming jsObject is the root element content
-    // This case should be reviewed if other XML structures are managed.
-    xmlContentBuiltByBuilder = builder.buildObject(jsObject);
-  }
-  
-  // Prepend our own XML declaration
+  // jsObject should be the complete structure including the root key
+  // e.g., { CiscoIPPhoneMenu: { Title: '...', MenuItem: [...] } }
+  // or { CiscoIPPhoneDirectory: { Title: '...', DirectoryEntry: [...] } }
+  xmlContentBuiltByBuilder = builder.buildObject(jsObject);
+
   const xmlDeclaration = '<?xml version="1.0" encoding="UTF-8" standalone="no"?>\n';
-  const finalXmlString = xmlDeclaration + xmlContentBuiltByBuilder;
+  const finalXmlString = xmlDeclaration + xmlContentBuiltByBuilder.trim(); // Use the builder's output
 
   await fs.mkdir(path.dirname(filePath), { recursive: true });
-  await fs.writeFile(filePath, finalXmlString, 'utf-8');
+  await fs.writeFile(filePath, finalXmlString, 'utf-8'); // Explicitly set utf-8
 }
 
 
@@ -105,7 +99,7 @@ export async function addZoneAction(zoneName: string): Promise<{ success: boolea
 
   try {
     const mainMenuDir = path.dirname(mainMenuPath);
-    const hostConfigPath = path.join(mainMenuDir, '.config.json'); // Assuming .config.json is in IVOXS_DIR
+    const hostConfigPath = path.join(mainMenuDir, '.config.json'); // Assuming .config.json is in ivoxsdir
     try {
         const configData = await fs.readFile(hostConfigPath, 'utf-8');
         const config = JSON.parse(configData);
@@ -128,7 +122,6 @@ export async function addZoneAction(zoneName: string): Promise<{ success: boolea
           MenuItem: [{ Name: zoneName, URL: newZoneUrl }]
         }
       };
-      // Pass the whole object to be built, including the root key
       await buildAndWriteXML(mainMenuPath, newMainMenuContent);
     } else {
       let menuItems = ensureArray(parsedMainMenu.CiscoIPPhoneMenu.MenuItem);
@@ -138,7 +131,7 @@ export async function addZoneAction(zoneName: string): Promise<{ success: boolea
       menuItems.push({ Name: zoneName, URL: newZoneUrl });
       menuItems.sort((a, b) => a.Name.localeCompare(b.Name));
       parsedMainMenu.CiscoIPPhoneMenu.MenuItem = menuItems;
-      await buildAndWriteXML(mainMenuPath, parsedMainMenu); // parsedMainMenu already has CiscoIPPhoneMenu as root
+      await buildAndWriteXML(mainMenuPath, parsedMainMenu);
     }
 
     const newZoneBranchContent = {
@@ -499,7 +492,7 @@ export async function addExtensionAction(localityId: string, name: string, telep
         Prompt: 'Select an extension',
         DirectoryEntry: [{ Name: name.trim(), Telephone: trimmedTelephone }],
       };
-      await buildAndWriteXML(departmentFilePath, { CiscoIPPhoneDirectory: newDirectory }); // Wrap in root key
+      await buildAndWriteXML(departmentFilePath, { CiscoIPPhoneDirectory: newDirectory });
       
       revalidatePath(`/app/[zoneId]/localities/${localityId}`, 'page');
       revalidatePath(`/app/[zoneId]/branches/[branchId]/localities/${localityId}`, 'page');
@@ -519,7 +512,7 @@ export async function addExtensionAction(localityId: string, name: string, telep
       return a.Telephone.localeCompare(b.Telephone);
     });
     parsedDepartmentXml.CiscoIPPhoneDirectory.DirectoryEntry = directoryEntries;
-    await buildAndWriteXML(departmentFilePath, parsedDepartmentXml); // parsedDepartmentXml already has CiscoIPPhoneDirectory as root
+    await buildAndWriteXML(departmentFilePath, parsedDepartmentXml);
 
     revalidatePath(`/app/[zoneId]/localities/${localityId}`, 'page');
     revalidatePath(`/app/[zoneId]/branches/[branchId]/localities/${localityId}`, 'page');
@@ -746,7 +739,7 @@ async function processSingleXmlFileForHostUpdate(filePath: string, newHost: stri
     }
 
     if (fileChanged) {
-      await buildAndWriteXML(parsedXml.CiscoIPPhoneMenu, filePath); // Pass the root object directly
+      await buildAndWriteXML(filePath, parsedXml); 
       console.log(`[processSingleXmlFileForHostUpdate] Updated URLs in: ${filePath}`);
     } else {
       console.log(`[processSingleXmlFileForHostUpdate] No URL changes needed for: ${filePath}`);
@@ -806,20 +799,18 @@ export async function updateXmlUrlsAction(newHost: string, newPort: string): Pro
       filesFailed++;
       console.error(`Failed to process ${filePath}: ${result.error}`);
     }
-    if (result.changed) { // Check if the file was actually changed
+    if (result.changed) { 
         filesChangedCount++;
     }
   }
 
-  // Revalidate paths that are generally affected by URL changes
-  revalidatePath('/', 'layout'); // Revalidate the whole layout to be safe, or more specific paths
+  revalidatePath('/', 'layout'); 
 
-  // Save the host/port config to .config.json in IVOXS_DIR
   try {
     const ivoxsDir = paths.IVOXS_DIR;
     const hostConfigPath = path.join(ivoxsDir, '.config.json');
     const currentConfig = { host: newHost.trim(), port: newPort.trim() };
-    await fs.mkdir(ivoxsDir, { recursive: true }); // Ensure IVOXS_DIR exists
+    await fs.mkdir(ivoxsDir, { recursive: true }); 
     await fs.writeFile(hostConfigPath, JSON.stringify(currentConfig, null, 2));
      console.log(`Network configuration (host/port for XML URLs) saved to ${hostConfigPath}`);
   } catch (e) {
@@ -870,18 +861,18 @@ export async function updateDirectoryRootPathAction(newPath: string): Promise<{ 
       return { success: false, message: `The provided path "${trimmedPath}" is not a directory.` };
     }
     // Check if MainMenu.xml exists within the new path
-    const pathsInfo = await getIvoxsPaths(); // This will use the OLD path if config isn't updated yet. We need the filename.
+    const pathsInfo = await getIvoxsPaths(); 
     await fs.access(path.join(trimmedPath, pathsInfo.MAINMENU_FILENAME), fs.constants.F_OK); // Check for MainMenu.xml
 
     // If checks pass, save the new config
     await saveDirConfig({ ivoxsRootPath: trimmedPath });
-    revalidatePath('/import-xml', 'page'); // Revalidate settings page to show new path
-    revalidatePath('/', 'layout'); // Revalidate everything as data source has changed
+    revalidatePath('/import-xml', 'page'); 
+    revalidatePath('/', 'layout'); 
 
     return { success: true, message: `ivoxsdir directory path updated to: ${trimmedPath}` };
   } catch (error: any) {
     if (error.code === 'ENOENT') {
-       const pathsInfo = await getIvoxsPaths(); // For MAINMENU_FILENAME
+       const pathsInfo = await getIvoxsPaths(); 
        return { success: false, message: `The provided path "${trimmedPath}" does not exist or ${pathsInfo.MAINMENU_FILENAME} was not found within it.` , error: error.message };
     }
     console.error('Error updating directory root path:', error);
@@ -900,18 +891,17 @@ async function processLocalityForSearch(
 ) {
   const lowerQuery = query.toLowerCase();
   // Dynamically import data fetching functions to avoid circular dependencies if any
-  const { getLocalityWithExtensions } = await import('@/lib/data'); // Ensure this path is correct
+  const { getLocalityWithExtensions } = await import('@/lib/data'); 
 
-  const localityData = await getLocalityWithExtensions(localityItem.id); // Fetch full locality data including extensions
+  const localityData = await getLocalityWithExtensions(localityItem.id); 
 
   if (!localityData) {
     console.warn(`[GlobalSearch] Could not fetch locality data for ID: ${localityItem.id}`);
     return;
   }
 
-  const localityDisplayName = localityData.name || localityItem.name; // Use fetched name, fallback to item name
+  const localityDisplayName = localityData.name || localityItem.name; 
 
-  // Avoid processing the same locality multiple times if it appears in different structures (shouldn't happen with current model)
   if (processedLocalityIds.has(localityData.id)) {
     return;
   }
@@ -934,7 +924,6 @@ async function processLocalityForSearch(
   }
 
   if (localityNameMatch || matchingExtensions.length > 0) {
-    // Construct the correct path based on whether it's under a branch or directly under a zone
     let fullPath = `/${zone.id}/localities/${localityData.id}`;
     if (branch) {
       fullPath = `/${zone.id}/branches/${branch.id}/localities/${localityData.id}`;
@@ -959,34 +948,29 @@ export async function searchAllDepartmentsAndExtensionsAction(query: string): Pr
   const authenticated = await isAuthenticated();
   if (!authenticated) {
     // For guest users, search might be allowed but perhaps with limitations or different result structure.
-    // For now, let's allow search for all, but actions will still be protected.
-    // console.log("[GlobalSearchAction] Unauthenticated user performing search.");
   }
 
   if (!query || query.trim().length < 2) {
     return [];
   }
 
-  // Dynamically import data fetching functions here to avoid potential top-level import issues in server actions
   const { getZones, getZoneItems, getBranchItems } = await import('@/lib/data');
 
 
   const results: GlobalSearchResult[] = [];
-  const processedLocalityIds = new Set<string>(); // To avoid duplicate processing if structure allows
+  const processedLocalityIds = new Set<string>(); 
 
   try {
     const zones = await getZones();
 
     for (const zone of zones) {
-      const zoneItems = await getZoneItems(zone.id); // These are ZoneItem (branch or locality)
+      const zoneItems = await getZoneItems(zone.id); 
       for (const item of zoneItems) {
         if (item.type === 'locality') {
-          // Item is a locality directly under a zone
           await processLocalityForSearch(zone, null, item, query, results, processedLocalityIds);
         } else if (item.type === 'branch') {
-          // Item is a branch, need to get its localities
           const branchContext = { id: item.id, name: item.name };
-          const branchLocalities = await getBranchItems(item.id); // These are BranchItem (localities)
+          const branchLocalities = await getBranchItems(item.id); 
           for (const loc of branchLocalities) {
             await processLocalityForSearch(zone, branchContext, loc, query, results, processedLocalityIds);
           }
@@ -995,15 +979,13 @@ export async function searchAllDepartmentsAndExtensionsAction(query: string): Pr
     }
   } catch (error) {
     console.error("[GlobalSearchAction] Error during search:", error);
-    // Optionally, return an error indicator in the results or throw
   }
 
-  // Sort results, e.g., by locality name match, then by locality name
   results.sort((a, b) => {
     if (a.localityNameMatch && !b.localityNameMatch) return -1;
     if (!a.localityNameMatch && b.localityNameMatch) return 1;
     return a.localityName.localeCompare(b.localityName);
   });
 
-  return results.slice(0, 20); // Limit results to avoid overwhelming the UI
+  return results.slice(0, 20); // Limit results
 }
