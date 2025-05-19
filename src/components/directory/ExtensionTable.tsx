@@ -20,9 +20,9 @@ import { useTranslation } from '@/hooks/useTranslation';
 interface ExtensionTableProps {
   extensions: Extension[];
   localityName: string;
-  localityId: string; 
-  zoneId: string; 
-  branchId?: string; 
+  localityId: string;
+  zoneId: string;
+  branchId?: string;
   isAuthenticated: boolean;
 }
 
@@ -60,10 +60,14 @@ export function ExtensionTable({ extensions, localityName, localityId, zoneId, b
             <TableRow key={ext.id}>
               <TableCell className="font-medium">{ext.department}</TableCell>
               <TableCell>
-                <div className="flex items-center gap-2">
-                  <PhoneOutgoing className="h-4 w-4 text-primary" />
+                <a
+                  href={`tel:${ext.number}`}
+                  className="flex items-center gap-2 text-primary hover:underline hover:text-primary/80 transition-colors"
+                  aria-label={`Call extension ${ext.number}`}
+                >
+                  <PhoneOutgoing className="h-4 w-4" />
                   {ext.number}
-                </div>
+                </a>
               </TableCell>
               <TableCell>
                 {ext.name ? (
@@ -78,17 +82,17 @@ export function ExtensionTable({ extensions, localityName, localityId, zoneId, b
               {isAuthenticated && (
                 <TableCell className="text-right">
                   <div className="flex justify-end space-x-1">
-                    <EditExtensionButton 
-                      localityId={localityId} 
-                      extension={ext} 
+                    <EditExtensionButton
+                      localityId={localityId}
+                      extension={ext}
                       zoneId={zoneId}
                       branchId={branchId}
                     />
-                    <DeleteExtensionButton 
-                        localityId={localityId} 
-                        zoneId={zoneId} 
-                        branchId={branchId} 
-                        extension={ext} 
+                    <DeleteExtensionButton
+                        localityId={localityId}
+                        zoneId={zoneId}
+                        branchId={branchId}
+                        extension={ext}
                     />
                   </div>
                 </TableCell>
