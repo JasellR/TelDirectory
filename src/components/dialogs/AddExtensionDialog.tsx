@@ -67,21 +67,38 @@ export function AddExtensionDialog({ isOpen, onClose, localityId, localityName, 
 
 
     startTransition(async () => {
-      // addExtensionAction only needs localityId for the Department XML path
-      const result = await addExtensionAction(localityId, extensionName.trim(), extensionTelephone.trim());
-      if (result.success) {
-        toast({
-          title: t('successTitle'),
-          description: result.message,
-        });
-        router.refresh();
-        onClose();
-        setExtensionName('');
-        setExtensionTelephone('');
-      } else {
+      try {
+        const result = await addExtensionAction(localityId, extensionName.trim(), extensionTelephone.trim());
+        
+        if (result && result.success) { 
+          toast({
+            title: t('successTitle'),
+            description: result.message,
+          });
+          router.refresh();
+          onClose();
+          setExtensionName('');
+          setExtensionTelephone('');
+        } else if (result) { 
+          toast({
+            title: t('errorTitle'),
+            description: result.message + (result.error ? ` ${t('detailsLabel')}: ${result.error}` : ''),
+            variant: 'destructive',
+          });
+        } else {
+          // This case handles if result is unexpectedly undefined or null from the server action
+          toast({
+            title: t('errorTitle'),
+            description: t('loginUnexpectedError'), // Using a generic error message, consider a more specific one
+            variant: 'destructive',
+          });
+        }
+      } catch (error) {
+        console.error("Error in AddExtensionDialog calling addExtensionAction:", error);
         toast({
           title: t('errorTitle'),
-          description: result.message + (result.error ? ` ${t('detailsLabel')}: ${result.error}` : ''),
+          // Consider a more specific error message or logging the error for the user
+          description: t('loginUnexpectedError'), // Using a generic error message
           variant: 'destructive',
         });
       }
