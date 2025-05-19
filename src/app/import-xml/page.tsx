@@ -5,14 +5,16 @@ import { useState, useEffect, useTransition } from 'react';
 import { Breadcrumbs } from '@/components/layout/Breadcrumbs';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { UploadCloud, Palette, Languages, Settings as SettingsIcon, FileCode, Info, FolderCog, CheckCircle, AlertCircleIcon, UserCog, Rss, RefreshCw } from 'lucide-react';
+import { UploadCloud, Palette, Languages, Settings as SettingsIcon, FileCode, Info, FolderCog, CheckCircle, AlertCircleIcon, UserCog, Rss, RefreshCw, ListChecks, AlertTriangle, FileWarning } from 'lucide-react';
 import { FileUploadForm } from '@/components/import/FileUploadForm';
 import { saveZoneBranchXmlAction, saveDepartmentXmlAction, updateDirectoryRootPathAction, syncNamesFromXmlFeedAction } from '@/lib/actions';
+import type { SyncResult } from '@/lib/actions'; // Assuming SyncResult will be exported and typed
 import { ThemeToggle } from '@/components/settings/ThemeToggle';
 import { LanguageToggle } from '@/components/settings/LanguageToggle';
 import { Separator } from '@/components/ui/separator';
 import { useTranslation } from '@/hooks/useTranslation';
 import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea'; // New import
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
@@ -20,6 +22,7 @@ import { Loader2 } from 'lucide-react';
 import { getDirectoryConfig } from '@/lib/config';
 import { logoutAction, getCurrentUser } from '@/lib/auth-actions';
 import type { UserSession } from '@/types';
+import { ScrollArea } from '@/components/ui/scroll-area'; // New import
 
 export default function SettingsPage() {
   const { t } = useTranslation();
@@ -35,8 +38,8 @@ export default function SettingsPage() {
   const [isLoadingPath, setIsLoadingPath] = useState(true);
   const [pathStatus, setPathStatus] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
 
-  const [xmlFeedUrl, setXmlFeedUrl] = useState('');
-  const [syncStatus, setSyncStatus] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
+  const [xmlFeedUrls, setXmlFeedUrls] = useState(''); // Changed from xmlFeedUrl to xmlFeedUrls
+  const [syncResults, setSyncResults] = useState<SyncResult | null>(null);
 
 
   useEffect(() => {
@@ -78,8 +81,6 @@ export default function SettingsPage() {
         setPathStatus({type: 'error', message: t('directoryPathCannotBeEmpty')});
         return;
     }
-    // Node's path.isAbsolute is not available client-side without specific shims.
-    // This basic check should suffice for common cases.
     const isAbsolutePath = (p: string) => p.startsWith('/') || /^[a-zA-Z]:[\\/]/.test(p);
 
     if (!isAbsolutePath(directoryRootPath.trim())) {
@@ -103,33 +104,24 @@ export default function SettingsPage() {
   const handleLogout = async () => {
     startLogoutTransition(async () => {
         await logoutAction(); 
-        // logoutAction now handles redirection, so client-side router.push is not needed here.
     });
   };
 
   const handleSyncNames = async () => {
-    if (!xmlFeedUrl.trim()) {
-      toast({ title: t('errorTitle'), description: t('xmlFeedUrlCannotBeEmpty'), variant: 'destructive' });
-      setSyncStatus({ type: 'error', message: t('xmlFeedUrlCannotBeEmpty') });
+    if (!xmlFeedUrls.trim()) {
+      toast({ title: t('errorTitle'), description: t('xmlFeedUrlsCannotBeEmpty'), variant: 'destructive' }); // Updated key
+      setSyncResults(null);
       return;
     }
-    try {
-      new URL(xmlFeedUrl.trim()); // Validate URL format
-    } catch (_) {
-      toast({ title: t('errorTitle'), description: t('invalidXmlFeedUrl'), variant: 'destructive' });
-      setSyncStatus({ type: 'error', message: t('invalidXmlFeedUrl') });
-      return;
-    }
-
-    setSyncStatus(null);
+    
+    setSyncResults(null); // Clear previous results
     startSyncTransition(async () => {
-      const result = await syncNamesFromXmlFeedAction(xmlFeedUrl.trim());
+      const result = await syncNamesFromXmlFeedAction(xmlFeedUrls.trim());
+      setSyncResults(result); // Store full result object
       if (result.success) {
         toast({ title: t('successTitle'), description: result.message });
-        setSyncStatus({ type: 'success', message: result.message });
       } else {
         toast({ title: t('errorTitle'), description: result.message + (result.error ? ` ${t('detailsLabel')}: ${result.error}` : ''), variant: 'destructive' });
-        setSyncStatus({ type: 'error', message: result.message + (result.error ? ` Details: ${result.error}` : '') });
       }
     });
   };
@@ -308,32 +300,71 @@ export default function SettingsPage() {
               <CardTitle className="text-2xl">{t('syncNamesFromFeedTitle')}</CardTitle>
             </div>
             <CardDescription>
-              {t('syncNamesFromFeedDescription', { departmentDir: `department`})}
+              {t('syncNamesFromFeedDescriptionMulti', { departmentDir: `department`})}
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="xmlFeedUrl">{t('xmlFeedUrlLabel')}</Label>
-              <Input
-                id="xmlFeedUrl"
-                value={xmlFeedUrl}
-                onChange={(e) => setXmlFeedUrl(e.target.value)}
-                placeholder={t('xmlFeedUrlPlaceholder')}
+              <Label htmlFor="xmlFeedUrls">{t('xmlFeedUrlsLabel')}</Label>
+              <Textarea
+                id="xmlFeedUrls"
+                value={xmlFeedUrls}
+                onChange={(e) => setXmlFeedUrls(e.target.value)}
+                placeholder={t('xmlFeedUrlsPlaceholder')}
                 disabled={isSyncPending}
+                rows={3}
               />
               <p className="text-xs text-muted-foreground flex items-center gap-1">
                   <Info className="h-3 w-3" />
-                  {t('xmlFeedUrlInfo')}
+                  {t('xmlFeedUrlsInfo')}
               </p>
             </div>
             <Button onClick={handleSyncNames} disabled={isSyncPending} className="w-full sm:w-auto">
               {isSyncPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <RefreshCw className="mr-2 h-4 w-4" />}
               {t('syncNamesButton')}
             </Button>
-            {syncStatus && (
-              <Alert variant={syncStatus.type === 'success' ? 'default' : 'destructive'} className="mt-2">
-                {syncStatus.type === 'success' ? <CheckCircle className="h-4 w-4" /> : <AlertCircleIcon className="h-4 w-4" />}
-                <AlertDescription>{syncStatus.message}</AlertDescription>
+            {syncResults && syncResults.message && (
+              <Alert variant={syncResults.success ? 'default' : 'destructive'} className="mt-2">
+                {syncResults.success ? <CheckCircle className="h-4 w-4" /> : <AlertCircleIcon className="h-4 w-4" />}
+                <AlertTitle>{syncResults.success ? t('syncSuccessTitle') : t('syncErrorTitle')}</AlertTitle>
+                <AlertDescription>{syncResults.message}</AlertDescription>
+              </Alert>
+            )}
+            {syncResults?.conflictedExtensions && syncResults.conflictedExtensions.length > 0 && (
+              <Alert variant="warning" className="mt-4">
+                <AlertTriangle className="h-4 w-4" />
+                <AlertTitle>{t('conflictedExtensionsTitle')}</AlertTitle>
+                <AlertDescription>{t('conflictedExtensionsDescription')}</AlertDescription>
+                <ScrollArea className="mt-2 h-40 rounded-md border p-2">
+                  <ul className="space-y-1 text-sm">
+                    {syncResults.conflictedExtensions.map(conflict => (
+                      <li key={conflict.number}>
+                        <strong>{t('extensionLabel')}: {conflict.number}</strong>
+                        <ul className="pl-4 list-disc">
+                          {conflict.conflicts.map((item, index) => (
+                            <li key={index}>{t('nameLabel')}: &quot;{item.name}&quot; ({t('sourceFeedLabel')}: {item.sourceFeed})</li>
+                          ))}
+                        </ul>
+                      </li>
+                    ))}
+                  </ul>
+                </ScrollArea>
+              </Alert>
+            )}
+            {syncResults?.missingExtensions && syncResults.missingExtensions.length > 0 && (
+              <Alert variant="info" className="mt-4">
+                <FileWarning className="h-4 w-4" />
+                <AlertTitle>{t('missingExtensionsTitle')}</AlertTitle>
+                <AlertDescription>{t('missingExtensionsDescription')}</AlertDescription>
+                 <ScrollArea className="mt-2 h-40 rounded-md border p-2">
+                  <ul className="space-y-1 text-sm">
+                    {syncResults.missingExtensions.map(missing => (
+                      <li key={missing.number}>
+                        {t('extensionLabel')}: {missing.number}, {t('nameLabel')}: &quot;{missing.name}&quot; ({t('sourceFeedLabel')}: {missing.sourceFeed})
+                      </li>
+                    ))}
+                  </ul>
+                </ScrollArea>
               </Alert>
             )}
           </CardContent>

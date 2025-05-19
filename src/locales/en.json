@@ -164,5 +164,19 @@
   "xmlFeedUrlInfo": "The URL should provide an XML output similar to a department file.",
   "syncNamesButton": "Sync Names from Feed",
   "xmlFeedUrlCannotBeEmpty": "XML Feed URL cannot be empty.",
-  "invalidXmlFeedUrl": "The provided XML Feed URL is not a valid URL."
+  "invalidXmlFeedUrl": "The provided XML Feed URL is not a valid URL.",
+  "syncNamesFromFeedDescriptionMulti": "Fetch XML feeds (CiscoIPPhoneDirectory format) from multiple URLs and update the names of matching extensions in your local {departmentDir} files. Extensions with conflicting names across feeds will be reported.",
+  "xmlFeedUrlsLabel": "XML Feed URLs (one per line)",
+  "xmlFeedUrlsPlaceholder": "e.g., http://server1/feed.php\nhttp://server2/another_feed.php",
+  "xmlFeedUrlsInfo": "Enter each XML feed URL on a new line. The system will attempt to fetch and process all of them.",
+  "xmlFeedUrlsCannotBeEmpty": "XML Feed URLs cannot be empty.",
+  "syncSuccessTitle": "Synchronization Succeeded",
+  "syncErrorTitle": "Synchronization Failed",
+  "conflictedExtensionsTitle": "Conflicting Extensions",
+  "conflictedExtensionsDescription": "The following extension numbers were found in multiple feeds with different names. These were not updated and require manual review:",
+  "missingExtensionsTitle": "Missing Local Extensions",
+  "missingExtensionsDescription": "The following extensions were found in the feeds but do not exist in your local department XML files:",
+  "extensionLabel": "Extension",
+  "nameLabel": "Name",
+  "sourceFeedLabel": "Source Feed"
 }
