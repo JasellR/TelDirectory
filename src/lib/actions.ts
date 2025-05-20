@@ -9,7 +9,7 @@ import type { CiscoIPPhoneMenu, CiscoIPPhoneDirectory, MenuItem as XmlMenuItem, 
 import { CiscoIPPhoneMenuSchema, CiscoIPPhoneDirectorySchema } from '@/lib/data';
 import { getResolvedIvoxsRootPath, saveDirectoryConfig as saveDirConfig } from '@/lib/config';
 import { isAuthenticated } from '@/lib/auth-actions';
-import type { SyncResult, CsvImportResult, CsvImportDetails, GlobalSearchResult, MatchedExtension } from '@/types';
+import type { SyncResult, CsvImportResult, CsvImportDetails, GlobalSearchResult, MatchedExtension, SyncConflict, ConflictedExtensionInfo, MissingExtensionInfo } from '@/types';
 
 // Helper to get all dynamic paths based on the resolved IVOXS root
 async function getIvoxsPaths() {
@@ -62,12 +62,12 @@ async function readAndParseXML(filePath: string): Promise<any> {
 
 async function buildAndWriteXML(filePath: string, jsObject: any): Promise<void> {
   const builder = new Builder({
-    headless: false, // Keep this false to ensure the root tag is included
-    renderOpts: { pretty: true, indent: '  ', newline: '\n' }, // Use single \n for newline
+    headless: false,
+    renderOpts: { pretty: true, indent: '  ', newline: '\n' },
     xmldec: { version: '1.0', encoding: 'UTF-8', standalone: false }
   });
 
-  const xmlContentBuiltByBuilder = builder.buildObject(jsObject); // Pass the whole object
+  const xmlContentBuiltByBuilder = builder.buildObject(jsObject);
   const xmlDeclaration = '<?xml version="1.0" encoding="UTF-8" standalone="no"?>\n';
   const finalXmlString = xmlDeclaration + xmlContentBuiltByBuilder.trim();
 
@@ -120,7 +120,7 @@ export async function addZoneAction(zoneName: string): Promise<{ success: boolea
     if (!parsedMainMenu || !parsedMainMenu.CiscoIPPhoneMenu) {
       const newMainMenuContent: { CiscoIPPhoneMenu: CiscoIPPhoneMenu } = {
         CiscoIPPhoneMenu: {
-          Title: "Farmacia Carol",
+          Title: "Farmacia Carol", // Or some default title
           Prompt: "Select a Zone Branch",
           MenuItem: [{ Name: zoneName, URL: newZoneUrl }]
         }
@@ -210,7 +210,7 @@ export async function deleteZoneAction(zoneId: string): Promise<{ success: boole
         await fs.unlink(filePath);
         console.log(`[DeleteZone] Successfully deleted: ${filePath}`);
       } catch (unlinkError: any) {
-        if (unlinkError.code !== 'ENOENT') { // Ignore "file not found" errors, it might have been deleted already or never existed
+        if (unlinkError.code !== 'ENOENT') { 
           console.warn(`[DeleteZone] Could not delete file ${filePath}: ${unlinkError.message}`);
         } else {
           console.log(`[DeleteZone] File not found, skipping deletion: ${filePath}`);
@@ -236,7 +236,7 @@ export async function deleteZoneAction(zoneId: string): Promise<{ success: boole
     }
 
     revalidatePath('/');
-    revalidatePath(`/${sanitizedZoneId}`, 'page'); // Revalidate old zone page path
+    revalidatePath(`/${sanitizedZoneId}`, 'page'); 
     console.log(`[DeleteZone] Zone "${sanitizedZoneId}" and its contents deleted successfully.`);
     return { success: true, message: `Zone "${sanitizedZoneId}" and its contents deleted successfully.` };
 
@@ -541,11 +541,11 @@ export async function deleteLocalityOrBranchAction(args: DeleteItemArgs): Promis
 }
 
 export async function addExtensionAction(localityId: string, name: string, telephone: string): Promise<{ success: boolean; message: string; error?: string }> {
-  const authenticated = await isAuthenticated();
-  if (!authenticated) {
-    return { success: false, message: 'Authentication required.', error: 'User not authenticated' };
-  }
   try {
+    const authenticated = await isAuthenticated();
+    if (!authenticated) {
+      return { success: false, message: 'Authentication required.', error: 'User not authenticated' };
+    }
     const paths = await getIvoxsPaths();
     const sanitizedLocalityId = sanitizeFilenamePart(localityId);
     if (!sanitizedLocalityId) return { success: false, message: 'Invalid Locality ID.' };
@@ -621,11 +621,11 @@ interface EditExtensionArgs {
 }
 
 export async function editExtensionAction(args: EditExtensionArgs): Promise<{ success: boolean; message: string; error?: string }> {
- const authenticated = await isAuthenticated();
-  if (!authenticated) {
-    return { success: false, message: 'Authentication required.', error: 'User not authenticated' };
-  }
   try {
+    const authenticated = await isAuthenticated();
+    if (!authenticated) {
+      return { success: false, message: 'Authentication required.', error: 'User not authenticated' };
+    }
     const paths = await getIvoxsPaths();
     const { localityId, oldExtensionName, oldExtensionNumber, newExtensionName, newExtensionNumber } = args;
 
@@ -1049,7 +1049,7 @@ async function updateParentMenuWithNewLocality(
 
       parsedParentXml = {
         CiscoIPPhoneMenu: {
-          Title: parentTitle || path.basename(parentMenuFilePath), // Fallback to raw basename
+          Title: parentTitle || path.basename(parentMenuFilePath), 
           Prompt: "Select an item",
           MenuItem: [],
         }
@@ -1061,23 +1061,23 @@ async function updateParentMenuWithNewLocality(
     let menuItems = ensureArray(parsedParentXml.CiscoIPPhoneMenu.MenuItem);
     const newLocalityUrl = `http://${urlConfig.host}:${urlConfig.port}/ivoxsdir/department/${departmentXmlFilenamePart}.xml`;
 
-    // Check if item already exists (either by Name or by URL pointing to the same department file part)
+    
     const existingItemIndex = menuItems.findIndex(item =>
         (item.URL && item.URL.endsWith(`/department/${departmentXmlFilenamePart}.xml`)) ||
         item.Name === localityNameInMenu
     );
 
-    if (existingItemIndex === -1) { // Item does not exist, add it
+    if (existingItemIndex === -1) { 
       menuItems.push({ Name: localityNameInMenu, URL: newLocalityUrl });
-      menuItems.sort((a, b) => a.Name.localeCompare(b.Name)); // Keep sorted
+      menuItems.sort((a, b) => a.Name.localeCompare(b.Name)); 
       parsedParentXml.CiscoIPPhoneMenu.MenuItem = menuItems.length > 0 ? menuItems : undefined;
       await buildAndWriteXML(parentMenuFilePath, parsedParentXml);
       console.log(`[CSV Import] Added link for "${localityNameInMenu}" to parent menu ${path.basename(parentMenuFilePath)}.`);
       return { success: true };
     } else {
-      // Item already exists. Optionally, we could update its URL if it differs, but for now, just log.
+      
       console.log(`[CSV Import] Link for locality "${localityNameInMenu}" or to department file "${departmentXmlFilenamePart}.xml" already exists in ${path.basename(parentMenuFilePath)}. Skipping add to parent menu.`);
-      return { success: true }; // Considered success as the link is present
+      return { success: true }; 
     }
   } catch (e: any) {
     console.error(`[CSV Import] Error updating parent menu ${parentMenuFilePath}:`, e);
@@ -1087,7 +1087,7 @@ async function updateParentMenuWithNewLocality(
 
 
 export async function importExtensionsFromCsvAction(csvContent: string): Promise<CsvImportResult> {
-  try { // Top-level try-catch for the entire action
+  try { 
     const authenticated = await isAuthenticated();
     if (!authenticated) {
       return {
@@ -1140,7 +1140,7 @@ export async function importExtensionsFromCsvAction(csvContent: string): Promise
       }
 
       processedRows++;
-      const rowNumberForError = headerSkipped ? i : i + 1; // Adjust row number if header was skipped
+      const rowNumberForError = headerSkipped ? i : i + 1; 
 
       if (columns.length < 4) {
         importErrors.push({ row: rowNumberForError, data: line, error: 'Row does not have enough columns (expected Name, Extension, LocalityID, ZoneID).' });
@@ -1181,7 +1181,7 @@ export async function importExtensionsFromCsvAction(csvContent: string): Promise
         if (!departmentData || !departmentData.CiscoIPPhoneDirectory) {
           departmentData = {
             CiscoIPPhoneDirectory: {
-              Title: localityIdFromCsv, // Use the original LocalityID from CSV for the Title
+              Title: localityIdFromCsv, 
               Prompt: 'Select an extension',
               DirectoryEntry: [],
             },
@@ -1215,10 +1215,8 @@ export async function importExtensionsFromCsvAction(csvContent: string): Promise
 
         if (newLocalityWasCreatedThisRow) {
           let parentMenuFilePath: string;
-          // Use original ZoneID from CSV for determining parent path, but sanitized version for filename
-          if (zoneIdFromCsv.toLowerCase() === 'zonametropolitana') { // Assuming "ZonaMetropolitana" is the ID for this special case
-              // For Zona Metropolitana, new localities are added to ivoxsdir/branch/ZonaMetropolitana.xml
-              // This logic might need adjustment based on where exactly new localities for ZM should be linked
+          
+          if (zoneIdFromCsv.toLowerCase() === 'zonametropolitana') { 
               parentMenuFilePath = path.join(paths.BRANCH_DIR, `ZonaMetropolitana.xml`);
           } else {
               parentMenuFilePath = path.join(paths.ZONE_BRANCH_DIR, `${sanitizedZoneIdForFile}.xml`);
@@ -1226,8 +1224,8 @@ export async function importExtensionsFromCsvAction(csvContent: string): Promise
 
           const parentUpdateResult = await updateParentMenuWithNewLocality(
             parentMenuFilePath,
-            localityIdFromCsv, // Use original LocalityID from CSV for the Name in the menu
-            sanitizedLocalityIdForFile, // Use sanitized version for the URL filename part
+            localityIdFromCsv, 
+            sanitizedLocalityIdForFile, 
             urlConfig
           );
 
@@ -1237,14 +1235,13 @@ export async function importExtensionsFromCsvAction(csvContent: string): Promise
             importErrors.push({ row: rowNumberForError, data: line, error: parentUpdateResult.error || `Failed to update parent menu for new locality ${localityIdFromCsv}.` });
           }
         }
-
-        // Revalidation paths - consider making these more targeted if performance becomes an issue
+        
         revalidatePath(`/app/[zoneId]/localities/${sanitizedLocalityIdForFile}`, 'page');
         revalidatePath(`/app/[zoneId]/branches/[branchId]/localities/${sanitizedLocalityIdForFile}`, 'page');
         if(newLocalityWasCreatedThisRow) {
-          // Revalidate the parent menu page
+          
           if (zoneIdFromCsv.toLowerCase() === 'zonametropolitana') {
-              revalidatePath(`/app/${sanitizedZoneIdForFile}/branches/ZonaMetropolitana`, 'page'); // Or just /${sanitizedZoneIdForFile}
+              revalidatePath(`/app/${sanitizedZoneIdForFile}/branches/ZonaMetropolitana`, 'page'); 
           } else {
               revalidatePath(`/app/${sanitizedZoneIdForFile}`, 'page');
           }
@@ -1257,7 +1254,7 @@ export async function importExtensionsFromCsvAction(csvContent: string): Promise
       }
     }
 
-    // After loop, construct final response
+    
     const success = importErrors.length === 0;
     let message = success
       ? `CSV import successful. Processed ${processedRows} data rows. Added ${extensionsAdded} extensions.`
@@ -1294,7 +1291,7 @@ export async function importExtensionsFromCsvAction(csvContent: string): Promise
         extensionsAdded: 0,
         newLocalitiesCreated: 0,
         parentMenusUpdated: 0,
-        errors: [{ row: 0, data: '', error: `Server critical error: ${overallError.message}` }]
+        errors: [{ row: 0, data: '', error: `Server critical error: ${overallError.message || 'Unknown error'}` }]
       }
     };
   }
@@ -1374,12 +1371,13 @@ export async function syncNamesFromXmlFeedAction(feedUrlsString: string): Promis
   }
 
   const uniqueFeedExtensions = new Map<string, { name: string; sourceFeed: string }>();
-  const conflictedExtensions: Array<{ number: string; conflicts: Array<{ name: string; sourceFeed: string }> }> = [];
+  const conflictedExtensions: ConflictedExtensionInfo[] = [];
 
   for (const [number, entries] of aggregatedFeedExtensions.entries()) {
     const uniqueNamesFromSources = new Set(entries.map(e => e.name));
     if (uniqueNamesFromSources.size > 1) {
-      conflictedExtensions.push({ number, conflicts: entries });
+        const conflicts: SyncConflict[] = entries.map(e => ({ name: e.name, sourceFeed: e.sourceFeed }));
+        conflictedExtensions.push({ number, conflicts });
     } else if (entries.length > 0) {
       uniqueFeedExtensions.set(number, entries[0]);
     }
@@ -1457,9 +1455,10 @@ export async function syncNamesFromXmlFeedAction(feedUrlsString: string): Promis
     };
   }
   console.log(`[Sync] Total unique extension numbers found locally: ${localExtensionsFoundNumbers.size}.`);
+  console.log(`[Sync] Unique feed extension numbers: ${uniqueFeedExtensions.size}.`);
 
 
-  const missingExtensions: Array<{ number: string; name: string; sourceFeed: string }> = [];
+  const missingExtensions: MissingExtensionInfo[] = [];
   for (const [number, data] of uniqueFeedExtensions.entries()) {
     if (!localExtensionsFoundNumbers.has(number)) {
       missingExtensions.push({ number, name: data.name, sourceFeed: data.sourceFeed });
@@ -1495,7 +1494,7 @@ export async function syncNamesFromXmlFeedAction(feedUrlsString: string): Promis
     };
     try {
         await buildAndWriteXML(missingExtensionsFilePath, { CiscoIPPhoneDirectory: missingExtensionsXmlContent });
-        filesModified++; // Count this as a modified file
+        filesModified++; 
     } catch (e: any) {
         console.error(`[Sync] Failed to write ${missingExtensionsFilePath}:`, e);
         filesFailedToUpdate++;
