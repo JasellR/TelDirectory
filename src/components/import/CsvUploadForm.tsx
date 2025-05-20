@@ -12,7 +12,7 @@ import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2, UploadCloud, FileText, AlertCircle } from 'lucide-react';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import type { CsvImportResult } from '@/lib/actions'; 
+import type { CsvImportResult } from '@/lib/actions';
 import { useTranslation } from '@/hooks/useTranslation';
 
 const MAX_CSV_FILE_SIZE_MB = 5;
@@ -37,7 +37,7 @@ interface CsvUploadFormProps {
 export function CsvUploadForm({ importAction }: CsvUploadFormProps) {
   const { toast } = useToast();
   const { t } = useTranslation();
-  const [isSubmitting, setIsSubmitting] = useState(false); // Changed from useTransition for FileReader
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [importResult, setImportResult] = useState<CsvImportResult | null>(null);
 
   const {
@@ -82,7 +82,7 @@ export function CsvUploadForm({ importAction }: CsvUploadFormProps) {
             duration: 10000
           });
         }
-        reset(); 
+        reset();
       } catch (error: any) {
         console.error("CSV Import Error:", error);
         setImportResult({
@@ -160,5 +160,3 @@ export function CsvUploadForm({ importAction }: CsvUploadFormProps) {
     </div>
   );
 }
-
-    

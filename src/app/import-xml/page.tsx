@@ -57,8 +57,8 @@ export default function SettingsPage() {
     getDirectoryConfig().then(config => {
       if (isMounted) {
         const savedPath = config.ivoxsRootPath || '';
-        setDirectoryRootPath(savedPath);
-        setCurrentConfigDisplayPath(savedPath);
+        setDirectoryRootPath(savedPath); // Initialize input with saved path
+        setCurrentConfigDisplayPath(savedPath); // Initialize display with saved path
       }
     }).catch(() => {
       if (isMounted) {
@@ -68,7 +68,7 @@ export default function SettingsPage() {
     }).finally(() => {
       if (isMounted) setIsLoadingPath(false);
     });
-    
+
     getCurrentUser().then(user => {
       if (isMounted) {
         setCurrentUser(user);
@@ -134,13 +134,13 @@ export default function SettingsPage() {
       return;
     }
     startSyncTransition(async () => {
-      setSyncResult(null); 
+      setSyncResult(null);
       const result = await syncNamesFromXmlFeedAction(feedUrls);
-      setSyncResult(result); 
+      setSyncResult(result);
       if (result.success) {
         toast({ title: t('syncResultTitle'), description: result.message, duration: 10000 });
       } else {
-        toast({ title: t('errorTitle'), description: result.message, variant: 'destructive', duration: 10000 });
+        toast({ title: t('errorTitle'), description: result.message + (result.error ? ` Error details: ${result.error}` : ''), variant: 'destructive', duration: 10000 });
       }
     });
   };
@@ -148,7 +148,7 @@ export default function SettingsPage() {
 
   const handleLogout = async () => {
     startLogoutTransition(async () => {
-        await logoutAction(); 
+        await logoutAction();
     });
   };
 
@@ -267,7 +267,7 @@ export default function SettingsPage() {
             )}
           </CardContent>
         </Card>
-        
+
         <Separator />
 
         <Card>
@@ -282,21 +282,21 @@ export default function SettingsPage() {
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 items-end">
                     <div className="space-y-2">
                         <Label htmlFor="serviceHost">{t('serviceHostLabel')}</Label>
-                        <Input 
-                            id="serviceHost" 
-                            value={serviceHost} 
-                            onChange={(e) => setServiceHost(e.target.value)} 
+                        <Input
+                            id="serviceHost"
+                            value={serviceHost}
+                            onChange={(e) => setServiceHost(e.target.value)}
                             placeholder={t('serviceHostPlaceholder')}
                             disabled={isUrlUpdatePending}
                         />
                     </div>
                     <div className="space-y-2">
                         <Label htmlFor="servicePort">{t('servicePortLabel')}</Label>
-                        <Input 
-                            id="servicePort" 
-                            type="number" 
-                            value={servicePort} 
-                            onChange={(e) => setServicePort(e.target.value)} 
+                        <Input
+                            id="servicePort"
+                            type="number"
+                            value={servicePort}
+                            onChange={(e) => setServicePort(e.target.value)}
                             placeholder={t('servicePortPlaceholder')}
                             disabled={isUrlUpdatePending}
                         />
@@ -373,7 +373,7 @@ export default function SettingsPage() {
         </Card>
 
         <Separator />
-        
+
         <Card>
             <CardHeader>
                 <div className="flex items-center gap-3">
@@ -461,5 +461,3 @@ export default function SettingsPage() {
     </div>
   );
 }
-
-    

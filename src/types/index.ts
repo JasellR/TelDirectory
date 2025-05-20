@@ -1,13 +1,13 @@
 
 export interface Extension {
   id: string;
-  department: string; 
+  department: string;
   number: string;
-  name: string; 
+  name: string;
 }
 
 export interface Locality {
-  id: string; 
+  id: string;
   name: string;
   extensions: Extension[];
 }
@@ -15,24 +15,24 @@ export interface Locality {
 export interface ZoneItem {
   id: string;
   name: string;
-  type: 'branch' | 'locality'; 
+  type: 'branch' | 'locality';
 }
 
 export interface BranchItem {
  id: string;
  name: string;
- type: 'locality'; 
+ type: 'locality';
 }
 
 export interface Zone {
-  id: string; 
+  id: string;
   name: string;
 }
 
 export interface Branch {
   id: string;
   name: string;
-  zoneId: string; 
+  zoneId: string;
 }
 
 
@@ -99,7 +99,7 @@ export interface CsvImportDetails {
   processedRows: number;
   extensionsAdded: number;
   newLocalitiesCreated: number;
-  parentMenusUpdated: number; // Added this field
+  parentMenusUpdated: number;
   errors: CsvImportError[];
 }
 export interface CsvImportResult {
@@ -107,5 +107,3 @@ export interface CsvImportResult {
   message: string;
   details?: CsvImportDetails;
 }
-
-    
