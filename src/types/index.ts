@@ -63,3 +63,46 @@ export interface UserSession {
   userId: number;
   username: string;
 }
+
+// Type for XML Sync Action Result
+export interface SyncConflict {
+  name: string;
+  sourceFeed: string;
+}
+export interface ConflictedExtensionInfo {
+  number: string;
+  conflicts: SyncConflict[];
+}
+export interface MissingExtensionInfo {
+  number: string;
+  name: string;
+  sourceFeed: string;
+}
+export interface SyncResult {
+  success: boolean;
+  message: string;
+  updatedCount: number;
+  filesModified: number;
+  filesFailedToUpdate: number;
+  conflictedExtensions: ConflictedExtensionInfo[];
+  missingExtensions: MissingExtensionInfo[];
+  error?: string;
+}
+
+// Type for CSV Import Action Result
+export interface CsvImportError {
+  row: number;
+  data: string;
+  error: string;
+}
+export interface CsvImportDetails {
+  processedRows: number;
+  extensionsAdded: number;
+  newLocalitiesCreated: number;
+  errors: CsvImportError[];
+}
+export interface CsvImportResult {
+  success: boolean;
+  message: string;
+  details?: CsvImportDetails;
+}
