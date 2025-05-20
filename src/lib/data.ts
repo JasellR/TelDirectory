@@ -46,7 +46,7 @@ async function getPaths() {
   const ivoxsRoot = await getResolvedIvoxsRootPath();
   return {
     IVOXS_DIR: ivoxsRoot,
-    MAINMENU_PATH: path.join(ivoxsRoot, 'MainMenu.xml'), // Changed to PascalCase
+    MAINMENU_PATH: path.join(ivoxsRoot, 'MainMenu.xml'), // PascalCase
     ZONE_BRANCH_DIR: path.join(ivoxsRoot, 'zonebranch'), // lowercase
     BRANCH_DIR: path.join(ivoxsRoot, 'branch'),         // lowercase
     DEPARTMENT_DIR: path.join(ivoxsRoot, 'department'), // lowercase
@@ -59,18 +59,18 @@ async function readFileContent(filePath: string): Promise<string> {
     return await fs.readFile(filePath, 'utf-8');
   } catch (error: any) {
     if (error.code === 'ENOENT') {
-      console.warn(`File not found: ${filePath}`);
+      // console.warn(`File not found: ${filePath}`); // Reduced verbosity here
       return '';
     }
     console.error(`Error reading file ${filePath}:`, error);
-    throw error;
+    throw error; // Re-throw other errors
   }
 }
 
 function extractIdFromUrl(url: string): string {
   const parts = url.split('/');
   const fileName = parts.pop() || '';
-  return fileName.replace('.xml', '');
+  return fileName.replace(/\.xml$/i, ''); // Case-insensitive .xml removal
 }
 
 function getItemTypeFromUrl(url: string): 'branch' | 'locality' | 'unknown' {
@@ -118,7 +118,7 @@ export async function getZoneItems(zoneId: string): Promise<ZoneItem[]> {
     console.error(`Failed to parse ZoneBranch XML for ${zoneId}:`, validated.error.issues);
     return [];
   }
-  
+
   const menuItems = validated.data.MenuItem || [];
   return menuItems.map(item => {
     const itemType = getItemTypeFromUrl(item.URL);
@@ -128,9 +128,9 @@ export async function getZoneItems(zoneId: string): Promise<ZoneItem[]> {
     return {
         id: extractIdFromUrl(item.URL),
         name: item.Name,
-        type: itemType as 'branch' | 'locality',
+        type: itemType as 'branch' | 'locality', // Assume it's one of these if not unknown
     };
-  }).filter(item => item.type === 'branch' || item.type === 'locality');
+  }).filter(item => item.type === 'branch' || item.type === 'locality'); // Ensure only valid types
 }
 
 
@@ -159,7 +159,7 @@ export async function getBranchItems(branchId: string): Promise<BranchItem[]> {
   return menuItems.map(item => ({
     id: extractIdFromUrl(item.URL),
     name: item.Name,
-    type: 'locality', 
+    type: 'locality', // Items under a branch are always localities leading to departments
   }));
 }
 
@@ -168,8 +168,9 @@ export async function getLocalityDetails(
   context?: { zoneId?: string; branchId?: string }
 ): Promise<Omit<Locality, 'extensions'> | undefined> {
   const paths = await getPaths();
-  let localityName = localityId;
+  let localityName = localityId; // Default to ID if name isn't found
 
+  // Try to find a more descriptive name from parent menus first
   if (context?.branchId && context?.zoneId) {
     const branchItems = await getBranchItems(context.branchId);
     const itemInfo = branchItems.find(item => item.id === localityId);
@@ -179,7 +180,8 @@ export async function getLocalityDetails(
     const itemInfo = zoneItems.find(item => item.id === localityId && item.type === 'locality');
      if (itemInfo) localityName = itemInfo.name;
   }
-  
+
+  // Then, try to get the title from the department XML itself, which might be more authoritative
   const departmentFilePath = path.join(paths.DEPARTMENT_DIR, `${localityId}.xml`);
   const departmentXmlContent = await readFileContent(departmentFilePath);
   if (departmentXmlContent) {
@@ -187,7 +189,7 @@ export async function getLocalityDetails(
         const parsedDeptXml = await parseStringPromise(departmentXmlContent, { explicitArray: false, trim: true });
         const validatedDept = CiscoIPPhoneDirectorySchema.safeParse(parsedDeptXml.CiscoIPPhoneDirectory);
         if (validatedDept.success && validatedDept.data.Title) {
-            localityName = validatedDept.data.Title;
+            localityName = validatedDept.data.Title; // Prefer Title from the department file itself
         }
       } catch (e) {
         console.warn(`Could not parse title from ${departmentFilePath}`, e);
@@ -208,17 +210,19 @@ export async function getLocalityWithExtensions(localityId: string): Promise<Loc
   const validated = CiscoIPPhoneDirectorySchema.safeParse(parsedXml.CiscoIPPhoneDirectory);
 
   if (!validated.success) {
-    console.error(`Failed to parse Department XML for ${localityId}:`, validated.error.issues);
+    console.error(`Failed to parse Department XML for ${localityId}:`);
+    console.error("Data passed to Zod:", JSON.stringify(parsedXml.CiscoIPPhoneDirectory, null, 2));
+    console.error("Zod Errors:", JSON.stringify(validated.error.flatten(), null, 2));
     return undefined;
   }
-  
-  const title = validated.data.Title || localityId;
+
+  const title = validated.data.Title || localityId; // Fallback to localityId if Title is missing
   const directoryEntries = validated.data.DirectoryEntry || [];
   const extensions: Extension[] = directoryEntries.map(entry => ({
-    id: toUrlFriendlyId(`${entry.Name}-${entry.Telephone}`),
+    id: toUrlFriendlyId(`${entry.Name}-${entry.Telephone}`), // Ensure unique ID for React keys
     department: entry.Name,
     number: entry.Telephone,
-    name: entry.Name,
+    name: entry.Name, // Often the same as department in this context
   }));
 
   return {
