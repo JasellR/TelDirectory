@@ -5,10 +5,10 @@ import { useState, useEffect, useTransition } from 'react';
 import { Breadcrumbs } from '@/components/layout/Breadcrumbs';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { UploadCloud, Palette, Languages, Settings as SettingsIcon, FileCode, Info, FolderCog, CheckCircle, AlertCircleIcon, UserCog, Tv, FileUp } from 'lucide-react';
-import { FileUploadForm } from '@/components/import/FileUploadForm';
+import { Palette, Languages, Settings as SettingsIcon, FileCode, Info, FolderCog, CheckCircle, AlertCircleIcon, UserCog, Tv, FileUp } from 'lucide-react';
+// FileUploadForm import is removed as the sections using it are being removed
 import { CsvUploadForm } from '@/components/import/CsvUploadForm';
-import { saveZoneBranchXmlAction, saveDepartmentXmlAction, updateDirectoryRootPathAction, updateXmlUrlsAction, syncNamesFromXmlFeedAction, importExtensionsFromCsvAction } from '@/lib/actions';
+import { updateDirectoryRootPathAction, updateXmlUrlsAction, syncNamesFromXmlFeedAction, importExtensionsFromCsvAction } from '@/lib/actions';
 import { ThemeToggle } from '@/components/settings/ThemeToggle';
 import { LanguageToggle } from '@/components/settings/LanguageToggle';
 import { Separator } from '@/components/ui/separator';
@@ -320,58 +320,7 @@ export default function SettingsPage() {
                 )}
             </CardContent>
         </Card>
-
-        <Separator />
-
-        <Card>
-          <CardHeader>
-            <div className="flex items-center gap-3">
-                <UploadCloud className="h-6 w-6 text-primary" />
-                <CardTitle className="text-2xl">{t('importXmlFiles')}</CardTitle>
-            </div>
-            <CardDescription>
-                {t('importXmlFilesDescription', { dirPath: currentConfigDisplayPath || 'ivoxsdir' })}
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-6">
-            <Alert variant="destructive">
-              <FileCode className="h-4 w-4" />
-              <AlertTitle>{t('caution')}</AlertTitle>
-              <AlertDescription>
-                {t('importOverwriteWarning')}
-              </AlertDescription>
-            </Alert>
-
-            <Card className="shadow-none border">
-                <CardHeader>
-                    <CardTitle className="text-xl">{t('importZoneBranchXml')}</CardTitle>
-                    <CardDescription>{t('importZoneBranchXmlDescription', { dirPath: currentConfigDisplayPath || 'ivoxsdir' })}</CardDescription>
-                </CardHeader>
-                <CardContent>
-                    <FileUploadForm
-                      importAction={saveZoneBranchXmlAction}
-                      requiresId={false}
-                      allowMultipleFiles={true}
-                    />
-                </CardContent>
-            </Card>
-
-            <Card className="shadow-none border">
-                <CardHeader>
-                    <CardTitle className="text-xl">{t('importDepartmentXml')}</CardTitle>
-                    <CardDescription>{t('importDepartmentXmlDescription', { dirPath: currentConfigDisplayPath || 'ivoxsdir' })}</CardDescription>
-                </CardHeader>
-                <CardContent>
-                    <FileUploadForm
-                      importAction={saveDepartmentXmlAction}
-                      allowMultipleFiles={true}
-                      requiresId={false}
-                    />
-                </CardContent>
-            </Card>
-          </CardContent>
-        </Card>
-
+        
         <Separator />
 
         <Card>

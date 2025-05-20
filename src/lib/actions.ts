@@ -74,8 +74,8 @@ async function buildAndWriteXML(filePath: string, jsObject: any): Promise<void> 
     console.warn("[buildAndWriteXML] jsObject does not seem to have a top-level CiscoIPPhoneMenu or CiscoIPPhoneDirectory key. FilePath:", filePath);
     xmlContentBuiltByBuilder = builder.buildObject(jsObject);
   }
-
-  const finalXmlString = xmlContentBuiltByBuilder.trim();
+  const xmlDeclaration = '<?xml version="1.0" encoding="UTF-8" standalone="no"?>\n';
+  const finalXmlString = xmlDeclaration + xmlContentBuiltByBuilder.trim();
   await fs.mkdir(path.dirname(filePath), { recursive: true });
   await fs.writeFile(filePath, finalXmlString, 'utf-8');
 }
@@ -85,6 +85,12 @@ function extractIdFromUrl(url: string): string {
   const parts = url.split('/');
   const fileName = parts.pop() || '';
   return fileName.replace(/\.xml$/i, '');
+}
+
+function getItemTypeFromUrl(url: string): 'branch' | 'locality' | 'unknown' {
+  if (url.includes('/branch/')) return 'branch';
+  if (url.includes('/department/')) return 'locality';
+  return 'unknown';
 }
 
 export async function addZoneAction(zoneName: string): Promise<{ success: boolean; message: string; error?: string }> {
@@ -150,6 +156,98 @@ export async function addZoneAction(zoneName: string): Promise<{ success: boolea
   } catch (error: any) {
     console.error(`Error adding zone "${zoneName}":`, error);
     return { success: false, message: `Failed to add zone: ${error.message}`, error: error.message };
+  }
+}
+
+export async function deleteZoneAction(zoneId: string): Promise<{ success: boolean; message: string; error?: string }> {
+  const authenticated = await isAuthenticated();
+  if (!authenticated) {
+    return { success: false, message: 'Authentication required.', error: 'User not authenticated' };
+  }
+
+  if (!zoneId) {
+    return { success: false, message: 'Zone ID is required.' };
+  }
+
+  const paths = await getIvoxsPaths();
+  const sanitizedZoneId = sanitizeFilenamePart(zoneId);
+  const zoneFilePath = path.join(paths.ZONE_BRANCH_DIR, `${sanitizedZoneId}.xml`);
+  const mainMenuPath = path.join(paths.IVOXS_DIR, paths.MAINMENU_FILENAME);
+  const filesToDelete: string[] = [];
+
+  try {
+    console.log(`[DeleteZone] Starting deletion for zone: ${sanitizedZoneId}`);
+    const parsedZoneXml = await readAndParseXML(zoneFilePath);
+
+    if (parsedZoneXml && parsedZoneXml.CiscoIPPhoneMenu) {
+      const zoneMenuItems = ensureArray(parsedZoneXml.CiscoIPPhoneMenu.MenuItem);
+      for (const zoneItem of zoneMenuItems) {
+        const itemType = getItemTypeFromUrl(zoneItem.URL);
+        const itemId = extractIdFromUrl(zoneItem.URL);
+
+        if (itemType === 'branch') {
+          const branchFilePath = path.join(paths.BRANCH_DIR, `${itemId}.xml`);
+          filesToDelete.push(branchFilePath);
+          console.log(`[DeleteZone] Queued branch file for deletion: ${branchFilePath}`);
+          const parsedBranchXml = await readAndParseXML(branchFilePath);
+          if (parsedBranchXml && parsedBranchXml.CiscoIPPhoneMenu) {
+            const branchMenuItems = ensureArray(parsedBranchXml.CiscoIPPhoneMenu.MenuItem);
+            for (const branchItem of branchMenuItems) {
+              const departmentId = extractIdFromUrl(branchItem.URL);
+              const departmentFilePath = path.join(paths.DEPARTMENT_DIR, `${departmentId}.xml`);
+              filesToDelete.push(departmentFilePath);
+              console.log(`[DeleteZone] Queued department file (from branch ${itemId}) for deletion: ${departmentFilePath}`);
+            }
+          }
+        } else if (itemType === 'locality') {
+          const departmentFilePath = path.join(paths.DEPARTMENT_DIR, `${itemId}.xml`);
+          filesToDelete.push(departmentFilePath);
+          console.log(`[DeleteZone] Queued department file (from zone ${sanitizedZoneId}) for deletion: ${departmentFilePath}`);
+        }
+      }
+    }
+    filesToDelete.push(zoneFilePath); // Add the zone file itself to the deletion queue
+    console.log(`[DeleteZone] Queued zone file for deletion: ${zoneFilePath}`);
+
+    // Delete all queued files
+    for (const filePath of filesToDelete) {
+      try {
+        await fs.unlink(filePath);
+        console.log(`[DeleteZone] Successfully deleted: ${filePath}`);
+      } catch (unlinkError: any) {
+        if (unlinkError.code !== 'ENOENT') { // Ignore "file not found" errors, it might have been deleted already or never existed
+          console.warn(`[DeleteZone] Could not delete file ${filePath}: ${unlinkError.message}`);
+        } else {
+          console.log(`[DeleteZone] File not found, skipping deletion: ${filePath}`);
+        }
+      }
+    }
+
+    // Update MainMenu.xml
+    const parsedMainMenu = await readAndParseXML(mainMenuPath);
+    if (parsedMainMenu && parsedMainMenu.CiscoIPPhoneMenu) {
+      let menuItems = ensureArray(parsedMainMenu.CiscoIPPhoneMenu.MenuItem);
+      const initialLength = menuItems.length;
+      menuItems = menuItems.filter(item => extractIdFromUrl(item.URL) !== sanitizedZoneId);
+      if (menuItems.length < initialLength) {
+        parsedMainMenu.CiscoIPPhoneMenu.MenuItem = menuItems.length > 0 ? menuItems : undefined; // Handle case where all items are removed
+        await buildAndWriteXML(mainMenuPath, parsedMainMenu);
+        console.log(`[DeleteZone] Updated ${paths.MAINMENU_FILENAME}`);
+      } else {
+        console.log(`[DeleteZone] Zone ${sanitizedZoneId} not found in ${paths.MAINMENU_FILENAME}, no update needed.`);
+      }
+    } else {
+      console.warn(`[DeleteZone] ${paths.MAINMENU_FILENAME} not found or invalid, cannot remove zone entry.`);
+    }
+
+    revalidatePath('/');
+    revalidatePath(`/${sanitizedZoneId}`, 'page'); // Revalidate old zone page path
+    console.log(`[DeleteZone] Zone "${sanitizedZoneId}" and its contents deleted successfully.`);
+    return { success: true, message: `Zone "${sanitizedZoneId}" and its contents deleted successfully.` };
+
+  } catch (error: any) {
+    console.error(`[DeleteZone] Error deleting zone "${sanitizedZoneId}":`, error);
+    return { success: false, message: `Failed to delete zone: ${error.message}`, error: error.message };
   }
 }
 
@@ -242,6 +340,7 @@ export async function addLocalityOrBranchAction(args: AddItemArgs): Promise<{ su
     return { success: false, message: `Failed to add ${itemType}: ${error.message}`, error: error.message };
   }
 }
+
 
 interface EditItemArgs {
   zoneId: string;
@@ -486,7 +585,7 @@ export async function addExtensionAction(localityId: string, name: string, telep
       console.warn(`[AddExtensionAction] Department file ${departmentFilePath} not found or invalid. Creating new one.`);
       directoryObject = {
         CiscoIPPhoneDirectory: {
-          Title: sanitizedLocalityId,
+          Title: sanitizedLocalityId, // Use the sanitized ID for the title of a new file, or a more descriptive name if available
           Prompt: 'Select an extension',
           DirectoryEntry: [{ Name: trimmedName, Telephone: trimmedTelephone }],
         }
@@ -875,9 +974,10 @@ export async function updateDirectoryRootPathAction(newPath: string): Promise<{ 
 
 export async function searchAllDepartmentsAndExtensionsAction(query: string): Promise<GlobalSearchResult[]> {
   const authenticated = await isAuthenticated();
-  if (!authenticated) {
-      // return [];
-  }
+  // Public search, no auth check needed for now
+  // if (!authenticated) {
+  //     return [];
+  // }
 
   if (!query || query.trim().length < 2) {
     return [];
@@ -1107,9 +1207,9 @@ export async function importExtensionsFromCsvAction(csvContent: string): Promise
       continue;
     }
 
-    const [name, extensionNumber, localityIdFromFile, zoneIdFromFile] = columns;
+    const [name, extensionNumber, localityIdFromCsv, zoneIdFromCsv] = columns;
 
-    if (!name || !extensionNumber || !localityIdFromFile || !zoneIdFromFile) {
+    if (!name || !extensionNumber || !localityIdFromCsv || !zoneIdFromCsv) {
       importErrors.push({ row: rowNumberForError, data: line, error: 'One or more fields (Name, Extension, LocalityID, ZoneID) are empty.' });
       continue;
     }
@@ -1119,15 +1219,15 @@ export async function importExtensionsFromCsvAction(csvContent: string): Promise
       continue;
     }
 
-    const sanitizedLocalityIdForFile = generateIdFromName(localityIdFromFile);
-    const sanitizedZoneIdForFile = generateIdFromName(zoneIdFromFile);
+    const sanitizedLocalityIdForFile = generateIdFromName(localityIdFromCsv);
+    const sanitizedZoneIdForFile = generateIdFromName(zoneIdFromCsv);
 
     if (!sanitizedLocalityIdForFile) {
-        importErrors.push({ row: rowNumberForError, data: line, error: `Invalid LocalityID "${localityIdFromFile}" (results in empty filename part).` });
+        importErrors.push({ row: rowNumberForError, data: line, error: `Invalid LocalityID "${localityIdFromCsv}" (results in empty filename part).` });
         continue;
     }
     if (!sanitizedZoneIdForFile) {
-        importErrors.push({ row: rowNumberForError, data: line, error: `Invalid ZoneID "${zoneIdFromFile}" (results in empty filename part).` });
+        importErrors.push({ row: rowNumberForError, data: line, error: `Invalid ZoneID "${zoneIdFromCsv}" (results in empty filename part).` });
         continue;
     }
 
@@ -1141,14 +1241,14 @@ export async function importExtensionsFromCsvAction(csvContent: string): Promise
       if (!departmentData || !departmentData.CiscoIPPhoneDirectory) {
         departmentData = {
           CiscoIPPhoneDirectory: {
-            Title: localityIdFromFile,
+            Title: localityIdFromCsv, // Use the original LocalityID from CSV for the Title
             Prompt: 'Select an extension',
             DirectoryEntry: [],
           },
         };
         departmentFileExisted = false;
         newLocalityWasCreatedThisRow = true;
-        console.log(`[CSV Import] Department file for LocalityID "${localityIdFromFile}" (filename: ${sanitizedLocalityIdForFile}.xml) not found. Creating new one.`);
+        console.log(`[CSV Import] Department file for LocalityID "${localityIdFromCsv}" (filename: ${sanitizedLocalityIdForFile}.xml) not found. Creating new one.`);
       }
 
       let entries = ensureArray(departmentData.CiscoIPPhoneDirectory.DirectoryEntry);
@@ -1175,30 +1275,31 @@ export async function importExtensionsFromCsvAction(csvContent: string): Promise
 
       if (newLocalityWasCreatedThisRow) {
         let parentMenuFilePath: string;
-        if (zoneIdFromFile.toLowerCase() === 'zonametropolitana') {
-          parentMenuFilePath = path.join(paths.BRANCH_DIR, 'ZonaMetropolitana.xml');
+        // Use original ZoneID from CSV for determining parent path, but sanitized version for filename
+        if (zoneIdFromCsv.toLowerCase() === 'zonametropolitana') { 
+            parentMenuFilePath = path.join(paths.BRANCH_DIR, `ZonaMetropolitana.xml`);
         } else {
-          parentMenuFilePath = path.join(paths.ZONE_BRANCH_DIR, `${sanitizedZoneIdForFile}.xml`);
+            parentMenuFilePath = path.join(paths.ZONE_BRANCH_DIR, `${sanitizedZoneIdForFile}.xml`);
         }
 
         const parentUpdateResult = await updateParentMenuWithNewLocality(
           parentMenuFilePath,
-          localityIdFromFile,
-          sanitizedLocalityIdForFile,
+          localityIdFromCsv, // Use original LocalityID from CSV for the Name in the menu
+          sanitizedLocalityIdForFile, // Use sanitized version for the URL filename part
           urlConfig
         );
 
         if (parentUpdateResult.success) {
           parentMenusUpdated++;
         } else {
-          importErrors.push({ row: rowNumberForError, data: line, error: parentUpdateResult.error || `Failed to update parent menu for new locality ${localityIdFromFile}.` });
+          importErrors.push({ row: rowNumberForError, data: line, error: parentUpdateResult.error || `Failed to update parent menu for new locality ${localityIdFromCsv}.` });
         }
       }
 
       revalidatePath(`/app/[zoneId]/localities/${sanitizedLocalityIdForFile}`, 'page');
       revalidatePath(`/app/[zoneId]/branches/[branchId]/localities/${sanitizedLocalityIdForFile}`, 'page');
       if(newLocalityWasCreatedThisRow) {
-        if (zoneIdFromFile.toLowerCase() === 'zonametropolitana') {
+        if (zoneIdFromCsv.toLowerCase() === 'zonametropolitana') {
             revalidatePath(`/app/ZonaMetropolitana/branches/ZonaMetropolitana`, 'page');
         } else {
             revalidatePath(`/app/${sanitizedZoneIdForFile}`, 'page');
@@ -1207,7 +1308,7 @@ export async function importExtensionsFromCsvAction(csvContent: string): Promise
 
 
     } catch (e: any) {
-      console.error(`[CSV Import] Error processing row ${rowNumberForError} for LocalityID "${localityIdFromFile}":`, e);
+      console.error(`[CSV Import] Error processing row ${rowNumberForError} for LocalityID "${localityIdFromCsv}":`, e);
       importErrors.push({ row: rowNumberForError, data: line, error: `Server error: ${e.message}` });
     }
   }
@@ -1433,6 +1534,7 @@ export async function syncNamesFromXmlFeedAction(feedUrlsString: string): Promis
     };
     try {
         await buildAndWriteXML(missingExtensionsFilePath, { CiscoIPPhoneDirectory: missingExtensionsXmlContent });
+        filesModified++; // Count this as a modified file
     } catch (e: any) {
         console.error(`[Sync] Failed to write ${missingExtensionsFilePath}:`, e);
         filesFailedToUpdate++;
@@ -1452,6 +1554,7 @@ export async function syncNamesFromXmlFeedAction(feedUrlsString: string): Promis
     if (existingMissingItemIndex === -1) {
       menuItems.push({ Name: missingExtensionsMenuItemName, URL: missingExtensionsUrl });
     } else {
+      // Ensure URL is up-to-date if item already exists
       menuItems[existingMissingItemIndex].URL = missingExtensionsUrl;
     }
     menuItems.sort((a, b) => a.Name.localeCompare(b.Name));
