@@ -12,7 +12,7 @@ import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2, UploadCloud, FileText, AlertCircle } from 'lucide-react';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import type { CsvImportResult } from '@/lib/actions'; // Assuming this type will be defined
+import type { CsvImportResult } from '@/lib/actions'; 
 import { useTranslation } from '@/hooks/useTranslation';
 
 const MAX_CSV_FILE_SIZE_MB = 5;
@@ -37,7 +37,7 @@ interface CsvUploadFormProps {
 export function CsvUploadForm({ importAction }: CsvUploadFormProps) {
   const { toast } = useToast();
   const { t } = useTranslation();
-  const [isSubmitting, startTransition] = useTransition();
+  const [isSubmitting, setIsSubmitting] = useState(false); // Changed from useTransition for FileReader
   const [importResult, setImportResult] = useState<CsvImportResult | null>(null);
 
   const {
@@ -69,32 +69,31 @@ export function CsvUploadForm({ importAction }: CsvUploadFormProps) {
         return;
       }
 
-      startTransition(async () => {
-        try {
-          const result = await importAction(csvContent);
-          setImportResult(result);
-          if (result.success) {
-            toast({ title: t('successTitle'), description: result.message });
-          } else {
-            toast({
-              title: t('errorTitle'),
-              description: result.message || t('csvImportFailedError'),
-              variant: 'destructive',
-            });
-          }
-          reset(); // Reset form fields after submission
-        } catch (error: any) {
-          console.error("CSV Import Error:", error);
-          setImportResult({
-            success: false,
-            message: t('csvImportUnexpectedError'),
-            details: { processedRows: 0, extensionsAdded: 0, newLocalitiesCreated: 0, errors: [{ row: 0, data: '', error: error.message || t('unknownError') }] }
+      try {
+        const result = await importAction(csvContent);
+        setImportResult(result);
+        if (result.success) {
+          toast({ title: t('successTitle'), description: result.message, duration: 7000 });
+        } else {
+          toast({
+            title: t('errorTitle'),
+            description: result.message || t('csvImportFailedError'),
+            variant: 'destructive',
+            duration: 10000
           });
-          toast({ title: t('errorTitle'), description: t('csvImportUnexpectedError'), variant: 'destructive' });
-        } finally {
-          setIsSubmitting(false);
         }
-      });
+        reset(); 
+      } catch (error: any) {
+        console.error("CSV Import Error:", error);
+        setImportResult({
+          success: false,
+          message: t('csvImportUnexpectedError'),
+          details: { processedRows: 0, extensionsAdded: 0, newLocalitiesCreated: 0, parentMenusUpdated: 0, errors: [{ row: 0, data: '', error: error.message || t('unknownError') }] }
+        });
+        toast({ title: t('errorTitle'), description: t('csvImportUnexpectedError'), variant: 'destructive' });
+      } finally {
+        setIsSubmitting(false);
+      }
     };
     reader.onerror = () => {
       toast({ title: t('errorTitle'), description: t('fileReadError'), variant: 'destructive' });
@@ -138,6 +137,9 @@ export function CsvUploadForm({ importAction }: CsvUploadFormProps) {
                 <li>{t('processedRowsLabel', { count: importResult.details.processedRows })}</li>
                 <li>{t('extensionsAddedLabel', { count: importResult.details.extensionsAdded })}</li>
                 <li>{t('newLocalitiesCreatedLabel', { count: importResult.details.newLocalitiesCreated })}</li>
+                {importResult.details.parentMenusUpdated > 0 && (
+                  <li>{t('parentMenusUpdatedLabel', { count: importResult.details.parentMenusUpdated })}</li>
+                )}
               </ul>
             )}
             {importResult.details?.errors && importResult.details.errors.length > 0 && (
@@ -158,3 +160,5 @@ export function CsvUploadForm({ importAction }: CsvUploadFormProps) {
     </div>
   );
 }
+
+    

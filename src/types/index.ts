@@ -99,6 +99,7 @@ export interface CsvImportDetails {
   processedRows: number;
   extensionsAdded: number;
   newLocalitiesCreated: number;
+  parentMenusUpdated: number; // Added this field
   errors: CsvImportError[];
 }
 export interface CsvImportResult {
@@ -106,3 +107,5 @@ export interface CsvImportResult {
   message: string;
   details?: CsvImportDetails;
 }
+
+    

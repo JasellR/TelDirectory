@@ -132,8 +132,6 @@
   "addZoneButton": "Agregar Zona",
   "globalSearchPlaceholder": "Buscar departamentos o extensiones...",
   "searchingText": "Buscando",
-  "noResultsFoundTitle": "No Se Encontraron Resultados",
-  "noResultsFoundDescription": "Su búsqueda de \"{searchTerm}\" no coincidió con ningún departamento o extensión.",
   "searchResultsCount": "{count} resultados encontrados.",
   "matchingExtensionsLabel": "Extensiones Coincidentes:",
   "andMoreExtensions": "...y {count} más.",
@@ -189,9 +187,9 @@
   "missingExtensionsFromFeedTitle": "Extensiones Ausentes del Feed",
   "missingExtensionsFromFeedPrompt": "Extensiones encontradas en feeds pero no localmente",
   "importExtensionsFromCsvTitle": "Importar Extensiones desde CSV",
-  "importExtensionsFromCsvDescription": "Cargue un archivo CSV para agregar extensiones en masa. El CSV debe tener las columnas: Nombre,Extension,LocalidadID. Si un LocalidadID no existe, se creará un nuevo archivo XML de departamento para él.",
+  "importExtensionsFromCsvDescription": "Cargue un archivo CSV para agregar extensiones en masa. El CSV debe tener las columnas: Nombre, Extensión, LocalidadID, ZonaID. Si un LocalidadID no existe, se creará un nuevo archivo XML de departamento y se vinculará en el archivo de menú de la ZonaID especificada.",
   "csvFileLabel": "Archivo CSV",
-  "csvFormatHint": "Columnas esperadas: Nombre, Extension, LocalidadID (la primera fila puede ser encabezados).",
+  "csvFormatHint": "Columnas esperadas: Nombre, Extension, LocalidadID, ZonaID (la primera fila puede ser encabezados).",
   "importCsvButton": "Importar desde CSV",
   "noFileSelectedError": "No se seleccionó ningún archivo.",
   "fileReadError": "No se pudo leer el contenido del archivo.",
@@ -202,7 +200,10 @@
   "processedRowsLabel": "Filas de datos procesadas: {count}",
   "extensionsAddedLabel": "Extensiones agregadas/actualizadas exitosamente: {count}",
   "newLocalitiesCreatedLabel": "Nuevos archivos de localidad creados: {count}",
-  "specificErrorsLabel": "Errores Específicos",
+  "parentMenusUpdatedLabel": "Menús de zona/rama actualizados: {count}",
+  "specificErrorsLabel": "Errores Específicos:",
   "rowLabel": "Fila {row}",
   "unknownError": "Error desconocido"
 }
+
+    

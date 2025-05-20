@@ -132,8 +132,6 @@
   "addZoneButton": "Add Zone",
   "globalSearchPlaceholder": "Search departments or extensions...",
   "searchingText": "Searching",
-  "noResultsFoundTitle": "No Results Found",
-  "noResultsFoundDescription": "Your search for \"{searchTerm}\" did not match any departments or extensions.",
   "searchResultsCount": "{count} results found.",
   "matchingExtensionsLabel": "Matching Extensions:",
   "andMoreExtensions": "...and {count} more.",
@@ -189,9 +187,9 @@
   "missingExtensionsFromFeedTitle": "Missing Extensions from Feed",
   "missingExtensionsFromFeedPrompt": "Extensions found in feeds but not locally",
   "importExtensionsFromCsvTitle": "Import Extensions from CSV",
-  "importExtensionsFromCsvDescription": "Upload a CSV file to bulk add extensions. The CSV should have columns: Name,Extension,LocalityID. If a LocalityID does not exist, a new department XML file will be created for it.",
+  "importExtensionsFromCsvDescription": "Upload a CSV file to bulk add extensions. The CSV should have columns: Name, Extension, LocalityID, ZoneID. If a LocalityID does not exist, a new department XML file will be created, and it will be linked in the specified ZoneID's menu file.",
   "csvFileLabel": "CSV File",
-  "csvFormatHint": "Expected columns: Name, Extension, LocalityID (first row can be headers).",
+  "csvFormatHint": "Expected columns: Name, Extension, LocalityID, ZoneID (first row can be headers).",
   "importCsvButton": "Import from CSV",
   "noFileSelectedError": "No file selected.",
   "fileReadError": "Could not read file content.",
@@ -202,7 +200,10 @@
   "processedRowsLabel": "Data rows processed: {count}",
   "extensionsAddedLabel": "Extensions successfully added/updated: {count}",
   "newLocalitiesCreatedLabel": "New locality files created: {count}",
-  "specificErrorsLabel": "Specific Errors",
+  "parentMenusUpdatedLabel": "Zone/Branch menus updated: {count}",
+  "specificErrorsLabel": "Specific Errors:",
   "rowLabel": "Row {row}",
   "unknownError": "Unknown error"
 }
+
+    

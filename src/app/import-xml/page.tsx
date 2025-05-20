@@ -5,9 +5,9 @@ import { useState, useEffect, useTransition } from 'react';
 import { Breadcrumbs } from '@/components/layout/Breadcrumbs';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { UploadCloud, Palette, Languages, Settings as SettingsIcon, FileCode, Info, FolderCog, CheckCircle, AlertCircleIcon, UserCog, Tv, FileCsv, FileUp } from 'lucide-react';
+import { UploadCloud, Palette, Languages, Settings as SettingsIcon, FileCode, Info, FolderCog, CheckCircle, AlertCircleIcon, UserCog, Tv, FileUp } from 'lucide-react';
 import { FileUploadForm } from '@/components/import/FileUploadForm';
-import { CsvUploadForm } from '@/components/import/CsvUploadForm'; // New import
+import { CsvUploadForm } from '@/components/import/CsvUploadForm';
 import { saveZoneBranchXmlAction, saveDepartmentXmlAction, updateDirectoryRootPathAction, updateXmlUrlsAction, syncNamesFromXmlFeedAction, importExtensionsFromCsvAction } from '@/lib/actions';
 import { ThemeToggle } from '@/components/settings/ThemeToggle';
 import { LanguageToggle } from '@/components/settings/LanguageToggle';
@@ -59,17 +59,6 @@ export default function SettingsPage() {
         const savedPath = config.ivoxsRootPath || '';
         setDirectoryRootPath(savedPath);
         setCurrentConfigDisplayPath(savedPath);
-
-        // Fetch host/port config for XML URLs
-        // This is a bit of a workaround, assuming .config.json is in ivoxsdir for host/port
-        // A more robust solution might be a separate config file or server endpoint for this.
-        const fetchNetworkConfig = async () => {
-          const ivoxsRootForNetworkConfig = savedPath || 'ivoxsdir'; // Use saved or default
-          // This part is conceptual as there's no direct server function to get only this config.
-          // We'll rely on user input for now and what might be in their .config.json if they ran updateXmlUrlsAction
-        };
-        fetchNetworkConfig();
-
       }
     }).catch(() => {
       if (isMounted) {
@@ -145,13 +134,13 @@ export default function SettingsPage() {
       return;
     }
     startSyncTransition(async () => {
-      setSyncResult(null); // Clear previous results
+      setSyncResult(null); 
       const result = await syncNamesFromXmlFeedAction(feedUrls);
-      setSyncResult(result); // Store the full result object
+      setSyncResult(result); 
       if (result.success) {
-        toast({ title: t('syncResultTitle'), description: result.message, duration: 7000 });
+        toast({ title: t('syncResultTitle'), description: result.message, duration: 10000 });
       } else {
-        toast({ title: t('errorTitle'), description: result.message, variant: 'destructive', duration: 7000 });
+        toast({ title: t('errorTitle'), description: result.message, variant: 'destructive', duration: 10000 });
       }
     });
   };
@@ -403,7 +392,7 @@ export default function SettingsPage() {
         <Card>
             <CardHeader>
                 <div className="flex items-center gap-3">
-                    <FileCode className="h-6 w-6 text-primary" /> {/* Using FileCode for XML consistency */}
+                    <FileCode className="h-6 w-6 text-primary" />
                     <CardTitle className="text-2xl">{t('syncNamesFromXmlFeedTitle')}</CardTitle>
                 </div>
                 <CardDescription>{t('syncNamesFromXmlFeedDescription', { dirPath: currentConfigDisplayPath || 'ivoxsdir' })}</CardDescription>
@@ -456,10 +445,10 @@ export default function SettingsPage() {
                                      <p className="text-xs italic mt-1">{t('syncMissingExtensionsDescription')}</p>
                                 </div>
                             )}
-                             {(!syncResult.conflictedExtensions || syncResult.conflictedExtensions.length === 0) && (
+                             {(!syncResult.conflictedExtensions || syncResult.conflictedExtensions.length === 0) && syncResult.success && (
                                 <p className="text-xs italic mt-1">{t('syncNoConflicts')}</p>
                              )}
-                             {(!syncResult.missingExtensions || syncResult.missingExtensions.length === 0) && (
+                             {(!syncResult.missingExtensions || syncResult.missingExtensions.length === 0) && syncResult.success && (
                                 <p className="text-xs italic mt-1">{t('syncNoMissing')}</p>
                              )}
 
@@ -473,3 +462,4 @@ export default function SettingsPage() {
   );
 }
 
+    
