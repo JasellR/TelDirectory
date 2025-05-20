@@ -1,3 +1,4 @@
+
 import Link from 'next/link';
 import { Card, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { ChevronRight, Building2, MapPin } from 'lucide-react'; // Using Building2 for zones, MapPin for localities
@@ -25,7 +26,9 @@ export function NavigationCard({ title, description, href, iconType }: Navigatio
               </div>
               {description && <CardDescription>{description}</CardDescription>}
             </div>
-            <ChevronRight className="h-5 w-5 text-muted-foreground group-hover:text-primary transition-colors mt-1" />
+            <div className="pr-2 self-center"> {/* Added pr-2 and self-center for spacing and alignment */}
+              <ChevronRight className="h-5 w-5 text-muted-foreground group-hover:text-primary transition-colors" />
+            </div>
           </div>
         </CardHeader>
       </Card>
