@@ -71,20 +71,35 @@ export function CsvUploadForm({ importAction }: CsvUploadFormProps) {
 
       try {
         const result = await importAction(csvContent);
-        setImportResult(result);
-        if (result.success) {
+        setImportResult(result); // Store the result to display details
+
+        if (result && result.success) {
           toast({ title: t('successTitle'), description: result.message, duration: 7000 });
-        } else {
+        } else if (result && !result.success) {
           toast({
             title: t('errorTitle'),
             description: result.message || t('csvImportFailedError'),
             variant: 'destructive',
             duration: 10000
           });
+        } else {
+          // This case handles if result is unexpectedly undefined or null
+          console.error("CSV Import Error: Server action returned undefined or null result.");
+          setImportResult({ // Also update the displayed result for clarity
+            success: false,
+            message: t('csvImportUnexpectedError'),
+            details: { processedRows: 0, extensionsAdded: 0, newLocalitiesCreated: 0, parentMenusUpdated: 0, errors: [{ row: 0, data: '', error: t('csvImportUnexpectedError') }]}
+          });
+          toast({
+            title: t('errorTitle'),
+            description: t('csvImportUnexpectedError'),
+            variant: 'destructive',
+          });
         }
-        reset();
+        reset(); // Reset form fields
       } catch (error: any) {
-        console.error("CSV Import Error:", error);
+        console.error("CSV Import Error caught in CsvUploadForm:", error);
+        // Ensure importResult is updated even if the action throws an unhandled error
         setImportResult({
           success: false,
           message: t('csvImportUnexpectedError'),
