@@ -4,6 +4,10 @@
 import { useState, useTransition } from 'react';
 import { Button } from '@/components/ui/button';
 import { Trash2 } from 'lucide-react';
+import { useToast } from '@/hooks/use-toast';
+import { deleteZoneAction } from '@/lib/actions';
+import { useRouter } from 'next/navigation';
+import { useTranslation } from '@/hooks/useTranslation';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -15,22 +19,23 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
-import { useToast } from '@/hooks/use-toast';
-import { deleteZoneAction } from '@/lib/actions';
-import { useRouter } from 'next/navigation';
-import { useTranslation } from '@/hooks/useTranslation';
 
 interface DeleteZoneButtonProps {
   zoneId: string;
   zoneName: string;
+  isAuthenticated: boolean;
 }
 
-export function DeleteZoneButton({ zoneId, zoneName }: DeleteZoneButtonProps) {
+export function DeleteZoneButton({ zoneId, zoneName, isAuthenticated }: DeleteZoneButtonProps) {
   const { toast } = useToast();
   const router = useRouter();
   const { t } = useTranslation();
   const [isPending, startTransition] = useTransition();
-  const [isOpen, setIsOpen] = useState(false);
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
+
+  if (!isAuthenticated) {
+    return null;
+  }
 
   const handleDelete = async () => {
     startTransition(async () => {
@@ -40,7 +45,7 @@ export function DeleteZoneButton({ zoneId, zoneName }: DeleteZoneButtonProps) {
           title: t('successTitle'),
           description: result.message,
         });
-        router.refresh(); // Refresh the current route to update the list of zones
+        router.refresh(); 
       } else {
         toast({
           title: t('errorTitle'),
@@ -48,17 +53,23 @@ export function DeleteZoneButton({ zoneId, zoneName }: DeleteZoneButtonProps) {
           variant: 'destructive',
         });
       }
-      setIsOpen(false);
+      setIsDialogOpen(false);
     });
   };
 
   return (
-    <AlertDialog open={isOpen} onOpenChange={setIsOpen}>
+    <AlertDialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
       <AlertDialogTrigger asChild>
         <Button
           variant="destructive"
           size="icon"
+          className="h-7 w-7 p-1.5" // Make it a bit smaller to fit better on cards
           aria-label={t('deleteZoneButtonAriaLabel', { zoneName })}
+          onClick={(e) => {
+            e.preventDefault(); // Prevent link navigation if card is wrapped in <a>
+            e.stopPropagation(); // Stop event bubbling
+            setIsDialogOpen(true);
+          }}
         >
           <Trash2 className="h-4 w-4" />
         </Button>
@@ -67,13 +78,14 @@ export function DeleteZoneButton({ zoneId, zoneName }: DeleteZoneButtonProps) {
         <AlertDialogHeader>
           <AlertDialogTitle>{t('confirmDeleteZoneTitle', { zoneName })}</AlertDialogTitle>
           <AlertDialogDescription>
-            {t('confirmDeleteZoneDescription', { zoneName })}
+            <p>{t('confirmDeleteZoneDescription', { zoneName })}</p>
+            <p className="mt-2 font-semibold text-destructive">{t('confirmDeleteZoneWarningCascade')}</p>
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
-          <AlertDialogCancel disabled={isPending}>{t('cancelButton')}</AlertDialogCancel>
+          <AlertDialogCancel disabled={isPending} onClick={() => setIsDialogOpen(false)}>{t('cancelButton')}</AlertDialogCancel>
           <AlertDialogAction onClick={handleDelete} disabled={isPending} className="bg-destructive hover:bg-destructive/90">
-            {isPending ? t('deletingButtonText') : t('deleteButtonConfirmText', { itemType: t('zoneWord') })}
+            {isPending ? t('deletingButtonText') : t('deleteButtonConfirmTextDeep', { itemType: t('zoneWord') })}
           </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>

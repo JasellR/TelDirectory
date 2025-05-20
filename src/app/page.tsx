@@ -7,7 +7,7 @@ import { getTranslations } from '@/lib/translations-server';
 import { GlobalSearch } from '@/components/search/GlobalSearch';
 import { Separator } from '@/components/ui/separator';
 import { isAuthenticated } from '@/lib/auth-actions';
-import { DeleteZoneButton } from '@/components/actions/DeleteZoneButton'; // New import
+import { DeleteZoneButton } from '@/components/actions/DeleteZoneButton'; 
 
 export default async function HomePage() {
   const zones = await getZones();
@@ -40,8 +40,12 @@ export default async function HomePage() {
                 iconType="zone"
               />
               {userIsAuthenticated && (
-                <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                  <DeleteZoneButton zoneId={zone.id} zoneName={zone.name} />
+                <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                  <DeleteZoneButton 
+                    zoneId={zone.id} 
+                    zoneName={zone.name} 
+                    isAuthenticated={userIsAuthenticated} 
+                  />
                 </div>
               )}
             </div>
