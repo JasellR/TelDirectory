@@ -78,8 +78,8 @@ export function DeleteZoneButton({ zoneId, zoneName, isAuthenticated }: DeleteZo
         <AlertDialogHeader>
           <AlertDialogTitle>{t('confirmDeleteZoneTitle', { zoneName })}</AlertDialogTitle>
           <AlertDialogDescription>
-            <p>{t('confirmDeleteZoneDescription', { zoneName })}</p>
-            <p className="mt-2 font-semibold text-destructive">{t('confirmDeleteZoneWarningCascade')}</p>
+            {t('confirmDeleteZoneDescription', { zoneName })}
+            <span className="mt-2 block font-semibold text-destructive">{t('confirmDeleteZoneWarningCascade')}</span>
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
