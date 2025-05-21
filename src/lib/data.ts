@@ -59,7 +59,8 @@ async function readFileContent(filePath: string): Promise<string> {
     return await fs.readFile(filePath, 'utf-8');
   } catch (error: any) {
     if (error.code === 'ENOENT') {
-      // console.warn(`File not found: ${filePath}`); // Reduced verbosity here
+      // File not found, return empty string, higher level functions will handle it.
+      // console.warn(`[DataLib - readFileContent] File not found: ${filePath}`); // Reduced verbosity
       return '';
     }
     console.error(`Error reading file ${filePath}:`, error);
@@ -184,15 +185,25 @@ export async function getLocalityDetails(
   // Then, try to get the title from the department XML itself, which might be more authoritative
   const departmentFilePath = path.join(paths.DEPARTMENT_DIR, `${localityId}.xml`);
   const departmentXmlContent = await readFileContent(departmentFilePath);
-  if (departmentXmlContent) {
+  
+  if (departmentXmlContent && departmentXmlContent.trim() !== '') {
       try {
         const parsedDeptXml = await parseStringPromise(departmentXmlContent, { explicitArray: false, trim: true });
-        const validatedDept = CiscoIPPhoneDirectorySchema.safeParse(parsedDeptXml.CiscoIPPhoneDirectory);
-        if (validatedDept.success && validatedDept.data.Title) {
-            localityName = validatedDept.data.Title; // Prefer Title from the department file itself
+        
+        if (!parsedDeptXml || typeof parsedDeptXml !== 'object' || !parsedDeptXml.CiscoIPPhoneDirectory || typeof parsedDeptXml.CiscoIPPhoneDirectory !== 'object') {
+            console.warn(`[DataLib] Invalid or empty XML structure for CiscoIPPhoneDirectory when fetching details for locality ID: ${localityId}. File: ${departmentFilePath}`);
+        } else {
+            const validatedDept = CiscoIPPhoneDirectorySchema.safeParse(parsedDeptXml.CiscoIPPhoneDirectory);
+            if (validatedDept.success && validatedDept.data.Title) {
+                localityName = validatedDept.data.Title; 
+            } else if (!validatedDept.success) {
+                console.warn(`[DataLib] Zod validation failed for CiscoIPPhoneDirectory title in locality ID: ${localityId}. File: ${departmentFilePath}`);
+                console.warn("Data passed to Zod:", JSON.stringify(parsedDeptXml.CiscoIPPhoneDirectory, null, 2).substring(0, 300) + "...");
+                console.warn("Zod Errors:", JSON.stringify(validatedDept.error.flatten(), null, 2));
+            }
         }
-      } catch (e) {
-        console.warn(`Could not parse title from ${departmentFilePath}`, e);
+      } catch (e: any) {
+        console.warn(`[DataLib] Could not parse title from ${departmentFilePath} for locality ${localityId}. Error: ${e.message}`);
       }
   }
 
@@ -204,16 +215,48 @@ export async function getLocalityWithExtensions(localityId: string): Promise<Loc
   const paths = await getPaths();
   const departmentFilePath = path.join(paths.DEPARTMENT_DIR, `${localityId}.xml`);
   const xmlContent = await readFileContent(departmentFilePath);
-  if (!xmlContent) return undefined;
+  if (!xmlContent || xmlContent.trim() === '') {
+    console.warn(`[DataLib] Department file for locality ID "${localityId}" is empty or not found at ${departmentFilePath}. Returning locality with no extensions.`);
+    return {
+        id: localityId,
+        name: localityId, // Fallback name
+        extensions: [],
+    };
+  }
 
-  const parsedXml = await parseStringPromise(xmlContent, { explicitArray: false, trim: true });
+  let parsedXml;
+  try {
+    parsedXml = await parseStringPromise(xmlContent, { explicitArray: false, trim: true });
+  } catch(parseError: any) {
+    console.error(`[DataLib] Failed to parse XML content for locality ID ${localityId}. File: ${departmentFilePath}. Error: ${parseError.message}`);
+    console.error("XML Content (first 200 chars):", xmlContent.substring(0,200));
+     return { 
+        id: localityId,
+        name: `${localityId} (XML Parse Error)`,
+        extensions: [],
+    };
+  }
+  
+  if (!parsedXml || typeof parsedXml !== 'object' || !parsedXml.CiscoIPPhoneDirectory || typeof parsedXml.CiscoIPPhoneDirectory !== 'object') {
+    console.warn(`[DataLib] Invalid or empty XML structure for CiscoIPPhoneDirectory in locality ID: ${localityId}. File: ${departmentFilePath}`);
+    return { 
+        id: localityId,
+        name: `${localityId} (Invalid XML Structure)`,
+        extensions: [],
+    };
+  }
+
   const validated = CiscoIPPhoneDirectorySchema.safeParse(parsedXml.CiscoIPPhoneDirectory);
 
   if (!validated.success) {
-    console.error(`Failed to parse Department XML for ${localityId}:`);
-    console.error("Data passed to Zod:", JSON.stringify(parsedXml.CiscoIPPhoneDirectory, null, 2));
+    console.error(`[DataLib] Failed to parse Department XML for ${localityId}. File: ${departmentFilePath}`);
+    console.error("Data passed to Zod:", JSON.stringify(parsedXml.CiscoIPPhoneDirectory, null, 2).substring(0, 500) + "..."); // Log more data
     console.error("Zod Errors:", JSON.stringify(validated.error.flatten(), null, 2));
-    return undefined;
+    return { 
+        id: localityId,
+        name: `${localityId} (Data Validation Error)`,
+        extensions: [],
+    };
   }
 
   const title = validated.data.Title || localityId; // Fallback to localityId if Title is missing
@@ -231,4 +274,3 @@ export async function getLocalityWithExtensions(localityId: string): Promise<Loc
     extensions,
   };
 }
-
