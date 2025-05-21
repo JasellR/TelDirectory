@@ -140,3 +140,4 @@ export function GlobalSearch() {
     </div>
   );
 }
+
