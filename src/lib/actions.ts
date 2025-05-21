@@ -62,11 +62,12 @@ async function readAndParseXML(filePath: string): Promise<any> {
 
 async function buildAndWriteXML(filePath: string, jsObject: any): Promise<void> {
   const builder = new Builder({
-    headless: false,
-    renderOpts: { pretty: true, indent: '  ', newline: '\n' },
+    headless: false, // Keep this false to include the root tag defined in jsObject
+    renderOpts: { pretty: true, indent: '  ', newline: '\n' }, // Use '\n' for newline
     xmldec: { version: '1.0', encoding: 'UTF-8', standalone: false }
   });
 
+  // jsObject should be the complete structure, e.g., { CiscoIPPhoneMenu: { ... } }
   const xmlContentBuiltByBuilder = builder.buildObject(jsObject);
   const xmlDeclaration = '<?xml version="1.0" encoding="UTF-8" standalone="no"?>\n';
   const finalXmlString = xmlDeclaration + xmlContentBuiltByBuilder.trim();
@@ -882,7 +883,7 @@ export async function updateXmlUrlsAction(newHost: string, newPort: string): Pro
   const networkConfigPath = path.join(paths.IVOXS_DIR, '.config.json');
   try {
     const currentConfig = { host: newHost.trim(), port: newPort.trim() };
-    await fs.mkdir(paths.IVOXS_DIR, { recursive: true }); // Ensure .config directory's parent exists
+    await fs.mkdir(paths.IVOXS_DIR, { recursive: true }); 
     await fs.writeFile(networkConfigPath, JSON.stringify(currentConfig, null, 2));
     console.log(`[updateXmlUrlsAction] Network configuration saved to ${networkConfigPath}`);
   } catch (e) {
@@ -910,13 +911,12 @@ export async function updateXmlUrlsAction(newHost: string, newPort: string): Pro
 }
 
 export async function searchAllDepartmentsAndExtensionsAction(query: string): Promise<GlobalSearchResult[]> {
-  const authenticated = await isAuthenticated(); // Not strictly necessary for search, but good for consistency
+  const authenticated = await isAuthenticated(); 
 
   if (!query || query.trim().length < 2) {
     return [];
   }
 
-  // Dynamically import data functions to avoid circular dependencies if actions.ts is imported by data.ts
   const { getZones, getZoneItems, getBranchItems, getLocalityWithExtensions } = await import('@/lib/data');
 
   const results: GlobalSearchResult[] = [];
@@ -1086,6 +1086,19 @@ async function updateParentMenuWithNewLocality(
 
 
 export async function importExtensionsFromCsvAction(csvContent: string): Promise<CsvImportResult> {
+  console.log('[CSV Import Action] Received request.');
+  const authenticated = await isAuthenticated();
+  if (!authenticated) {
+    const authErrorResult: CsvImportResult = {
+      success: false,
+      message: 'Authentication required.',
+      details: { processedRows: 0, extensionsAdded: 0, newLocalitiesCreated: 0, parentMenusUpdated: 0, mainMenuUpdatedCount: 0, errors: [{ row: 0, data: '', error: 'User not authenticated' }] }
+    };
+    console.log('[CSV Import Action] Returning (auth error):', JSON.stringify(authErrorResult));
+    return authErrorResult;
+  }
+  console.log('[CSV Import Action] User authenticated.');
+
   let processedRows = 0;
   let extensionsAdded = 0;
   let newLocalitiesCreated = 0;
@@ -1094,19 +1107,6 @@ export async function importExtensionsFromCsvAction(csvContent: string): Promise
   const importErrors: Array<{ row: number; data: string; error: string }> = [];
 
   try {
-    console.log('[CSV Import Action] Received request.');
-    const authenticated = await isAuthenticated();
-    if (!authenticated) {
-      const authErrorResult: CsvImportResult = {
-        success: false,
-        message: 'Authentication required.',
-        details: { processedRows: 0, extensionsAdded: 0, newLocalitiesCreated: 0, parentMenusUpdated: 0, mainMenuUpdatedCount: 0, errors: [{ row: 0, data: '', error: 'User not authenticated' }] }
-      };
-      console.log('[CSV Import Action] Returning (auth error):', JSON.stringify(authErrorResult));
-      return authErrorResult;
-    }
-    console.log('[CSV Import Action] User authenticated.');
-
     const paths = await getIvoxsPaths();
     const lines = csvContent.split(/\r?\n/).map(line => line.trim()).filter(line => line);
     console.log(`[CSV Import Action] Parsed ${lines.length} lines from CSV.`);
@@ -1353,20 +1353,20 @@ export async function importExtensionsFromCsvAction(csvContent: string): Promise
 
   } catch (overallError: any) {
     console.error("[CSV Import Action] Critical error in importExtensionsFromCsvAction:", overallError);
-    const criticalErrorResultForDebug: CsvImportResult = {
+    const criticalErrorResult: CsvImportResult = {
       success: false,
       message: `Critical Server Error: ${overallError.message || 'Unknown error'}. Check server console for details.`,
-      details: {
-        processedRows,
-        extensionsAdded,
-        newLocalitiesCreated,
-        parentMenusUpdated,
-        mainMenuUpdatedCount,
-        errors: importErrors.concat([{ row: 0, data: 'Process Error', error: overallError.message || 'Unknown processing error' }])
+      details: { 
+        processedRows: processedRows,
+        extensionsAdded: extensionsAdded,
+        newLocalitiesCreated: newLocalitiesCreated,
+        parentMenusUpdated: parentMenusUpdated,
+        mainMenuUpdatedCount: mainMenuUpdatedCount,
+        errors: importErrors.concat([{ row: 0, data: 'Critical Process Error', error: overallError.message || 'Unknown error' }])
       }
     };
-    console.log('[CSV Import Action] Returning (critical error - with details):', JSON.stringify(criticalErrorResultForDebug));
-    return criticalErrorResultForDebug;
+    console.log('[CSV Import Action] Returning (critical error - with details structure):', JSON.stringify(criticalErrorResult));
+    return criticalErrorResult;
   }
 }
 
@@ -1463,6 +1463,7 @@ export async function syncNamesFromXmlFeedAction(feedUrlsString: string): Promis
   let filesFailedToUpdate = 0;
   const localExtensionsFoundNumbers = new Set<string>();
   const failedFileUpdatePaths: string[] = [];
+  let filesAttemptedToUpdate = 0;
 
   try {
     const localDeptFiles = await fs.readdir(departmentDir);
@@ -1503,13 +1504,14 @@ export async function syncNamesFromXmlFeedAction(feedUrlsString: string): Promis
         }
 
         if (localDataModified) {
+          filesAttemptedToUpdate++;
           await buildAndWriteXML(localDeptFilePath, parsedLocalDept);
           filesModified++;
         }
       } catch (error: any) {
         console.error(`[Sync] Error processing local department file ${localDeptFilename}:`, error);
         filesFailedToUpdate++;
-        failedFileUpdatePaths.push(localDeptFilename);
+        if(localDataModified) failedFileUpdatePaths.push(localDeptFilename);
       }
     }
   } catch (error: any) {
@@ -1535,8 +1537,6 @@ export async function syncNamesFromXmlFeedAction(feedUrlsString: string): Promis
     }
   }
   console.log(`[Sync] Found ${missingExtensions.length} extensions in feeds that appear to be missing locally.`);
-  console.log(`[SyncDebug] Logging localExtensionsFoundNumbers: ${JSON.stringify(Array.from(localExtensionsFoundNumbers))}`);
-  console.log(`[SyncDebug] Logging uniqueFeedExtensions: ${JSON.stringify(Array.from(uniqueFeedExtensions.entries()))}`);
 
 
   const missingExtensionsFilename = "MissingExtensionsFromFeed.xml";
@@ -1554,7 +1554,8 @@ export async function syncNamesFromXmlFeedAction(feedUrlsString: string): Promis
     const missingExtensionsFilePath = path.join(paths.DEPARTMENT_DIR, missingExtensionsFilename);
     try {
         await buildAndWriteXML(missingExtensionsFilePath, { CiscoIPPhoneDirectory: missingExtensionsXmlContent });
-        if(!failedFileUpdatePaths.includes(missingExtensionsFilename)) filesModified++;
+        filesAttemptedToUpdate++;
+        filesModified++;
     } catch (e: any) {
         console.error(`[Sync] Failed to write ${missingExtensionsFilePath}:`, e);
         filesFailedToUpdate++;
@@ -1590,6 +1591,8 @@ export async function syncNamesFromXmlFeedAction(feedUrlsString: string): Promis
     parsedMainMenu.CiscoIPPhoneMenu.MenuItem = menuItems.length > 0 ? menuItems : undefined;
     try {
         await buildAndWriteXML(mainMenuPath, parsedMainMenu);
+        filesAttemptedToUpdate++;
+        filesModified++;
         revalidatePath('/');
     } catch(e: any) {
         console.error(`[Sync] Failed to write ${mainMenuPath}:`, e);
@@ -1617,6 +1620,8 @@ export async function syncNamesFromXmlFeedAction(feedUrlsString: string): Promis
         parsedMainMenu.CiscoIPPhoneMenu.MenuItem = menuItems.length > 0 ? menuItems : undefined;
         try {
             await buildAndWriteXML(mainMenuPath, parsedMainMenu);
+            filesAttemptedToUpdate++;
+            filesModified++;
             revalidatePath('/');
         } catch(e: any) {
             console.error(`[Sync] Failed to write ${mainMenuPath} after removing Missing Extensions link:`, e);
@@ -1626,8 +1631,12 @@ export async function syncNamesFromXmlFeedAction(feedUrlsString: string): Promis
       }
     }
   }
+  const success = filesFailedToUpdate === 0;
+  let message = `Sync complete. ${updatedCount} names updated in ${filesModified} files. `;
+  if (filesAttemptedToUpdate > filesModified) {
+     message = `Sync complete. ${updatedCount} names targeted for update. ${filesModified} files successfully written. ${filesAttemptedToUpdate - filesModified} files failed to write. `;
+  }
 
-  let message = `Sync complete. ${updatedCount} names updated in ${filesModified - (failedFileUpdatePaths.includes(paths.MAINMENU_FILENAME) ? 1 : 0) - (failedFileUpdatePaths.includes(path.join(paths.DEPARTMENT_DIR, missingExtensionsFilename)) ? 1 : 0) } department files. `;
   if (conflictedExtensions.length > 0) {
     message += `Found ${conflictedExtensions.length} conflicted extension numbers (not updated, see details). `;
   }
@@ -1640,17 +1649,16 @@ export async function syncNamesFromXmlFeedAction(feedUrlsString: string): Promis
 
   if (filesFailedToUpdate > 0) {
     const uniqueFailedFiles = [...new Set(failedFileUpdatePaths)];
-    message += `Failed to update ${filesFailedToUpdate} files (including ${uniqueFailedFiles.length} unique paths).`;
-     if (uniqueFailedFiles.length > 0) {
+    if (uniqueFailedFiles.length > 0) {
         message += ` Failed files: ${uniqueFailedFiles.join(', ')}. Check server logs for details.`;
     } else {
-        message += ` Check server logs for details.`;
+        message += ` Check server logs for details about write failures.`;
     }
   }
 
 
   return {
-    success: filesFailedToUpdate === 0,
+    success,
     message,
     updatedCount,
     filesModified,
