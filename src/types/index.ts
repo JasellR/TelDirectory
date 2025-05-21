@@ -100,6 +100,7 @@ export interface CsvImportDetails {
   extensionsAdded: number;
   newLocalitiesCreated: number;
   parentMenusUpdated: number;
+  mainMenuUpdatedCount: number;
   errors: CsvImportError[];
 }
 export interface CsvImportResult {

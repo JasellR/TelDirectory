@@ -201,6 +201,7 @@
   "extensionsAddedLabel": "Extensions successfully added/updated: {count}",
   "newLocalitiesCreatedLabel": "New locality files created: {count}",
   "parentMenusUpdatedLabel": "Zone/Branch menus updated: {count}",
+  "mainMenuUpdatedLabel": "MainMenu.xml updated with new zone(s): {count}",
   "specificErrorsLabel": "Specific Errors:",
   "rowLabel": "Row {row}",
   "unknownError": "Unknown error"
