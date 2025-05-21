@@ -62,12 +62,11 @@ async function readAndParseXML(filePath: string): Promise<any> {
 
 async function buildAndWriteXML(filePath: string, jsObject: any): Promise<void> {
   const builder = new Builder({
-    headless: false, // Keep this false to include the root tag defined in jsObject
-    renderOpts: { pretty: true, indent: '  ', newline: '\n' }, // Use '\n' for newline
+    headless: false, 
+    renderOpts: { pretty: true, indent: '  ', newline: '\n' },
     xmldec: { version: '1.0', encoding: 'UTF-8', standalone: false }
   });
 
-  // jsObject should be the complete structure, e.g., { CiscoIPPhoneMenu: { ... } }
   const xmlContentBuiltByBuilder = builder.buildObject(jsObject);
   const xmlDeclaration = '<?xml version="1.0" encoding="UTF-8" standalone="no"?>\n';
   const finalXmlString = xmlDeclaration + xmlContentBuiltByBuilder.trim();
@@ -541,34 +540,34 @@ export async function deleteLocalityOrBranchAction(args: DeleteItemArgs): Promis
   }
 }
 
-export async function addExtensionAction(localityId: string, name: string, telephone: string): Promise<{ success: boolean; message: string; error?: string }> {
+export async function addExtensionAction(localityId: string, name: string, telephone: string): Promise<CsvImportResult> {
   const authenticated = await isAuthenticated();
   if (!authenticated) {
-    return { success: false, message: 'Authentication required.', error: 'User not authenticated' };
+    return { success: false, message: 'Authentication required.', details: { processedRows: 0, extensionsAdded: 0, newLocalitiesCreated: 0, parentMenusUpdated: 0, mainMenuUpdatedCount: 0, errors: [{row:0, data: '', error: 'User not authenticated'}]} };
   }
-
+  
+  const paths = await getIvoxsPaths();
   try {
-    const paths = await getIvoxsPaths();
     const sanitizedLocalityId = sanitizeFilenamePart(localityId);
-    if (!sanitizedLocalityId) return { success: false, message: 'Invalid Locality ID.' };
+    if (!sanitizedLocalityId) return { success: false, message: 'Invalid Locality ID.' , details: { processedRows: 0, extensionsAdded: 0, newLocalitiesCreated: 0, parentMenusUpdated: 0, mainMenuUpdatedCount: 0, errors: [{row:0, data: localityId, error: 'Invalid Locality ID'}]} };
 
     const trimmedName = name.trim();
-    if (!trimmedName) return { success: false, message: 'Extension name cannot be empty.' };
+    if (!trimmedName) return { success: false, message: 'Extension name cannot be empty.', details: { processedRows: 0, extensionsAdded: 0, newLocalitiesCreated: 0, parentMenusUpdated: 0, mainMenuUpdatedCount: 0, errors: [{row:0, data: name, error: 'Extension name cannot be empty'}]} };
 
     const trimmedTelephone = telephone.trim();
-    if (!trimmedTelephone) return { success: false, message: 'Extension telephone cannot be empty.' };
+    if (!trimmedTelephone) return { success: false, message: 'Extension telephone cannot be empty.', details: { processedRows: 0, extensionsAdded: 0, newLocalitiesCreated: 0, parentMenusUpdated: 0, mainMenuUpdatedCount: 0, errors: [{row:0, data: telephone, error: 'Extension telephone cannot be empty'}]} };
 
     let charDetails = '';
     for (let i = 0; i < trimmedTelephone.length; i++) {
       charDetails += `char[${i}]: ${trimmedTelephone[i]} (code: ${trimmedTelephone.charCodeAt(i).toString(16)}) `;
     }
     console.log(`[Debug AddExtension] Validating telephone. Raw: "[${telephone}]", Trimmed: "[${trimmedTelephone}]", Length: ${trimmedTelephone.length}, CharDetails: ${charDetails.trim()}`);
-
+    
     const isDigitsOnly = /^\d+$/.test(trimmedTelephone);
     console.log(`[Debug AddExtension] Result of /^\\d+$/.test(trimmedTelephone) for "[${trimmedTelephone}]" = ${isDigitsOnly}`);
 
     if (!isDigitsOnly) {
-      return { success: false, message: 'SERVER: Extension telephone must be a valid number.' };
+      return { success: false, message: 'SERVER: Extension telephone must be a valid number.', details: { processedRows: 0, extensionsAdded: 0, newLocalitiesCreated: 0, parentMenusUpdated: 0, mainMenuUpdatedCount: 0, errors: [{row:0, data: telephone, error: 'Extension telephone must be a valid number'}]} };
     }
 
     const departmentFilePath = path.join(paths.DEPARTMENT_DIR, `${sanitizedLocalityId}.xml`);
@@ -588,7 +587,7 @@ export async function addExtensionAction(localityId: string, name: string, telep
       directoryObject = parsedDepartmentXml;
       let directoryEntries = ensureArray(directoryObject.CiscoIPPhoneDirectory.DirectoryEntry);
       if (directoryEntries.some(entry => entry.Name === trimmedName && entry.Telephone === trimmedTelephone)) {
-        return { success: false, message: `An extension with Name "${trimmedName}" and Telephone "${trimmedTelephone}" already exists.` };
+        return { success: false, message: `An extension with Name "${trimmedName}" and Telephone "${trimmedTelephone}" already exists.`, details: { processedRows: 0, extensionsAdded: 0, newLocalitiesCreated: 0, parentMenusUpdated: 0, mainMenuUpdatedCount: 0, errors: [{row:0, data: `${name}-${telephone}`, error: 'Extension already exists'}]} };
       }
       directoryEntries.push({ Name: trimmedName, Telephone: trimmedTelephone });
       directoryEntries.sort((a, b) => {
@@ -604,10 +603,15 @@ export async function addExtensionAction(localityId: string, name: string, telep
     revalidatePath(`/app/[zoneId]/localities/${localityId}`, 'page');
     revalidatePath(`/app/[zoneId]/branches/[branchId]/localities/${localityId}`, 'page');
 
-    return { success: true, message: `Extension "${trimmedName}" added to locality "${sanitizedLocalityId}".` };
+    return { success: true, message: `Extension "${trimmedName}" added to locality "${sanitizedLocalityId}".`, details: { processedRows: 1, extensionsAdded: 1, newLocalitiesCreated: 0, parentMenusUpdated: 0, mainMenuUpdatedCount: 0, errors: []} };
   } catch (error: any) {
     console.error(`[AddExtensionAction Error] Failed to add extension to ${localityId}:`, error);
-    return { success: false, message: `An unexpected error occurred while adding the extension. ${error.message || 'Unknown error'}`, error: error.toString() };
+    return { 
+        success: false, 
+        message: `An unexpected error occurred while adding the extension. ${error.message || 'Unknown error'}`, 
+        error: error.toString(),
+        details: { processedRows: 0, extensionsAdded: 0, newLocalitiesCreated: 0, parentMenusUpdated: 0, mainMenuUpdatedCount: 0, errors: [{row:0, data: `${name}-${telephone}`, error: error.message || 'Unknown server error'}]}
+    };
   }
 }
 
@@ -877,7 +881,7 @@ export async function updateXmlUrlsAction(newHost: string, newPort: string): Pro
   }
 
   if (filesChangedCount > 0) {
-    revalidatePath('/', 'layout'); // Revalidate layout if any file changed URL structure
+    revalidatePath('/', 'layout'); 
   }
 
   const networkConfigPath = path.join(paths.IVOXS_DIR, '.config.json');
@@ -1120,9 +1124,34 @@ export async function importExtensionsFromCsvAction(csvContent: string): Promise
       console.log('[CSV Import Action] Returning (empty CSV):', JSON.stringify(emptyCsvResult));
       return emptyCsvResult;
     }
-
+    
+    const expectedColumnCount = 4; // Name, Extension, LocalityID, ZoneID
     let headerSkipped = false;
     const expectedHeaders = ["name", "extension", "localityid", "zoneid"];
+
+    if (lines.length > 0) {
+        const firstLine = lines[0];
+        let firstLineColsTest = firstLine.split(',').map(col => col.trim().toLowerCase());
+
+        if (firstLineColsTest.length < expectedColumnCount && firstLineColsTest.length === 1 && firstLineColsTest[0] !== '') {
+            const tabSplitCols = firstLineColsTest[0].split('\t').map(col => col.trim().toLowerCase());
+            if (tabSplitCols.length >= expectedColumnCount) {
+                firstLineColsTest = tabSplitCols;
+            } else if (tabSplitCols.length === 1 && tabSplitCols[0] !== '') {
+                const spaceSplitCols = tabSplitCols[0].split(/\s+/).map(col => col.trim().toLowerCase());
+                if (spaceSplitCols.length >= expectedColumnCount) {
+                    firstLineColsTest = spaceSplitCols;
+                }
+            }
+        }
+        
+        if (firstLineColsTest.length >= expectedColumnCount &&
+            expectedHeaders.every((header, index) => firstLineColsTest[index] && firstLineColsTest[index].includes(header))) {
+          headerSkipped = true;
+          console.log('[CSV Import Action] Header row detected and skipped using multi-delimiter check.');
+        }
+    }
+
 
     let serviceHost = '127.0.0.1';
     let servicePort = '3000';
@@ -1139,26 +1168,29 @@ export async function importExtensionsFromCsvAction(csvContent: string): Promise
     const urlConfig = { host: serviceHost, port: servicePort };
     const newZonesAddedToMainMenu = new Set<string>();
 
-    for (let i = 0; i < lines.length; i++) {
+    for (let i = (headerSkipped ? 1 : 0); i < lines.length; i++) {
       const line = lines[i];
-      const columns = line.split(',').map(col => col.trim());
-
-      if (!headerSkipped && i === 0) {
-        const firstRowLower = columns.map(col => col.toLowerCase());
-        if (expectedHeaders.every((header, index) => firstRowLower[index] && firstRowLower[index].includes(header))) {
-          headerSkipped = true;
-          console.log('[CSV Import Action] Header row detected and skipped.');
-          continue;
+      
+      let columns = line.split(',').map(col => col.trim());
+      if (columns.length < expectedColumnCount && columns.length === 1 && columns[0] !== '') {
+        const tabSplitColumns = columns[0].split('\t').map(col => col.trim());
+        if (tabSplitColumns.length >= expectedColumnCount) {
+          columns = tabSplitColumns;
+        } else if (tabSplitColumns.length === 1 && tabSplitColumns[0] !== '') {
+          const spaceSplitColumns = tabSplitColumns[0].split(/\s+/).map(col => col.trim());
+          if (spaceSplitColumns.length >= expectedColumnCount) {
+            columns = spaceSplitColumns;
+          }
         }
       }
 
       processedRows++;
-      const rowNumberForError = headerSkipped ? i : i + 1;
-      console.log(`[CSV Import Action] Processing row ${rowNumberForError}: ${line}`);
+      const rowNumberForError = i + 1; 
+      console.log(`[CSV Import Action] Processing row ${rowNumberForError}: ${line.substring(0,100)}...`);
 
-      if (columns.length < 4) {
-        importErrors.push({ row: rowNumberForError, data: line, error: 'Row does not have enough columns (expected Name, Extension, LocalityID, ZoneID).' });
-        console.warn(`[CSV Import Action] Row ${rowNumberForError} has insufficient columns.`);
+      if (columns.length < expectedColumnCount) {
+        importErrors.push({ row: rowNumberForError, data: line, error: `Row does not have enough columns (expected ${expectedColumnCount}: Name, Extension, LocalityID, ZoneID). Found ${columns.length}.` });
+        console.warn(`[CSV Import Action] Row ${rowNumberForError} has insufficient columns. Found ${columns.length}, expected ${expectedColumnCount}. Line: ${line.substring(0,100)}`);
         continue;
       }
 
@@ -1201,7 +1233,7 @@ export async function importExtensionsFromCsvAction(csvContent: string): Promise
         if (!departmentData || !departmentData.CiscoIPPhoneDirectory) {
           departmentData = {
             CiscoIPPhoneDirectory: {
-              Title: localityIdFromCsv,
+              Title: localityIdFromCsv, 
               Prompt: 'Select an extension',
               DirectoryEntry: [],
             },
@@ -1237,27 +1269,30 @@ export async function importExtensionsFromCsvAction(csvContent: string): Promise
           console.log(`[CSV Import Action] New locality "${localityIdFromCsv}" created. Attempting to update parent menu for ZoneID "${originalZoneIdFromCsv}".`);
           let parentMenuFilePath: string;
           let isZoneBranchFile = false;
+          let parentDirIsBranch = false;
 
           if (originalZoneIdFromCsv.toLowerCase() === 'zonametropolitana') {
-              parentMenuFilePath = path.join(paths.BRANCH_DIR, `ZonaMetropolitana.xml`);
-              console.log(`[CSV Import Action] Parent menu for new locality in ZonaMetropolitana: ${parentMenuFilePath}`);
+              parentMenuFilePath = path.join(paths.BRANCH_DIR, `${sanitizedZoneIdForFile}.xml`);
+              parentDirIsBranch = true;
+              console.log(`[CSV Import Action] Parent menu for new locality in ZonaMetropolitana (using its own branch file): ${parentMenuFilePath}`);
           } else {
               parentMenuFilePath = path.join(paths.ZONE_BRANCH_DIR, `${sanitizedZoneIdForFile}.xml`);
               isZoneBranchFile = true;
               console.log(`[CSV Import Action] Parent menu for new locality in Zone "${originalZoneIdFromCsv}": ${parentMenuFilePath}`);
           }
-
+          
           const parentUpdateResult = await updateParentMenuWithNewLocality(
             parentMenuFilePath,
-            localityIdFromCsv,
+            localityIdFromCsv, 
             sanitizedLocalityIdForFile,
             urlConfig
           );
 
           if (parentUpdateResult.success) {
             parentMenusUpdated++;
-            if (isZoneBranchFile && parentUpdateResult.fileCreated) {
-              newZonesAddedToMainMenu.add(originalZoneIdFromCsv);
+            // If a zone branch file was newly created AND it's not ZonaMetropolitana's special handling
+            if (isZoneBranchFile && parentUpdateResult.fileCreated && originalZoneIdFromCsv.toLowerCase() !== 'zonametropolitana') {
+              newZonesAddedToMainMenu.add(originalZoneIdFromCsv); // Add original name for MainMenu
             }
             console.log(`[CSV Import Action] Successfully updated parent menu for new locality "${localityIdFromCsv}".`);
           } else {
@@ -1265,15 +1300,13 @@ export async function importExtensionsFromCsvAction(csvContent: string): Promise
             console.warn(`[CSV Import Action] Failed to update parent menu for new locality "${localityIdFromCsv}": ${parentUpdateResult.error}`);
           }
         }
-
         revalidatePath(`/app/[zoneId]/localities/${sanitizedLocalityIdForFile}`, 'page');
         revalidatePath(`/app/[zoneId]/branches/[branchId]/localities/${sanitizedLocalityIdForFile}`, 'page');
         if(newLocalityWasCreatedThisRow) {
-          if (originalZoneIdFromCsv.toLowerCase() === 'zonametropolitana') {
-              revalidatePath(`/app/${sanitizedZoneIdForFile}/branches/ZonaMetropolitana`, 'page');
-          } else {
-              revalidatePath(`/app/${sanitizedZoneIdForFile}`, 'page');
-          }
+            revalidatePath(`/app/${sanitizedZoneIdForFile}`, 'page');
+            if (originalZoneIdFromCsv.toLowerCase() === 'zonametropolitana') {
+              revalidatePath(`/app/${sanitizedZoneIdForFile}/branches/${sanitizedZoneIdForFile}`, 'page'); // Path for ZonaMetropolitana branch listing itself
+            }
         }
 
       } catch (e: any) {
@@ -1288,16 +1321,17 @@ export async function importExtensionsFromCsvAction(csvContent: string): Promise
 
       if (!parsedMainMenu || !parsedMainMenu.CiscoIPPhoneMenu) {
         parsedMainMenu = { CiscoIPPhoneMenu: { Title: "Main Directory", Prompt: "Select an option", MenuItem: [] } };
+         console.warn(`[CSV Import Action] MainMenu.xml not found or invalid. Creating new one.`);
       }
       let mainMenuEntries = ensureArray(parsedMainMenu.CiscoIPPhoneMenu.MenuItem);
       let mainMenuFileActuallyChanged = false;
 
-      for (const originalZoneId of newZonesAddedToMainMenu) {
-        const sanitizedZoneId = generateIdFromName(originalZoneId);
-        const zoneUrl = `http://${urlConfig.host}:${urlConfig.port}/ivoxsdir/zonebranch/${sanitizedZoneId}.xml`;
-        const existingZoneIndex = mainMenuEntries.findIndex(item => item.URL === zoneUrl || item.Name === originalZoneId);
+      for (const originalZoneIdForMainMenu of newZonesAddedToMainMenu) {
+        const sanitizedZoneIdForMainMenuFile = generateIdFromName(originalZoneIdForMainMenu);
+        const zoneUrl = `http://${urlConfig.host}:${urlConfig.port}/ivoxsdir/zonebranch/${sanitizedZoneIdForMainMenuFile}.xml`;
+        const existingZoneIndex = mainMenuEntries.findIndex(item => item.URL === zoneUrl || item.Name === originalZoneIdForMainMenu);
         if (existingZoneIndex === -1) {
-          mainMenuEntries.push({ Name: originalZoneId, URL: zoneUrl });
+          mainMenuEntries.push({ Name: originalZoneIdForMainMenu, URL: zoneUrl });
           mainMenuUpdatedCount++;
           mainMenuFileActuallyChanged = true;
         }
@@ -1631,11 +1665,15 @@ export async function syncNamesFromXmlFeedAction(feedUrlsString: string): Promis
       }
     }
   }
-  const success = filesFailedToUpdate === 0;
-  let message = `Sync complete. ${updatedCount} names updated in ${filesModified} files. `;
-  if (filesAttemptedToUpdate > filesModified) {
-     message = `Sync complete. ${updatedCount} names targeted for update. ${filesModified} files successfully written. ${filesAttemptedToUpdate - filesModified} files failed to write. `;
+  
+  let message = `Sync complete. ${updatedCount} names updated. `;
+  if (filesAttemptedToUpdate > 0) {
+     message += `${filesModified} files successfully written. `;
+     if (filesModified < filesAttemptedToUpdate) {
+        message += `${filesAttemptedToUpdate - filesModified} files failed to write. `;
+     }
   }
+
 
   if (conflictedExtensions.length > 0) {
     message += `Found ${conflictedExtensions.length} conflicted extension numbers (not updated, see details). `;
@@ -1647,18 +1685,16 @@ export async function syncNamesFromXmlFeedAction(feedUrlsString: string): Promis
   }
 
 
-  if (filesFailedToUpdate > 0) {
+  if (filesFailedToUpdate > 0 && failedFileUpdatePaths.length > 0) {
     const uniqueFailedFiles = [...new Set(failedFileUpdatePaths)];
-    if (uniqueFailedFiles.length > 0) {
-        message += ` Failed files: ${uniqueFailedFiles.join(', ')}. Check server logs for details.`;
-    } else {
-        message += ` Check server logs for details about write failures.`;
-    }
+    message += ` Failed to write to these files (check server logs): ${uniqueFailedFiles.join(', ')}.`;
+  } else if (filesFailedToUpdate > 0) {
+    message += ` Some files failed to update. Check server logs for details.`;
   }
 
 
   return {
-    success,
+    success: filesFailedToUpdate === 0, // Consider overall success if no write errors
     message,
     updatedCount,
     filesModified,
