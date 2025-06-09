@@ -64,14 +64,10 @@ export async function loginAction(
           sameSite: 'lax',
           maxAge: 60 * 60 * 24 * 7, // 1 week
         });
-        console.log(`[Auth @ ${new Date().toISOString()}] Session cookie SET for user: ${username}. Value: ${JSON.stringify(sessionData)}`);
-        
-        const cookieJustSet = cookieStore.get(AUTH_COOKIE_NAME);
-        if (cookieJustSet) {
-          console.log(`[Auth @ ${new Date().toISOString()}] Successfully read cookie "${AUTH_COOKIE_NAME}" immediately after setting. Value:`, cookieJustSet.value);
-        } else {
-          console.warn(`[Auth @ ${new Date().toISOString()}] FAILED to read cookie "${AUTH_COOKIE_NAME}" immediately after setting.`);
-        }
+        console.log(`[Auth @ ${new Date().toISOString()}] Session cookie SET for user: ${username}.`);
+        // Note: Reading the cookie value immediately after setting it in the same request
+        // will yield the *old* value (or undefined if it didn't exist).
+        // The new cookie value is available on the *next* request.
         
       } catch (cookieError: any) {
         console.error(`[Auth @ ${new Date().toISOString()}] Error setting session cookie:`, cookieError);
@@ -117,36 +113,27 @@ export async function isAuthenticated(): Promise<boolean> {
 }
 
 export async function getCurrentUser(): Promise<UserSession | null> {
-  const cookieStore = await cookies();
+  const cookieStore = cookies();
   const sessionCookie = cookieStore.get(AUTH_COOKIE_NAME);
   const cookieValue = sessionCookie?.value;
   
-  // More verbose logging for getCurrentUser
-  console.log(`[Auth - getCurrentUser @ ${new Date().toISOString()}] Attempting to read cookie "${AUTH_COOKIE_NAME}". Has value: ${!!cookieValue}`);
-  if (cookieValue) {
-    // console.log(`[Auth - getCurrentUser @ ${new Date().toISOString()}] Cookie value found: ${cookieValue.substring(0, 50)}${cookieValue.length > 50 ? '...' : ''}`);
-  }
+  // console.log(`[Auth - getCurrentUser @ ${new Date().toISOString()}] Attempting to read cookie "${AUTH_COOKIE_NAME}". Has value: ${!!cookieValue}`);
 
   if (!cookieValue) {
-    console.log(`[Auth - getCurrentUser @ ${new Date().toISOString()}] Cookie "${AUTH_COOKIE_NAME}" not found or value is empty.`);
-    const allCookies = cookieStore.getAll(); // This gets all cookies available to the server for THIS request
-    if (allCookies.length > 0) {
-        console.log(`[Auth - getCurrentUser @ ${new Date().toISOString()}] All cookies received by server for this request:`, allCookies.map(c => ({ name: c.name, value: c.value.substring(0, 50) + (c.value.length > 50 ? '...' : '') })));
-    } else {
-        console.log(`[Auth - getCurrentUser @ ${new Date().toISOString()}] No cookies received by server for this request.`);
-    }
+    // console.log(`[Auth - getCurrentUser @ ${new Date().toISOString()}] Cookie "${AUTH_COOKIE_NAME}" not found or value is empty.`);
     return null;
   }
   try {
     const session = JSON.parse(cookieValue) as UserSession;
     if (session.userId && session.username) {
-      console.log(`[Auth - getCurrentUser @ ${new Date().toISOString()}] Cookie found, parsed, returning user:`, {userId: session.userId, username: session.username});
+      // console.log(`[Auth - getCurrentUser @ ${new Date().toISOString()}] Cookie found, parsed, returning user:`, {userId: session.userId, username: session.username});
       return session;
     }
-    console.warn(`[Auth - getCurrentUser @ ${new Date().toISOString()}] Cookie found, parsed, but invalid session structure:`, session);
+    // console.warn(`[Auth - getCurrentUser @ ${new Date().toISOString()}] Cookie found, parsed, but invalid session structure:`, session);
     return null;
   } catch (error) {
-    console.error(`[Auth - getCurrentUser @ ${new Date().toISOString()}] Error parsing session cookie:`, error, "Cookie Value was:", cookieValue);
+    console.error(`[Auth - getCurrentUser @ ${new Date().toISOString()}] Error parsing session cookie:`, error, "Cookie Value (first 50 chars):", cookieValue.substring(0,50));
     return null;
   }
 }
+
