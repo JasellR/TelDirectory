@@ -10,7 +10,7 @@ import { CiscoIPPhoneMenuSchema, CiscoIPPhoneDirectorySchema } from '@/lib/data'
 import { getResolvedIvoxsRootPath, saveDirectoryConfig as saveDirConfig } from '@/lib/config';
 import { isAuthenticated } from '@/lib/auth-actions';
 import { getDb } from '@/lib/db';
-import ldap, { type SearchEntryObject, type SearchOptions, type Client } from 'ldapjs';
+import ldap, { type SearchEntryObject, type SearchOptions, type Client, type SearchEntry } from 'ldapjs';
 
 
 // Helper to get all dynamic paths based on the resolved IVOXS root
@@ -1072,15 +1072,14 @@ async function updateParentMenuWithNewLocality(args: UpdateParentMenuArgs): Prom
     if (existingItemIndex === -1) {
       menuItems.push({ Name: localityName, URL: newLocalityUrl });
       itemAdded = true; 
-      menuItems.sort((a, b) => a.Name.localeCompare(b.Name));
-      parsedParentXml.CiscoIPPhoneMenu.MenuItem = menuItems.length > 0 ? menuItems : undefined;
     } else if (menuItems[existingItemIndex].Name !== localityName) {
       menuItems[existingItemIndex].Name = localityName;
       itemAdded = true; 
-      menuItems.sort((a, b) => a.Name.localeCompare(b.Name));
     }
     
     if (itemAdded || parentFileCreated) {
+      menuItems.sort((a, b) => a.Name.localeCompare(b.Name));
+      parsedParentXml.CiscoIPPhoneMenu.MenuItem = menuItems.length > 0 ? menuItems : undefined;
       await buildAndWriteXML(parentFilePath, parsedParentXml);
     } 
 
@@ -1631,7 +1630,7 @@ export async function syncFromActiveDirectoryAction(params: AdSyncFormValues): P
     const searchOptions: SearchOptions = {
       filter: params.searchFilter || '(objectClass=user)',
       scope: 'sub',
-      attributes: attributesToFetch.length > 0 ? attributesToFetch : undefined 
+      attributes: attributesToFetch.length > 0 ? attributesToFetch : ['dn'] // Fetch 'dn' if no attributes specified
     };
 
     const searchOperationResult = await new Promise<{ success: boolean; data?: SearchEntryObject[]; error?: Error }>((resolve) => {
@@ -1641,12 +1640,19 @@ export async function syncFromActiveDirectoryAction(params: AdSyncFormValues): P
           resolve({ success: false, error: new Error(`LDAP Search Setup Error: ${err.message}`) });
           return;
         }
-        res.on('searchEntry', (entry) => {
-          foundEntries.push(entry.object);
+        res.on('searchEntry', (entry: SearchEntry) => {
+          // Construct a plain object from attributes
+          const plainEntry: {[key: string]: string | string[]} = {};
+          if (entry.attributes && Array.isArray(entry.attributes)) {
+            entry.attributes.forEach(attr => {
+              plainEntry[attr.type] = attr.vals.length === 1 ? attr.vals[0] : attr.vals;
+            });
+          }
+          foundEntries.push(plainEntry as SearchEntryObject);
         });
         res.on('error', (searchErr) => {
           resolve({ success: false, error: new Error(`LDAP Search Stream Error: ${searchErr.message}`) });
-          return; 
+          return;
         });
         res.on('end', (searchResult) => {
           if (searchResult && searchResult.status !== 0) {
@@ -1676,13 +1682,13 @@ export async function syncFromActiveDirectoryAction(params: AdSyncFormValues): P
     const detailsForDbByExtension: Map<string, Partial<Extension>> = new Map(); 
 
     for (const adUser of entriesFromAd) {
-      if (!adUser) {
-        console.warn('[AD Sync] Encountered an undefined user entry from AD search. Skipping.');
+       if (!adUser || Object.keys(adUser).length === 0) {
+        console.warn('[AD Sync] Encountered an empty or undefined user entry from AD search. Skipping.');
         results.errorsEncountered++;
         continue;
       }
       const getStringAttr = (attrName: string) => {
-        const val = adUser[attrName];
+        const val = adUser[attrName as keyof SearchEntryObject]; // Cast to keyof for type safety
         return Array.isArray(val) ? val[0] : (typeof val === 'string' ? val : undefined);
       };
 
@@ -1750,14 +1756,14 @@ export async function syncFromActiveDirectoryAction(params: AdSyncFormValues): P
 
 
     for (const [localityId, entries] of extensionsByLocality.entries()) {
-        const departmentDisplayName = entriesFromAd.find(u => u && generateIdFromName((getStringAttr(u, params.departmentAttribute) || "Uncategorized")) === localityId)?.[params.departmentAttribute] as string || localityId;
+        const departmentDisplayName = entriesFromAd.find(u => u && generateIdFromName(( (u[params.departmentAttribute as keyof SearchEntryObject] as string | string[]) || "Uncategorized")) === localityId)?.[params.departmentAttribute as keyof SearchEntryObject] as string || localityId;
         const departmentFilePath = path.join(paths.DEPARTMENT_DIR, `${localityId}.xml`);
         let departmentXml = await readAndParseXML(departmentFilePath);
-        let isNewDepartmentFile = false;
+        // let isNewDepartmentFile = false; // Not used
 
         if (!departmentXml || !departmentXml.CiscoIPPhoneDirectory) {
             departmentXml = { CiscoIPPhoneDirectory: { Title: departmentDisplayName, Prompt: "Select Extension", DirectoryEntry: [] } };
-            isNewDepartmentFile = true;
+            // isNewDepartmentFile = true; // Not used
             results.localitiesCreated++;
         } else {
             if (departmentXml.CiscoIPPhoneDirectory.Title !== departmentDisplayName) {
@@ -1822,7 +1828,7 @@ export async function syncFromActiveDirectoryAction(params: AdSyncFormValues): P
 
     return { 
       success: true, 
-      message: `Active Directory sync completed. Processed ${results.usersProcessed} users. Added/updated ${results.extensionsAdded} XML extensions across ${extensionsByLocality.size} localities. DB: ${results.dbRecordsAdded} added, ${results.dbRecordsUpdated} updated.`,
+      message: `Active Directory sync completed. Processed ${results.usersProcessed} users. Added/updated ${results.extensionsAdded} XML extensions across ${extensionsByLocality.size} localities. DB: ${results.dbRecordsAdded} added, ${results.dbRecordsUpdated} updated. ${results.errorsEncountered > 0 ? `${results.errorsEncountered} AD entries skipped.` : ''}`,
       details: results 
     };
 
@@ -2055,3 +2061,4 @@ async function processLocalityForSearch(args: {
     }
   }
 }
+

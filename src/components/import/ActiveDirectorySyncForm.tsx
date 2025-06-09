@@ -37,8 +37,8 @@ interface ActiveDirectorySyncFormProps {
 }
 
 export function ActiveDirectorySyncForm({ syncAction }: ActiveDirectorySyncFormProps) {
-  const { toast } = useTranslation(); // Using useTranslation for toast messages too for consistency
-  const { t } = useTranslation();
+  const { toast } = useToast(); // Correct: get toast from useToast
+  const { t } = useTranslation(); // Correct: get t from useTranslation
   const [isSyncing, startSyncTransition] = useTransition();
   const [syncResult, setSyncResult] = useState<AdSyncResult | null>(null);
 
