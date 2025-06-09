@@ -11,7 +11,7 @@ import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2, Users, AlertCircle, CheckCircle } from 'lucide-react';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import type { AdSyncResult, AdSyncDetails } from '@/types';
+import type { AdSyncResult, AdSyncFormValues as AdSyncFormValuesType } from '@/types'; // Renamed to avoid conflict
 import { useTranslation } from '@/hooks/useTranslation';
 
 const adSyncSchema = z.object({
@@ -25,16 +25,19 @@ const adSyncSchema = z.object({
   departmentAttribute: z.string().optional().default('department'),
   emailAttribute: z.string().optional().default('mail'),
   phoneAttribute: z.string().optional().default('telephoneNumber'),
+  organizationAttribute: z.string().optional().default('company'), // New
+  jobTitleAttribute: z.string().optional().default('title'),       // New
 });
 
+// Type for form values infered from schema
 type AdSyncFormValues = z.infer<typeof adSyncSchema>;
 
 interface ActiveDirectorySyncFormProps {
-  syncAction: (params: AdSyncFormValues) => Promise<AdSyncResult>;
+  syncAction: (params: AdSyncFormValuesType) => Promise<AdSyncResult>;
 }
 
 export function ActiveDirectorySyncForm({ syncAction }: ActiveDirectorySyncFormProps) {
-  const { toast } = useToast();
+  const { toast } = useTranslation(); // Using useTranslation for toast messages too for consistency
   const { t } = useTranslation();
   const [isSyncing, startSyncTransition] = useTransition();
   const [syncResult, setSyncResult] = useState<AdSyncResult | null>(null);
@@ -46,13 +49,15 @@ export function ActiveDirectorySyncForm({ syncAction }: ActiveDirectorySyncFormP
     reset,
   } = useForm<AdSyncFormValues>({
     resolver: zodResolver(adSyncSchema),
-    defaultValues: { // Set default values for optional fields
+    defaultValues: { 
         searchFilter: '(objectClass=user)',
         displayNameAttribute: 'displayName',
         extensionAttribute: 'ipPhone',
         departmentAttribute: 'department',
         emailAttribute: 'mail',
         phoneAttribute: 'telephoneNumber',
+        organizationAttribute: 'company', // Default for AD 'company' attribute
+        jobTitleAttribute: 'title',       // Default for AD 'title' attribute
     }
   });
 
@@ -73,15 +78,13 @@ export function ActiveDirectorySyncForm({ syncAction }: ActiveDirectorySyncFormP
             duration: 10000,
           });
         }
-        // Optionally reset form if needed, or keep values for re-submission
-        // reset(); 
       } catch (error: any) {
         console.error("AD Sync Error caught in form:", error);
         const errorMessage = error.message || t('adSyncUnexpectedError');
         setSyncResult({
           success: false,
           message: errorMessage,
-          details: { usersProcessed: 0, extensionsAdded: 0, localitiesCreated: 0, localitiesUpdated: 0, zoneCreated: false, errorsEncountered: 1 },
+          details: { usersProcessed: 0, extensionsAdded: 0, dbRecordsAdded: 0, dbRecordsUpdated: 0, localitiesCreated: 0, localitiesUpdated: 0, zoneCreated: false, errorsEncountered: 1 },
           error: errorMessage,
         });
         toast({ title: t('errorTitle'), description: errorMessage, variant: 'destructive' });
@@ -148,6 +151,16 @@ export function ActiveDirectorySyncForm({ syncAction }: ActiveDirectorySyncFormP
                 <Input id="phoneAttribute" {...register('phoneAttribute')} disabled={isSyncing} />
                 {errors.phoneAttribute && <p className="text-sm text-destructive">{errors.phoneAttribute.message}</p>}
             </div>
+            <div>
+                <Label htmlFor="organizationAttribute">{t('adOrganizationAttrLabel')}</Label>
+                <Input id="organizationAttribute" {...register('organizationAttribute')} disabled={isSyncing} />
+                {errors.organizationAttribute && <p className="text-sm text-destructive">{errors.organizationAttribute.message}</p>}
+            </div>
+            <div>
+                <Label htmlFor="jobTitleAttribute">{t('adJobTitleAttrLabel')}</Label>
+                <Input id="jobTitleAttribute" {...register('jobTitleAttribute')} disabled={isSyncing} />
+                {errors.jobTitleAttribute && <p className="text-sm text-destructive">{errors.jobTitleAttribute.message}</p>}
+            </div>
         </div>
 
         <Button type="submit" className="w-full sm:w-auto" disabled={isSyncing}>
@@ -166,6 +179,8 @@ export function ActiveDirectorySyncForm({ syncAction }: ActiveDirectorySyncFormP
               <ul className="list-disc pl-5 text-xs space-y-1">
                 <li>{t('adUsersProcessedLabel', { count: syncResult.details.usersProcessed })}</li>
                 <li>{t('adExtensionsAddedLabel', { count: syncResult.details.extensionsAdded })}</li>
+                <li>{t('adDbRecordsAddedLabel', { count: syncResult.details.dbRecordsAdded })}</li>
+                <li>{t('adDbRecordsUpdatedLabel', { count: syncResult.details.dbRecordsUpdated })}</li>
                 <li>{t('adLocalitiesCreatedLabel', { count: syncResult.details.localitiesCreated })}</li>
                 <li>{t('adLocalitiesUpdatedLabel', { count: syncResult.details.localitiesUpdated })}</li>
                 {syncResult.details.zoneCreated && <li>{t('adZoneCreatedLabel')}</li>}
@@ -174,7 +189,7 @@ export function ActiveDirectorySyncForm({ syncAction }: ActiveDirectorySyncFormP
                 )}
               </ul>
             )}
-            {syncResult.error && !syncResult.details && ( // Show general error if no details
+            {syncResult.error && !syncResult.details && ( 
                  <p className="text-xs text-destructive mt-1">Error: {syncResult.error}</p>
             )}
           </AlertDescription>

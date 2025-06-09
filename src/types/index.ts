@@ -1,9 +1,15 @@
 
 export interface Extension {
   id: string;
-  department: string;
+  department: string; // Name field from XML DirectoryEntry
   number: string;
-  name: string;
+  name: string; // Could be same as department, or more specific user name from AD/CSV
+  // Fields from extension_details table (populated by AD sync or future enhancements)
+  organization?: string;
+  jobTitle?: string;
+  email?: string;
+  mainPhoneNumber?: string;
+  adDepartment?: string; // Department from AD, might differ from localityId/Name
 }
 
 export interface Locality {
@@ -107,7 +113,7 @@ export interface CsvImportResult {
   success: boolean;
   message: string;
   details?: CsvImportDetails;
-  error?: string; // Added to match AD Sync
+  error?: string;
 }
 
 // Types for Active Directory Sync
@@ -122,14 +128,18 @@ export interface AdSyncFormValues {
   departmentAttribute: string;
   emailAttribute: string;
   phoneAttribute: string;
+  organizationAttribute: string; // New
+  jobTitleAttribute: string;   // New
 }
 
 export interface AdSyncDetails {
   usersProcessed: number;
-  extensionsAdded: number; // Number of DirectoryEntry items written
-  localitiesCreated: number; // New department XML files
-  localitiesUpdated: number; // Existing department XML files modified
-  zoneCreated: boolean; // If "Active Directory Users" zone was newly created
+  extensionsAdded: number; 
+  dbRecordsAdded: number; // New
+  dbRecordsUpdated: number; // New
+  localitiesCreated: number; 
+  localitiesUpdated: number; 
+  zoneCreated: boolean; 
   errorsEncountered: number;
 }
 
