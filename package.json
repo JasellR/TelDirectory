@@ -4,7 +4,7 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev --turbopack",
+    "dev": "next dev --turbopack --hostname 0.0.0.0",
     "genkit:dev": "genkit start -- tsx src/ai/dev.ts",
     "genkit:watch": "genkit start -- tsx --watch src/ai/dev.ts",
     "build": "next build",
@@ -46,6 +46,7 @@
     "firebase": "^11.7.0",
     "genkit": "^1.8.0",
     "js-cookie": "^3.0.5",
+    "ldapjs": "^3.0.7",
     "lucide-react": "^0.475.0",
     "next": "15.2.3",
     "patch-package": "^8.0.0",
@@ -64,6 +65,7 @@
   "devDependencies": {
     "@types/bcrypt": "^5.0.2",
     "@types/js-cookie": "^3.0.6",
+    "@types/ldapjs": "^3.0.5",
     "@types/node": "^20",
     "@types/react": "^18",
     "@types/react-dom": "^18",

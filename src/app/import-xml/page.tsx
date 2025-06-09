@@ -5,10 +5,10 @@ import { useState, useEffect, useTransition } from 'react';
 import { Breadcrumbs } from '@/components/layout/Breadcrumbs';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { Palette, Languages, Settings as SettingsIcon, FileCode, Info, FolderCog, CheckCircle, AlertCircleIcon, UserCog, Tv, FileUp } from 'lucide-react';
-// FileUploadForm import is removed as the sections using it are being removed
+import { Palette, Languages, Settings as SettingsIcon, FileCode, Info, FolderCog, CheckCircle, AlertCircleIcon, UserCog, Tv, FileUp, Users } from 'lucide-react';
 import { CsvUploadForm } from '@/components/import/CsvUploadForm';
-import { updateDirectoryRootPathAction, updateXmlUrlsAction, syncNamesFromXmlFeedAction, importExtensionsFromCsvAction } from '@/lib/actions';
+import { ActiveDirectorySyncForm } from '@/components/import/ActiveDirectorySyncForm'; // New import
+import { updateDirectoryRootPathAction, updateXmlUrlsAction, syncNamesFromXmlFeedAction, importExtensionsFromCsvAction, syncFromActiveDirectoryAction } from '@/lib/actions';
 import { ThemeToggle } from '@/components/settings/ThemeToggle';
 import { LanguageToggle } from '@/components/settings/LanguageToggle';
 import { Separator } from '@/components/ui/separator';
@@ -21,7 +21,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Loader2 } from 'lucide-react';
 import { getDirectoryConfig } from '@/lib/config';
 import { logoutAction, getCurrentUser } from '@/lib/auth-actions';
-import type { UserSession, SyncResult } from '@/types';
+import type { UserSession, SyncResult, AdSyncResult } from '@/types';
 
 export default function SettingsPage() {
   const { t } = useTranslation();
@@ -29,7 +29,7 @@ export default function SettingsPage() {
   const [isPathPending, startPathTransition] = useTransition();
   const [isLogoutPending, startLogoutTransition] = useTransition();
   const [isUrlUpdatePending, startUrlUpdateTransition] = useTransition();
-  const [isSyncPending, startSyncTransition] = useTransition();
+  const [isFeedSyncPending, startFeedSyncTransition] = useTransition();
   const [currentUser, setCurrentUser] = useState<UserSession | null>(null);
 
 
@@ -43,7 +43,7 @@ export default function SettingsPage() {
   const [xmlUrlStatus, setXmlUrlStatus] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
 
   const [feedUrls, setFeedUrls] = useState('');
-  const [syncResult, setSyncResult] = useState<SyncResult | null>(null);
+  const [feedSyncResult, setFeedSyncResult] = useState<SyncResult | null>(null);
 
 
   useEffect(() => {
@@ -57,8 +57,8 @@ export default function SettingsPage() {
     getDirectoryConfig().then(config => {
       if (isMounted) {
         const savedPath = config.ivoxsRootPath || '';
-        setDirectoryRootPath(savedPath); // Initialize input with saved path
-        setCurrentConfigDisplayPath(savedPath); // Initialize display with saved path
+        setDirectoryRootPath(savedPath); 
+        setCurrentConfigDisplayPath(savedPath); 
       }
     }).catch(() => {
       if (isMounted) {
@@ -128,15 +128,15 @@ export default function SettingsPage() {
     });
   };
 
-  const handleSyncNames = async () => {
+  const handleFeedSync = async () => {
     if (!feedUrls.trim()) {
       toast({ title: t('errorTitle'), description: t('feedUrlRequiredError'), variant: 'destructive' });
       return;
     }
-    startSyncTransition(async () => {
-      setSyncResult(null);
+    startFeedSyncTransition(async () => {
+      setFeedSyncResult(null);
       const result = await syncNamesFromXmlFeedAction(feedUrls);
-      setSyncResult(result);
+      setFeedSyncResult(result);
       if (result.success) {
         toast({ title: t('syncResultTitle'), description: result.message, duration: 10000 });
       } else {
@@ -337,6 +337,21 @@ export default function SettingsPage() {
         </Card>
 
         <Separator />
+        
+        <Card>
+            <CardHeader>
+                <div className="flex items-center gap-3">
+                    <Users className="h-6 w-6 text-primary" />
+                    <CardTitle className="text-2xl">{t('syncFromAdTitle')}</CardTitle>
+                </div>
+                <CardDescription>{t('syncFromAdDescription')}</CardDescription>
+            </CardHeader>
+            <CardContent>
+                <ActiveDirectorySyncForm syncAction={syncFromActiveDirectoryAction} />
+            </CardContent>
+        </Card>
+
+        <Separator />
 
         <Card>
             <CardHeader>
@@ -355,24 +370,24 @@ export default function SettingsPage() {
                         onChange={(e) => setFeedUrls(e.target.value)}
                         placeholder={t('xmlFeedUrlsPlaceholder')}
                         rows={3}
-                        disabled={isSyncPending}
+                        disabled={isFeedSyncPending}
                     />
                 </div>
-                <Button onClick={handleSyncNames} disabled={isSyncPending} className="w-full sm:w-auto">
-                    {isSyncPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                <Button onClick={handleFeedSync} disabled={isFeedSyncPending} className="w-full sm:w-auto">
+                    {isFeedSyncPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
                     {t('syncNamesFromFeedButton')}
                 </Button>
-                {syncResult && (
-                    <Alert variant={syncResult.success ? 'default' : 'destructive'} className="mt-4">
-                        {syncResult.success ? <CheckCircle className="h-4 w-4" /> : <AlertCircleIcon className="h-4 w-4" />}
+                {feedSyncResult && (
+                    <Alert variant={feedSyncResult.success ? 'default' : 'destructive'} className="mt-4">
+                        {feedSyncResult.success ? <CheckCircle className="h-4 w-4" /> : <AlertCircleIcon className="h-4 w-4" />}
                         <AlertTitle>{t('syncResultTitle')}</AlertTitle>
                         <AlertDescription className="space-y-2 text-sm">
-                            <p>{syncResult.message}</p>
-                            {syncResult.conflictedExtensions && syncResult.conflictedExtensions.length > 0 && (
+                            <p>{feedSyncResult.message}</p>
+                            {feedSyncResult.conflictedExtensions && feedSyncResult.conflictedExtensions.length > 0 && (
                                 <div className="mt-2">
                                     <p className="font-semibold">{t('syncConflictedExtensionsTitle')}:</p>
                                     <ul className="list-disc pl-5 text-xs max-h-32 overflow-y-auto">
-                                        {syncResult.conflictedExtensions.map((conflict, idx) => (
+                                        {feedSyncResult.conflictedExtensions.map((conflict, idx) => (
                                             <li key={idx}>
                                                 {t('extensionLabel')} {conflict.number}: {t('conflictsLabel')} {conflict.conflicts.map(c => `"${c.name}" (${new URL(c.sourceFeed).hostname})`).join(', ')}
                                             </li>
@@ -381,11 +396,11 @@ export default function SettingsPage() {
                                      <p className="text-xs italic mt-1">{t('syncConflictedExtensionsDescription')}</p>
                                 </div>
                             )}
-                            {syncResult.missingExtensions && syncResult.missingExtensions.length > 0 && (
+                            {feedSyncResult.missingExtensions && feedSyncResult.missingExtensions.length > 0 && (
                                 <div className="mt-2">
                                     <p className="font-semibold">{t('syncMissingExtensionsTitle')}:</p>
                                      <ul className="list-disc pl-5 text-xs max-h-32 overflow-y-auto">
-                                        {syncResult.missingExtensions.map((missing, idx) => (
+                                        {feedSyncResult.missingExtensions.map((missing, idx) => (
                                             <li key={idx}>
                                                {t('extensionLabel')} {missing.number} ({missing.name}) - {t('sourceFeedLabel')} {new URL(missing.sourceFeed).hostname}
                                             </li>
@@ -394,10 +409,10 @@ export default function SettingsPage() {
                                      <p className="text-xs italic mt-1">{t('syncMissingExtensionsDescription')}</p>
                                 </div>
                             )}
-                             {(!syncResult.conflictedExtensions || syncResult.conflictedExtensions.length === 0) && syncResult.success && (
+                             {(!feedSyncResult.conflictedExtensions || feedSyncResult.conflictedExtensions.length === 0) && feedSyncResult.success && (
                                 <p className="text-xs italic mt-1">{t('syncNoConflicts')}</p>
                              )}
-                             {(!syncResult.missingExtensions || syncResult.missingExtensions.length === 0) && syncResult.success && (
+                             {(!feedSyncResult.missingExtensions || feedSyncResult.missingExtensions.length === 0) && feedSyncResult.success && (
                                 <p className="text-xs italic mt-1">{t('syncNoMissing')}</p>
                              )}
 

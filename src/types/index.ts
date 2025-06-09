@@ -107,4 +107,35 @@ export interface CsvImportResult {
   success: boolean;
   message: string;
   details?: CsvImportDetails;
+  error?: string; // Added to match AD Sync
+}
+
+// Types for Active Directory Sync
+export interface AdSyncFormValues {
+  ldapServerUrl: string;
+  bindDn: string;
+  bindPassword: string;
+  searchBase: string;
+  searchFilter?: string;
+  displayNameAttribute: string;
+  extensionAttribute: string;
+  departmentAttribute: string;
+  emailAttribute: string;
+  phoneAttribute: string;
+}
+
+export interface AdSyncDetails {
+  usersProcessed: number;
+  extensionsAdded: number; // Number of DirectoryEntry items written
+  localitiesCreated: number; // New department XML files
+  localitiesUpdated: number; // Existing department XML files modified
+  zoneCreated: boolean; // If "Active Directory Users" zone was newly created
+  errorsEncountered: number;
+}
+
+export interface AdSyncResult {
+  success: boolean;
+  message: string;
+  details?: AdSyncDetails;
+  error?: string;
 }
