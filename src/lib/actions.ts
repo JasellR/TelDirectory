@@ -1097,205 +1097,6 @@ async function updateParentMenuWithNewLocality(args: UpdateParentMenuArgs): Prom
   }
 }
 
-export async function searchAllDepartmentsAndExtensionsAction(query: string): Promise<GlobalSearchResult[]> {
-  const authenticated = await isAuthenticated(); 
-  if (!authenticated) {
-    console.warn('[GlobalSearch] Unauthenticated search attempt.');
-    return []; 
-  }
-
-  const paths = await getIvoxsPaths();
-  const results: GlobalSearchResult[] = [];
-  const lowerQuery = query.toLowerCase();
-
-  if (lowerQuery.length < 2) { 
-    return [];
-  }
-
-  try {
-    const mainMenuContent = await fs.readFile(path.join(paths.IVOXS_DIR, paths.MAINMENU_FILENAME), 'utf-8');
-    const parsedMainMenu = await parseStringPromise(mainMenuContent, { explicitArray: false, trim: true });
-    const mainMenu = CiscoIPPhoneMenuSchema.safeParse(parsedMainMenu.CiscoIPPhoneMenu);
-
-    if (!mainMenu.success || !mainMenu.data.MenuItem) {
-      console.error('[GlobalSearch] Could not parse MainMenu.xml for zones.');
-      return [];
-    }
-
-    const zones = ensureArray(mainMenu.data.MenuItem);
-
-    for (const zoneMenuItem of zones) {
-      const zoneId = extractIdFromUrl(zoneMenuItem.URL);
-      const zoneName = zoneMenuItem.Name;
-      const zoneBranchFilePath = path.join(paths.ZONE_BRANCH_DIR, `${zoneId}.xml`);
-
-      try {
-        const zoneBranchContent = await fs.readFile(zoneBranchFilePath, 'utf-8');
-        const parsedZoneBranch = await parseStringPromise(zoneBranchContent, { explicitArray: false, trim: true });
-        const zoneBranchMenu = CiscoIPPhoneMenuSchema.safeParse(parsedZoneBranch.CiscoIPPhoneMenu);
-
-        if (!zoneBranchMenu.success || !zoneBranchMenu.data.MenuItem) continue;
-        const zoneItems = ensureArray(zoneBranchMenu.data.MenuItem);
-
-        for (const zoneItem of zoneItems) {
-          const itemType = getItemTypeFromUrl(zoneItem.URL);
-          const itemId = extractIdFromUrl(zoneItem.URL);
-          const itemName = zoneItem.Name;
-
-          if (itemType === 'branch') { 
-            const branchFilePath = path.join(paths.BRANCH_DIR, `${itemId}.xml`);
-            try {
-              const branchContent = await fs.readFile(branchFilePath, 'utf-8');
-              const parsedBranch = await parseStringPromise(branchContent, { explicitArray: false, trim: true });
-              const branchMenu = CiscoIPPhoneMenuSchema.safeParse(parsedBranch.CiscoIPPhoneMenu);
-
-              if (!branchMenu.success || !branchMenu.data.MenuItem) continue;
-              const localitiesInBranch = ensureArray(branchMenu.data.MenuItem);
-
-              for (const localityMenuItem of localitiesInBranch) {
-                const localityId = extractIdFromUrl(localityMenuItem.URL);
-                const localityName = localityMenuItem.Name;
-                await processLocalityForSearch({
-                  paths, localityId, localityName, lowerQuery, results,
-                  zoneId, zoneName, branchId: itemId, branchName: itemName
-                });
-              }
-            } catch (branchError) {
-              // console.warn(`[GlobalSearch] Could not read/parse branch file ${branchFilePath}:`, branchError);
-            }
-          } else if (itemType === 'locality') { 
-            await processLocalityForSearch({
-              paths, localityId: itemId, localityName: itemName, lowerQuery, results,
-              zoneId, zoneName
-            });
-          }
-        }
-      } catch (zoneBranchError) {
-        // console.warn(`[GlobalSearch] Could not read/parse zone branch file ${zoneBranchFilePath}:`, zoneBranchError);
-      }
-    }
-  } catch (error) {
-    console.error('[GlobalSearch] Error during search process:', error);
-  }
-  return results;
-}
-
-async function processLocalityForSearch(args: {
-  paths: Awaited<ReturnType<typeof getIvoxsPaths>>,
-  localityId: string,
-  localityName: string, // Name from the parent menu
-  lowerQuery: string,
-  results: GlobalSearchResult[],
-  zoneId: string,
-  zoneName: string,
-  branchId?: string,
-  branchName?: string
-}) {
-  const { paths, localityId, localityName, lowerQuery, results, zoneId, zoneName, branchId, branchName } = args;
-  const deptFilePath = path.join(paths.DEPARTMENT_DIR, `${localityId}.xml`);
-  let currentLocalityDisplayName = localityName; 
-  let localityNameMatch = currentLocalityDisplayName.toLowerCase().includes(lowerQuery);
-  const matchingExtensions: MatchedExtension[] = [];
-
-  try {
-    const deptContent = await readFileContent(deptFilePath); 
-    
-    if (!deptContent || deptContent.trim() === "") {
-        if (localityNameMatch && !results.some(r => r.localityId === localityId && r.zoneId === zoneId && r.branchId === branchId)) {
-             results.push({
-                localityId, localityName: currentLocalityDisplayName, zoneId, zoneName, branchId, branchName,
-                fullPath: branchId ? `/${zoneId}/branches/${branchId}/localities/${localityId}` : `/${zoneId}/localities/${localityId}`,
-                localityNameMatch, matchingExtensions: []
-            });
-        }
-        return;
-    }
-    
-    const parsedDept = await parseStringPromise(deptContent, { explicitArray: false, trim: true });
-    
-    if (!parsedDept || typeof parsedDept !== 'object' || !parsedDept.CiscoIPPhoneDirectory || typeof parsedDept.CiscoIPPhoneDirectory !== 'object') {
-        console.warn(`[GlobalSearch - processLocality] Invalid or empty XML structure (pre-Zod) for department file: ${deptFilePath}. Parsed: ${JSON.stringify(parsedDept)?.substring(0,100)}...`);
-        if (localityNameMatch && !results.some(r => r.localityId === localityId && r.zoneId === zoneId && r.branchId === branchId)) {
-             results.push({
-                localityId, localityName: currentLocalityDisplayName, zoneId, zoneName, branchId, branchName,
-                fullPath: branchId ? `/${zoneId}/branches/${branchId}/localities/${localityId}` : `/${zoneId}/localities/${localityId}`,
-                localityNameMatch, matchingExtensions: []
-            });
-        }
-        return;
-    }
-
-    const deptDirectory = CiscoIPPhoneDirectorySchema.safeParse(parsedDept.CiscoIPPhoneDirectory);
-
-    if (!deptDirectory.success) {
-      console.warn(`[GlobalSearch - processLocality] Zod validation failed for CiscoIPPhoneDirectory in ${deptFilePath}. Data: ${JSON.stringify(parsedDept.CiscoIPPhoneDirectory)?.substring(0,100)}... Errors: ${JSON.stringify(deptDirectory.error.flatten())}`);
-      if (localityNameMatch && !results.some(r => r.localityId === localityId && r.zoneId === zoneId && r.branchId === branchId)) {
-        results.push({
-          localityId, localityName: currentLocalityDisplayName, zoneId, zoneName, branchId, branchName,
-          fullPath: branchId ? `/${zoneId}/branches/${branchId}/localities/${localityId}` : `/${zoneId}/localities/${localityId}`,
-          localityNameMatch, matchingExtensions
-        });
-      }
-      return;
-    }
-
-    if (deptDirectory.data.Title) {
-      currentLocalityDisplayName = deptDirectory.data.Title;
-      if (!localityNameMatch) {
-          localityNameMatch = currentLocalityDisplayName.toLowerCase().includes(lowerQuery);
-      }
-    }
-
-
-    const extensions = ensureArray(deptDirectory.data.DirectoryEntry);
-    for (const ext of extensions) {
-      let matchedOn: MatchedExtension['matchedOn'] | null = null;
-      if (ext.Name.toLowerCase().includes(lowerQuery)) {
-        matchedOn = 'extensionName';
-      } else if (ext.Telephone.toLowerCase().includes(lowerQuery)) {
-        matchedOn = 'extensionNumber';
-      }
-
-      if (matchedOn) {
-        matchingExtensions.push({ name: ext.Name, number: ext.Telephone, matchedOn });
-      }
-    }
-
-    if (localityNameMatch || matchingExtensions.length > 0) {
-       if (!results.some(r => r.localityId === localityId && r.zoneId === zoneId && r.branchId === branchId)) {
-          results.push({
-            localityId,
-            localityName: currentLocalityDisplayName,
-            zoneId,
-            zoneName,
-            branchId,
-            branchName,
-            fullPath: branchId ? `/${zoneId}/branches/${branchId}/localities/${localityId}` : `/${zoneId}/localities/${localityId}`,
-            localityNameMatch,
-            matchingExtensions
-          });
-       } else {
-         const existingResult = results.find(r => r.localityId === localityId && r.zoneId === zoneId && r.branchId === branchId);
-         if (existingResult) {
-           existingResult.localityName = currentLocalityDisplayName; 
-           existingResult.matchingExtensions = matchingExtensions;
-           existingResult.localityNameMatch = localityNameMatch || existingResult.localityNameMatch; 
-         }
-       }
-    }
-  } catch (error: any) {
-    console.error(`[GlobalSearch - processLocality] Unexpected error processing ${deptFilePath}:`, error);
-    if (localityNameMatch && !results.some(r => r.localityId === localityId && r.zoneId === zoneId && r.branchId === branchId)) {
-         results.push({
-            localityId, localityName: currentLocalityDisplayName, zoneId, zoneName, branchId, branchName,
-            fullPath: branchId ? `/${zoneId}/branches/${branchId}/localities/${localityId}` : `/${zoneId}/localities/${localityId}`,
-            localityNameMatch: true, matchingExtensions: [] 
-        });
-    }
-  }
-}
-
-
 export async function importExtensionsFromCsvAction(csvContent: string): Promise<CsvImportResult> {
   // console.log('[CSV Import Action] Starting CSV import.');
   const authenticated = await isAuthenticated();
@@ -1839,17 +1640,16 @@ export async function syncFromActiveDirectoryAction(params: AdSyncFormValues): P
       client!.bind(params.bindDn, params.bindPassword, (err) => {
         if (err) {
           console.error('[AD Sync] LDAP Bind Error:', err);
-          results.errorsEncountered++;
           resolve({ success: false, error: new Error(`LDAP Bind Error: ${err.message}`) });
           return;
         }
-        // console.log('[AD Sync] LDAP Bind Successful.');
         resolve({ success: true });
       });
     });
 
-    if (!bindOperationResult.success && bindOperationResult.error) {
-      throw bindOperationResult.error; // This will be caught by the outer try/catch
+    if (!bindOperationResult.success) {
+      if (bindOperationResult.error) results.errorsEncountered++;
+      throw bindOperationResult.error; 
     }
 
 
@@ -1869,32 +1669,39 @@ export async function syncFromActiveDirectoryAction(params: AdSyncFormValues): P
       attributes: attributesToFetch.length > 0 ? attributesToFetch : undefined 
     };
 
-    const entriesFromAd: SearchEntryObject[] = await new Promise((resolve, reject) => {
+    const searchOperationResult = await new Promise<{ success: boolean; data?: SearchEntryObject[]; error?: Error }>((resolve) => {
       const foundEntries: SearchEntryObject[] = [];
       client!.search(params.searchBase, searchOptions, (err, res) => {
         if (err) {
-          results.errorsEncountered++;
-          reject(new Error(`LDAP Search Error: ${err.message}`));
+          resolve({ success: false, error: new Error(`LDAP Search Error: ${err.message}`) });
           return;
         }
         res.on('searchEntry', (entry) => {
           foundEntries.push(entry.object);
         });
         res.on('error', (searchErr) => {
-          results.errorsEncountered++;
-          reject(new Error(`LDAP Search Stream Error: ${searchErr.message}`));
+          resolve({ success: false, error: new Error(`LDAP Search Stream Error: ${searchErr.message}`) });
+          return; 
         });
         res.on('end', (searchResult) => {
           if (searchResult && searchResult.status !== 0) {
-            results.errorsEncountered++;
-            reject(new Error(`LDAP Search End Error - Status: ${searchResult.status}`));
+            let statusMessage = `Status: ${searchResult.status}`;
+            if (searchResult.status === 4) statusMessage = "Size Limit Exceeded by LDAP server.";
+            resolve({ success: false, error: new Error(`LDAP Search End Error - ${statusMessage}`) });
             return;
           }
           results.usersProcessed = foundEntries.length;
-          resolve(foundEntries);
+          resolve({ success: true, data: foundEntries });
         });
       });
     });
+
+    if (!searchOperationResult.success) {
+      if (searchOperationResult.error) results.errorsEncountered++;
+      throw searchOperationResult.error;
+    }
+    const entriesFromAd: SearchEntryObject[] = searchOperationResult.data || [];
+
 
     if (entriesFromAd.length === 0) {
       return { success: true, message: 'No users found in Active Directory matching the criteria. No changes made.', details: results };
@@ -2051,7 +1858,9 @@ export async function syncFromActiveDirectoryAction(params: AdSyncFormValues): P
 
   } catch (error: any) {
     console.error('[AD Sync] Sync Action Error:', error);
-    results.errorsEncountered++;
+    if (!results.errorsEncountered && error instanceof Error) { // Ensure the specific error is counted if not already
+        results.errorsEncountered++;
+    }
     return { 
       success: false, 
       message: `AD Sync failed: ${error.message}`, 
@@ -2076,5 +1885,203 @@ async function readFileContent(filePath: string): Promise<string> {
       return ''; // Return empty string if file not found
     }
     throw error; // Re-throw other errors
+  }
+}
+
+export async function searchAllDepartmentsAndExtensionsAction(query: string): Promise<GlobalSearchResult[]> {
+  const authenticated = await isAuthenticated(); 
+  if (!authenticated) {
+    console.warn('[GlobalSearch] Unauthenticated search attempt.');
+    return []; 
+  }
+
+  const paths = await getIvoxsPaths();
+  const results: GlobalSearchResult[] = [];
+  const lowerQuery = query.toLowerCase();
+
+  if (lowerQuery.length < 2) { 
+    return [];
+  }
+
+  try {
+    const mainMenuContent = await fs.readFile(path.join(paths.IVOXS_DIR, paths.MAINMENU_FILENAME), 'utf-8');
+    const parsedMainMenu = await parseStringPromise(mainMenuContent, { explicitArray: false, trim: true });
+    const mainMenu = CiscoIPPhoneMenuSchema.safeParse(parsedMainMenu.CiscoIPPhoneMenu);
+
+    if (!mainMenu.success || !mainMenu.data.MenuItem) {
+      console.error('[GlobalSearch] Could not parse MainMenu.xml for zones.');
+      return [];
+    }
+
+    const zones = ensureArray(mainMenu.data.MenuItem);
+
+    for (const zoneMenuItem of zones) {
+      const zoneId = extractIdFromUrl(zoneMenuItem.URL);
+      const zoneName = zoneMenuItem.Name;
+      const zoneBranchFilePath = path.join(paths.ZONE_BRANCH_DIR, `${zoneId}.xml`);
+
+      try {
+        const zoneBranchContent = await fs.readFile(zoneBranchFilePath, 'utf-8');
+        const parsedZoneBranch = await parseStringPromise(zoneBranchContent, { explicitArray: false, trim: true });
+        const zoneBranchMenu = CiscoIPPhoneMenuSchema.safeParse(parsedZoneBranch.CiscoIPPhoneMenu);
+
+        if (!zoneBranchMenu.success || !zoneBranchMenu.data.MenuItem) continue;
+        const zoneItems = ensureArray(zoneBranchMenu.data.MenuItem);
+
+        for (const zoneItem of zoneItems) {
+          const itemType = getItemTypeFromUrl(zoneItem.URL);
+          const itemId = extractIdFromUrl(zoneItem.URL);
+          const itemName = zoneItem.Name;
+
+          if (itemType === 'branch') { 
+            const branchFilePath = path.join(paths.BRANCH_DIR, `${itemId}.xml`);
+            try {
+              const branchContent = await fs.readFile(branchFilePath, 'utf-8');
+              const parsedBranch = await parseStringPromise(branchContent, { explicitArray: false, trim: true });
+              const branchMenu = CiscoIPPhoneMenuSchema.safeParse(parsedBranch.CiscoIPPhoneMenu);
+
+              if (!branchMenu.success || !branchMenu.data.MenuItem) continue;
+              const localitiesInBranch = ensureArray(branchMenu.data.MenuItem);
+
+              for (const localityMenuItem of localitiesInBranch) {
+                const localityId = extractIdFromUrl(localityMenuItem.URL);
+                const localityName = localityMenuItem.Name;
+                await processLocalityForSearch({
+                  paths, localityId, localityName, lowerQuery, results,
+                  zoneId, zoneName, branchId: itemId, branchName: itemName
+                });
+              }
+            } catch (branchError) {
+              // console.warn(`[GlobalSearch] Could not read/parse branch file ${branchFilePath}:`, branchError);
+            }
+          } else if (itemType === 'locality') { 
+            await processLocalityForSearch({
+              paths, localityId: itemId, localityName: itemName, lowerQuery, results,
+              zoneId, zoneName
+            });
+          }
+        }
+      } catch (zoneBranchError) {
+        // console.warn(`[GlobalSearch] Could not read/parse zone branch file ${zoneBranchFilePath}:`, zoneBranchError);
+      }
+    }
+  } catch (error) {
+    console.error('[GlobalSearch] Error during search process:', error);
+  }
+  return results;
+}
+
+async function processLocalityForSearch(args: {
+  paths: Awaited<ReturnType<typeof getIvoxsPaths>>,
+  localityId: string,
+  localityName: string, // Name from the parent menu
+  lowerQuery: string,
+  results: GlobalSearchResult[],
+  zoneId: string,
+  zoneName: string,
+  branchId?: string,
+  branchName?: string
+}) {
+  const { paths, localityId, localityName, lowerQuery, results, zoneId, zoneName, branchId, branchName } = args;
+  const deptFilePath = path.join(paths.DEPARTMENT_DIR, `${localityId}.xml`);
+  let currentLocalityDisplayName = localityName; 
+  let localityNameMatch = currentLocalityDisplayName.toLowerCase().includes(lowerQuery);
+  const matchingExtensions: MatchedExtension[] = [];
+
+  try {
+    const deptContent = await readFileContent(deptFilePath); 
+    
+    if (!deptContent || deptContent.trim() === "") {
+        if (localityNameMatch && !results.some(r => r.localityId === localityId && r.zoneId === zoneId && r.branchId === branchId)) {
+             results.push({
+                localityId, localityName: currentLocalityDisplayName, zoneId, zoneName, branchId, branchName,
+                fullPath: branchId ? `/${zoneId}/branches/${branchId}/localities/${localityId}` : `/${zoneId}/localities/${localityId}`,
+                localityNameMatch, matchingExtensions: []
+            });
+        }
+        return;
+    }
+    
+    const parsedDept = await parseStringPromise(deptContent, { explicitArray: false, trim: true });
+    
+    if (!parsedDept || typeof parsedDept !== 'object' || !parsedDept.CiscoIPPhoneDirectory || typeof parsedDept.CiscoIPPhoneDirectory !== 'object') {
+        console.warn(`[GlobalSearch - processLocality] Invalid or empty XML structure (pre-Zod) for department file: ${deptFilePath}. Parsed: ${JSON.stringify(parsedDept)?.substring(0,100)}...`);
+        if (localityNameMatch && !results.some(r => r.localityId === localityId && r.zoneId === zoneId && r.branchId === branchId)) {
+             results.push({
+                localityId, localityName: currentLocalityDisplayName, zoneId, zoneName, branchId, branchName,
+                fullPath: branchId ? `/${zoneId}/branches/${branchId}/localities/${localityId}` : `/${zoneId}/localities/${localityId}`,
+                localityNameMatch, matchingExtensions: []
+            });
+        }
+        return;
+    }
+
+    const deptDirectory = CiscoIPPhoneDirectorySchema.safeParse(parsedDept.CiscoIPPhoneDirectory);
+
+    if (!deptDirectory.success) {
+      console.warn(`[GlobalSearch - processLocality] Zod validation failed for CiscoIPPhoneDirectory in ${deptFilePath}. Data: ${JSON.stringify(parsedDept.CiscoIPPhoneDirectory)?.substring(0,100)}... Errors: ${JSON.stringify(deptDirectory.error.flatten())}`);
+      if (localityNameMatch && !results.some(r => r.localityId === localityId && r.zoneId === zoneId && r.branchId === branchId)) {
+        results.push({
+          localityId, localityName: currentLocalityDisplayName, zoneId, zoneName, branchId, branchName,
+          fullPath: branchId ? `/${zoneId}/branches/${branchId}/localities/${localityId}` : `/${zoneId}/localities/${localityId}`,
+          localityNameMatch, matchingExtensions
+        });
+      }
+      return;
+    }
+
+    if (deptDirectory.data.Title) {
+      currentLocalityDisplayName = deptDirectory.data.Title;
+      if (!localityNameMatch) {
+          localityNameMatch = currentLocalityDisplayName.toLowerCase().includes(lowerQuery);
+      }
+    }
+
+
+    const extensions = ensureArray(deptDirectory.data.DirectoryEntry);
+    for (const ext of extensions) {
+      let matchedOn: MatchedExtension['matchedOn'] | null = null;
+      if (ext.Name.toLowerCase().includes(lowerQuery)) {
+        matchedOn = 'extensionName';
+      } else if (ext.Telephone.toLowerCase().includes(lowerQuery)) {
+        matchedOn = 'extensionNumber';
+      }
+
+      if (matchedOn) {
+        matchingExtensions.push({ name: ext.Name, number: ext.Telephone, matchedOn });
+      }
+    }
+
+    if (localityNameMatch || matchingExtensions.length > 0) {
+       if (!results.some(r => r.localityId === localityId && r.zoneId === zoneId && r.branchId === branchId)) {
+          results.push({
+            localityId,
+            localityName: currentLocalityDisplayName,
+            zoneId,
+            zoneName,
+            branchId,
+            branchName,
+            fullPath: branchId ? `/${zoneId}/branches/${branchId}/localities/${localityId}` : `/${zoneId}/localities/${localityId}`,
+            localityNameMatch,
+            matchingExtensions
+          });
+       } else {
+         const existingResult = results.find(r => r.localityId === localityId && r.zoneId === zoneId && r.branchId === branchId);
+         if (existingResult) {
+           existingResult.localityName = currentLocalityDisplayName; 
+           existingResult.matchingExtensions = matchingExtensions;
+           existingResult.localityNameMatch = localityNameMatch || existingResult.localityNameMatch; 
+         }
+       }
+    }
+  } catch (error: any) {
+    console.error(`[GlobalSearch - processLocality] Unexpected error processing ${deptFilePath}:`, error);
+    if (localityNameMatch && !results.some(r => r.localityId === localityId && r.zoneId === zoneId && r.branchId === branchId)) {
+         results.push({
+            localityId, localityName: currentLocalityDisplayName, zoneId, zoneName, branchId, branchName,
+            fullPath: branchId ? `/${zoneId}/branches/${branchId}/localities/${localityId}` : `/${zoneId}/localities/${localityId}`,
+            localityNameMatch: true, matchingExtensions: [] 
+        });
+    }
   }
 }
