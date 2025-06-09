@@ -12,15 +12,18 @@ const LOGIN_PATH = '/login';
 
 // Helper function to check authentication status from cookies (used only by middleware)
 async function checkAuthFromCookiesForMiddleware(): Promise<boolean> {
-  const cookieStore = await cookies();
+  const cookieStore = cookies(); // Removed await, cookies() itself isn't async
   const sessionCookie = cookieStore.get(AUTH_COOKIE_NAME);
+  // console.log(`[Middleware Check] Cookie ${AUTH_COOKIE_NAME}:`, sessionCookie ? 'Found' : 'Not Found', sessionCookie?.value?.substring(0,10));
+
   if (!sessionCookie?.value) {
     // console.log('[Middleware Auth Check] No session cookie.');
     return false;
   }
   try {
     const session = JSON.parse(sessionCookie.value) as UserSession;
-    const authed = !!session.userId;
+    // Stricter check for a valid userId
+    const authed = !!(session && typeof session.userId === 'number' && session.userId > 0);
     // console.log('[Middleware Auth Check] Cookie found, parsed, userId check:', authed, 'Session:', session);
     return authed;
   } catch (error) {
@@ -59,3 +62,4 @@ export const config = {
     '/((?!api|_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
   ],
 };
+
