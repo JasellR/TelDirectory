@@ -12,7 +12,7 @@ const LOGIN_PATH = '/login';
 
 // Helper function to check authentication status from cookies (used only by middleware)
 async function checkAuthFromCookiesForMiddleware(): Promise<boolean> {
-  const cookieStore = cookies(); // Removed await, cookies() itself isn't async
+  const cookieStore = await cookies(); // Corrected: Re-added await
   const sessionCookie = cookieStore.get(AUTH_COOKIE_NAME);
   // console.log(`[Middleware Check] Cookie ${AUTH_COOKIE_NAME}:`, sessionCookie ? 'Found' : 'Not Found', sessionCookie?.value?.substring(0,10));
 

@@ -55,7 +55,7 @@ export async function loginAction(
     if (passwordMatch) {
       console.log(`[Auth @ ${new Date().toISOString()}] Password match for user:`, username);
       const sessionData: UserSession = { userId: user.id, username: user.username };
-      const cookieStore = await cookies();
+      const cookieStore = await cookies(); // Corrected: Added await here as well if modification is needed for cookies
       try {
         cookieStore.set(AUTH_COOKIE_NAME, JSON.stringify(sessionData), {
           httpOnly: true,
@@ -65,9 +65,6 @@ export async function loginAction(
           maxAge: 60 * 60 * 24 * 7, // 1 week
         });
         console.log(`[Auth @ ${new Date().toISOString()}] Session cookie SET for user: ${username}.`);
-        // Note: Reading the cookie value immediately after setting it in the same request
-        // will yield the *old* value (or undefined if it didn't exist).
-        // The new cookie value is available on the *next* request.
         
       } catch (cookieError: any) {
         console.error(`[Auth @ ${new Date().toISOString()}] Error setting session cookie:`, cookieError);
@@ -98,7 +95,7 @@ export async function loginAction(
 
 export async function logoutAction(): Promise<void> {
   try {
-    const cookieStore = await cookies();
+    const cookieStore = await cookies(); // Corrected: Added await
     cookieStore.delete(AUTH_COOKIE_NAME);
     console.log(`[Auth @ ${new Date().toISOString()}] User logged out, cookie deleted.`);
   } catch (error) {
@@ -113,7 +110,7 @@ export async function isAuthenticated(): Promise<boolean> {
 }
 
 export async function getCurrentUser(): Promise<UserSession | null> {
-  const cookieStore = cookies();
+  const cookieStore = await cookies(); // Corrected: Re-added await
   const sessionCookie = cookieStore.get(AUTH_COOKIE_NAME);
   const cookieValue = sessionCookie?.value;
   
