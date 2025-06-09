@@ -5,7 +5,7 @@ import fs from 'fs/promises';
 import path from 'path';
 import { parseStringPromise, Builder } from 'xml2js';
 import { revalidatePath } from 'next/cache';
-import type { CiscoIPPhoneMenu, CiscoIPPhoneDirectory, MenuItem as XmlMenuItem, DirectoryEntry as XmlDirectoryEntry, SyncResult, CsvImportResult, CsvImportDetails, GlobalSearchResult, MatchedExtension, SyncConflict, ConflictedExtensionInfo, MissingExtensionInfo, AdSyncFormValues, AdSyncResult, AdSyncDetails } from '@/types';
+import type { CiscoIPPhoneMenu, CiscoIPPhoneDirectory, MenuItem as XmlMenuItem, DirectoryEntry as XmlDirectoryEntry, SyncResult, CsvImportResult, CsvImportDetails, GlobalSearchResult, MatchedExtension, SyncConflict, ConflictedExtensionInfo, MissingExtensionInfo, AdSyncFormValues, AdSyncResult, AdSyncDetails, Extension } from '@/types';
 import { CiscoIPPhoneMenuSchema, CiscoIPPhoneDirectorySchema } from '@/lib/data';
 import { getResolvedIvoxsRootPath, saveDirectoryConfig as saveDirConfig } from '@/lib/config';
 import { isAuthenticated } from '@/lib/auth-actions';
@@ -965,7 +965,9 @@ export async function updateXmlUrlsAction(newHost: string, newPort: string): Pro
     const branchFiles = await fs.readdir(paths.BRANCH_DIR);
     branchFiles.filter(f => f.endsWith('.xml')).forEach(f => allFilesToProcess.push(path.join(paths.BRANCH_DIR, f)));
   } catch (e: any) {
-    if (e.code !== 'ENOENT') console.warn(`Could not read branch directory: ${paths.BRANCH_DIR}`, e);
+    if (e.code !== 'ENOENT') {
+        console.warn(`Could not read branch directory: ${paths.BRANCH_DIR}`, e);
+    }
   }
 
 
@@ -1025,14 +1027,14 @@ async function updateParentMenuWithNewLocality(args: UpdateParentMenuArgs): Prom
   const { paths, zoneId, localityId, localityName, isBranchLocality } = args;
   let parentFilePath: string;
   let parentFileCreated = false;
-  let itemAddedToExistingFile = false;
+  let itemAdded = false; // Changed: to track if item was added to existing or new
 
-  const sanitizedZoneId = sanitizeFilenamePart(zoneId); // This is the ID of the parent menu XML file (e.g. 'ZonaEste' or 'AdmCendis')
+  const sanitizedZoneId = sanitizeFilenamePart(zoneId); 
   const sanitizedLocalityId = sanitizeFilenamePart(localityId);
 
   let currentHost = '127.0.0.1';
   let currentPort = '3000';
-  const networkConfigPath = path.join(paths.IVOXS_DIR, '.config.json'); // Specific network config
+  const networkConfigPath = path.join(paths.IVOXS_DIR, '.config.json'); 
   try {
     const netConfigData = await fs.readFile(networkConfigPath, 'utf-8');
     const netConfig = JSON.parse(netConfigData);
@@ -1044,30 +1046,23 @@ async function updateParentMenuWithNewLocality(args: UpdateParentMenuArgs): Prom
   const newLocalityUrl = `http://${currentHost}:${currentPort}/ivoxsdir/department/${sanitizedLocalityId}.xml`;
 
   if (isBranchLocality) {
-      // Here 'zoneId' refers to the ID of the branch XML file (e.g., 'AdmCendis')
       parentFilePath = path.join(paths.BRANCH_DIR, `${sanitizedZoneId}.xml`);
   } else {
-      // Here 'zoneId' refers to the ID of the zoneBranch XML file (e.g., 'ZonaEste')
       parentFilePath = path.join(paths.ZONE_BRANCH_DIR, `${sanitizedZoneId}.xml`);
   }
-  console.log(`[UpdateParentMenu] Determined parent file path for Locality "${localityName}" (ID: ${localityId}) in Parent Menu "${sanitizedZoneId}": ${parentFilePath}`);
+  // console.log(`[UpdateParentMenu] Determined parent file path for Locality "${localityName}" (ID: ${localityId}) in Parent Menu "${sanitizedZoneId}": ${parentFilePath}`);
 
 
   try {
     let parsedParentXml = await readAndParseXML(parentFilePath);
 
     if (!parsedParentXml || !parsedParentXml.CiscoIPPhoneMenu) {
-      console.log(`[UpdateParentMenu] Parent menu file ${path.basename(parentFilePath)} not found or invalid. Creating new one.`);
-      // The title of the parent menu should be the zone/branch name, not its ID.
-      // We need a way to get the 'display name' of 'sanitizedZoneId' if it's a branch.
-      // For now, if creating, use 'sanitizedZoneId' as title, this might need refinement if 'zoneId' is always filename.
-      // This is simpler if `zoneName` or `branchName` (display names) are passed to this function.
-      // For now, let's assume 'zoneId' can be used as a title if new.
-      const parentTitle = zoneId; // This might be 'AdmCendis' or 'ZonaEste'
+      // console.log(`[UpdateParentMenu] Parent menu file ${path.basename(parentFilePath)} not found or invalid. Creating new one.`);
+      const parentTitle = zoneId; 
       parsedParentXml = {
         CiscoIPPhoneMenu: {
           Title: parentTitle,
-          Prompt: 'Select an item', // Generic prompt
+          Prompt: 'Select an item', 
           MenuItem: [],
         },
       };
@@ -1079,24 +1074,23 @@ async function updateParentMenuWithNewLocality(args: UpdateParentMenuArgs): Prom
 
     if (existingItemIndex === -1) {
       menuItems.push({ Name: localityName, URL: newLocalityUrl });
-      itemAddedToExistingFile = true; // Set true because we are adding to an existing (or newly created in memory) array
+      itemAdded = true; // Item was added
       menuItems.sort((a, b) => a.Name.localeCompare(b.Name));
       parsedParentXml.CiscoIPPhoneMenu.MenuItem = menuItems.length > 0 ? menuItems : undefined;
     } else if (menuItems[existingItemIndex].Name !== localityName) {
-      // If locality exists but name is different, update the name
       menuItems[existingItemIndex].Name = localityName;
-      itemAddedToExistingFile = true; // Considered a change worth saving
+      itemAdded = true; // Name change counts as an update
       menuItems.sort((a, b) => a.Name.localeCompare(b.Name));
     }
     
-    if (itemAddedToExistingFile || parentFileCreated) {
-      console.log(`[UpdateParentMenu] Saving changes to parent menu: ${parentFilePath}. ItemAddedToExisting: ${itemAddedToExistingFile}, ParentCreated: ${parentFileCreated}`);
+    if (itemAdded || parentFileCreated) {
+      // console.log(`[UpdateParentMenu] Saving changes to parent menu: ${parentFilePath}. ItemAdded: ${itemAdded}, ParentCreated: ${parentFileCreated}`);
       await buildAndWriteXML(parentFilePath, parsedParentXml);
     } else {
        // console.log(`[UpdateParentMenu] No changes needed for parent menu: ${parentFilePath}.`);
     }
 
-    return { success: true, itemAddedOrParentCreated: itemAddedToExistingFile || parentFileCreated };
+    return { success: true, itemAddedOrParentCreated: itemAdded || parentFileCreated };
   } catch (error: any) {
     console.error(`[UpdateParentMenu] Error updating parent menu ${path.basename(parentFilePath)}:`, error);
     return { success: false, error: error.message, itemAddedOrParentCreated: false };
@@ -1104,17 +1098,17 @@ async function updateParentMenuWithNewLocality(args: UpdateParentMenuArgs): Prom
 }
 
 export async function searchAllDepartmentsAndExtensionsAction(query: string): Promise<GlobalSearchResult[]> {
-  const authenticated = await isAuthenticated(); // Check if user is authenticated for search
+  const authenticated = await isAuthenticated(); 
   if (!authenticated) {
     console.warn('[GlobalSearch] Unauthenticated search attempt.');
-    return []; // Or throw an error / return specific unauthorized status
+    return []; 
   }
 
   const paths = await getIvoxsPaths();
   const results: GlobalSearchResult[] = [];
   const lowerQuery = query.toLowerCase();
 
-  if (lowerQuery.length < 2) { // Minimum characters to trigger search
+  if (lowerQuery.length < 2) { 
     return [];
   }
 
@@ -1148,7 +1142,7 @@ export async function searchAllDepartmentsAndExtensionsAction(query: string): Pr
           const itemId = extractIdFromUrl(zoneItem.URL);
           const itemName = zoneItem.Name;
 
-          if (itemType === 'branch') { // E.g., 'AdmCorporativo' under 'ZonaMetropolitana'
+          if (itemType === 'branch') { 
             const branchFilePath = path.join(paths.BRANCH_DIR, `${itemId}.xml`);
             try {
               const branchContent = await fs.readFile(branchFilePath, 'utf-8');
@@ -1169,7 +1163,7 @@ export async function searchAllDepartmentsAndExtensionsAction(query: string): Pr
             } catch (branchError) {
               // console.warn(`[GlobalSearch] Could not read/parse branch file ${branchFilePath}:`, branchError);
             }
-          } else if (itemType === 'locality') { // Direct locality under a zone
+          } else if (itemType === 'locality') { 
             await processLocalityForSearch({
               paths, localityId: itemId, localityName: itemName, lowerQuery, results,
               zoneId, zoneName
@@ -1199,16 +1193,14 @@ async function processLocalityForSearch(args: {
 }) {
   const { paths, localityId, localityName, lowerQuery, results, zoneId, zoneName, branchId, branchName } = args;
   const deptFilePath = path.join(paths.DEPARTMENT_DIR, `${localityId}.xml`);
-  let currentLocalityDisplayName = localityName; // Start with the name from the parent menu
+  let currentLocalityDisplayName = localityName; 
   let localityNameMatch = currentLocalityDisplayName.toLowerCase().includes(lowerQuery);
   const matchingExtensions: MatchedExtension[] = [];
 
   try {
-    const deptContent = await readFileContent(deptFilePath); // Uses helper that returns '' on ENOENT
+    const deptContent = await readFileContent(deptFilePath); 
     
     if (!deptContent || deptContent.trim() === "") {
-        // console.warn(`[GlobalSearch - processLocality] Department file is empty or not found: ${deptFilePath}`);
-        // If the name from parent menu matched, add it even if department file is missing/empty
         if (localityNameMatch && !results.some(r => r.localityId === localityId && r.zoneId === zoneId && r.branchId === branchId)) {
              results.push({
                 localityId, localityName: currentLocalityDisplayName, zoneId, zoneName, branchId, branchName,
@@ -1221,7 +1213,6 @@ async function processLocalityForSearch(args: {
     
     const parsedDept = await parseStringPromise(deptContent, { explicitArray: false, trim: true });
     
-    // Check for the expected root structure BEFORE Zod validation
     if (!parsedDept || typeof parsedDept !== 'object' || !parsedDept.CiscoIPPhoneDirectory || typeof parsedDept.CiscoIPPhoneDirectory !== 'object') {
         console.warn(`[GlobalSearch - processLocality] Invalid or empty XML structure (pre-Zod) for department file: ${deptFilePath}. Parsed: ${JSON.stringify(parsedDept)?.substring(0,100)}...`);
         if (localityNameMatch && !results.some(r => r.localityId === localityId && r.zoneId === zoneId && r.branchId === branchId)) {
@@ -1238,7 +1229,6 @@ async function processLocalityForSearch(args: {
 
     if (!deptDirectory.success) {
       console.warn(`[GlobalSearch - processLocality] Zod validation failed for CiscoIPPhoneDirectory in ${deptFilePath}. Data: ${JSON.stringify(parsedDept.CiscoIPPhoneDirectory)?.substring(0,100)}... Errors: ${JSON.stringify(deptDirectory.error.flatten())}`);
-      // If name from parent matched, still add it, but note the data issue.
       if (localityNameMatch && !results.some(r => r.localityId === localityId && r.zoneId === zoneId && r.branchId === branchId)) {
         results.push({
           localityId, localityName: currentLocalityDisplayName, zoneId, zoneName, branchId, branchName,
@@ -1249,10 +1239,8 @@ async function processLocalityForSearch(args: {
       return;
     }
 
-    // Use Title from XML if available, as it's more authoritative for display
     if (deptDirectory.data.Title) {
       currentLocalityDisplayName = deptDirectory.data.Title;
-      // Re-check match if display name changed
       if (!localityNameMatch) {
           localityNameMatch = currentLocalityDisplayName.toLowerCase().includes(lowerQuery);
       }
@@ -1274,7 +1262,6 @@ async function processLocalityForSearch(args: {
     }
 
     if (localityNameMatch || matchingExtensions.length > 0) {
-      // Avoid duplicates if already added due to early parent name match and file error
        if (!results.some(r => r.localityId === localityId && r.zoneId === zoneId && r.branchId === branchId)) {
           results.push({
             localityId,
@@ -1288,24 +1275,21 @@ async function processLocalityForSearch(args: {
             matchingExtensions
           });
        } else {
-         // If it was already added (e.g. from parent name match), update it with extensions if any found now
          const existingResult = results.find(r => r.localityId === localityId && r.zoneId === zoneId && r.branchId === branchId);
          if (existingResult) {
-           existingResult.localityName = currentLocalityDisplayName; // Update to more authoritative name
+           existingResult.localityName = currentLocalityDisplayName; 
            existingResult.matchingExtensions = matchingExtensions;
-           existingResult.localityNameMatch = localityNameMatch || existingResult.localityNameMatch; // Keep true if either matched
+           existingResult.localityNameMatch = localityNameMatch || existingResult.localityNameMatch; 
          }
        }
     }
   } catch (error: any) {
-    // This catch is for unexpected errors during file processing for this specific locality
     console.error(`[GlobalSearch - processLocality] Unexpected error processing ${deptFilePath}:`, error);
-    // If the name from parent menu matched, and we haven't added it yet, add it as a fallback
     if (localityNameMatch && !results.some(r => r.localityId === localityId && r.zoneId === zoneId && r.branchId === branchId)) {
          results.push({
             localityId, localityName: currentLocalityDisplayName, zoneId, zoneName, branchId, branchName,
             fullPath: branchId ? `/${zoneId}/branches/${branchId}/localities/${localityId}` : `/${zoneId}/localities/${localityId}`,
-            localityNameMatch: true, matchingExtensions: [] // No extensions could be processed
+            localityNameMatch: true, matchingExtensions: [] 
         });
     }
   }
@@ -1313,7 +1297,7 @@ async function processLocalityForSearch(args: {
 
 
 export async function importExtensionsFromCsvAction(csvContent: string): Promise<CsvImportResult> {
-  console.log('[CSV Import Action] Starting CSV import.');
+  // console.log('[CSV Import Action] Starting CSV import.');
   const authenticated = await isAuthenticated();
   if (!authenticated) {
     const result: CsvImportResult = { success: false, message: 'Authentication required.', details: { processedRows: 0, extensionsAdded: 0, newLocalitiesCreated: 0, parentMenusUpdated: 0, mainMenuUpdatedCount: 0, errors: [{row:0, data: '', error: 'User not authenticated'}]} };
@@ -1321,7 +1305,7 @@ export async function importExtensionsFromCsvAction(csvContent: string): Promise
   }
 
   const paths = await getIvoxsPaths();
-  console.log(`[CSV Import Action] Parsed ${csvContent.split(/\r?\n/).length} lines from CSV.`);
+  // console.log(`[CSV Import Action] Parsed ${csvContent.split(/\r?\n/).length} lines from CSV.`);
   const lines = csvContent.split(/\r?\n/);
   const results: CsvImportDetails = {
     processedRows: 0,
@@ -1340,9 +1324,9 @@ export async function importExtensionsFromCsvAction(csvContent: string): Promise
     const config = JSON.parse(configData);
     if (config.host) currentHost = config.host;
     if (config.port) currentPort = config.port;
-    console.log(`[CSV Import Action] Loaded network config: Host=${currentHost}, Port=${currentPort}`);
+    // console.log(`[CSV Import Action] Loaded network config: Host=${currentHost}, Port=${currentPort}`);
   } catch (e) {
-    console.warn(`[CSV Import Action] Network config not found or unreadable. Using defaults.`);
+    // console.warn(`[CSV Import Action] Network config not found or unreadable. Using defaults.`);
   }
 
   let headerRowSkipped = false;
@@ -1353,7 +1337,10 @@ export async function importExtensionsFromCsvAction(csvContent: string): Promise
     if (cols.length < expectedHeaderCols.length && line.includes('\t')) {
       cols = line.split('\t').map(col => col.trim());
     }
-    if (cols.length < expectedHeaderCols.length && /\s{2,}/.test(line) && !line.includes(',') && !line.includes('\t')) { // Try multiple spaces if not comma/tab and not enough cols
+    // Try multiple spaces if not comma/tab and not enough cols, but only if not already split by comma/tab.
+    // This check needs to be careful not to misinterpret spaces within quoted fields if we were handling those.
+    // For now, assuming simple unquoted CSVs.
+    if (cols.length < expectedHeaderCols.length && !line.includes(',') && !line.includes('\t') && /\s{2,}/.test(line)) { 
       cols = line.split(/\s{2,}/).map(col => col.trim()); // Split by 2 or more spaces
     }
     return cols;
@@ -1446,33 +1433,28 @@ export async function importExtensionsFromCsvAction(csvContent: string): Promise
         await buildAndWriteXML(departmentFilePath, departmentXml);
         if (newDepartmentFileCreated) results.newLocalitiesCreated++;
         
-        // Logic to update parent menus (ZoneBranch or Branch)
-        // 'zoneIdFromCsv' is the display name of the zone/branch
-        // 'isBranchLocality' is true if this locality should go under a specific branch file (e.g. under ZonaMetropolitana/AdmCendis.xml)
-        // or directly under a zone file (e.g. ZonaEste.xml)
-        const isMetropolitanaSpecialBranch = zoneIdFromCsv.toLowerCase().startsWith("adm") && zoneIdFromCsv.length > 3; // Heuristic: "AdmCendis", "Adm27Febrero"
-        const parentMenuFileId = isMetropolitanaSpecialBranch ? generateIdFromName(zoneIdFromCsv) : generateIdFromName(zoneIdFromCsv);
+        const isMetropolitanaSpecialBranch = zoneIdFromCsv.toLowerCase().startsWith("adm") && zoneIdFromCsv.length > 3; 
+        const parentMenuFileId = generateIdFromName(zoneIdFromCsv); // For AdmXXX, this becomes 'admxxx'
         
         const uniqueKey = `${sanitizedLocalityId}__${parentMenuFileId}`;
         if (!uniqueLocalitiesToUpdateInParentMenu.has(uniqueKey)) {
           uniqueLocalitiesToUpdateInParentMenu.set(uniqueKey, { 
             localityId: sanitizedLocalityId, 
-            localityName: localityIdFromCsv, // Use original name from CSV for MenuItem Name
-            zoneId: parentMenuFileId, // This is the ID of the parent file (e.g., 'ZonaEste' or 'AdmCendis')
-            isBranchLocality: isMetropolitanaSpecialBranch, // True if the parent is a branch file
-            zoneDisplayName: zoneIdFromCsv // Original display name of the zone/branch from CSV
+            localityName: localityIdFromCsv, 
+            zoneId: parentMenuFileId, 
+            isBranchLocality: isMetropolitanaSpecialBranch, 
+            zoneDisplayName: zoneIdFromCsv 
           });
         }
         
-        // Check if the zone/branch itself needs to be added to MainMenu.xml (if it's a zone and doesn't exist)
         if (!isMetropolitanaSpecialBranch) {
-            const zoneFileId = generateIdFromName(zoneIdFromCsv);
+            const zoneFileId = parentMenuFileId; // Same as parentMenuFileId if it's a direct zone
             const zoneBranchFilePathForCheck = path.join(paths.ZONE_BRANCH_DIR, `${zoneFileId}.xml`);
             try {
                 await fs.access(zoneBranchFilePathForCheck);
             } catch (zoneFileAccessError) {
                 if ((zoneFileAccessError as NodeJS.ErrnoException).code === 'ENOENT') {
-                     uniqueNewZonesToUpdateInMainMenu.set(zoneFileId, zoneIdFromCsv); // Store ID -> DisplayName
+                     uniqueNewZonesToUpdateInMainMenu.set(zoneFileId, zoneIdFromCsv); 
                 }
             }
         }
@@ -1485,13 +1467,11 @@ export async function importExtensionsFromCsvAction(csvContent: string): Promise
     }
 
     for (const [_, { localityId, localityName, zoneId, isBranchLocality, zoneDisplayName }] of uniqueLocalitiesToUpdateInParentMenu) {
-      // 'zoneId' here is the parentFileId (e.g. 'ZonaEste' or 'AdmCendis')
-      // 'zoneDisplayName' is the original CSV value for the zone/branch, use for Title if creating parent
       const parentUpdateResult = await updateParentMenuWithNewLocality({
         paths,
-        zoneId: zoneId, // ID of parent menu file (e.g., AdmCendis or ZonaEste)
-        localityId: localityId, // ID of department file
-        localityName: localityName, // Display name for MenuItem
+        zoneId: zoneId, 
+        localityId: localityId, 
+        localityName: localityName, 
         isBranchLocality: isBranchLocality
       });
       if (parentUpdateResult.success && parentUpdateResult.itemAddedOrParentCreated) {
@@ -1520,11 +1500,10 @@ export async function importExtensionsFromCsvAction(csvContent: string): Promise
                   mainMenuChanged = true;
                   results.mainMenuUpdatedCount++;
 
-                  // Ensure the zonebranch file itself exists
                   const zoneBranchFilePath = path.join(paths.ZONE_BRANCH_DIR, `${zoneFileId}.xml`);
                   try {
-                      await fs.access(zoneBranchFilePath); // Check if exists
-                  } catch (accessError) { // If not, create it
+                      await fs.access(zoneBranchFilePath); 
+                  } catch (accessError) { 
                       const newZoneBranchContent = {
                           CiscoIPPhoneMenu: {
                               Title: zoneDisplayName, 
@@ -1856,18 +1835,23 @@ export async function syncFromActiveDirectoryAction(params: AdSyncFormValues): P
   try {
     client = ldap.createClient({ url: params.ldapServerUrl });
 
-    await new Promise<void>((resolve, reject) => {
+    const bindOperationResult = await new Promise<{ success: boolean; error?: Error }>((resolve) => {
       client!.bind(params.bindDn, params.bindPassword, (err) => {
         if (err) {
           console.error('[AD Sync] LDAP Bind Error:', err);
           results.errorsEncountered++;
-          reject(new Error(`LDAP Bind Error: ${err.message}`));
+          resolve({ success: false, error: new Error(`LDAP Bind Error: ${err.message}`) });
           return;
         }
         // console.log('[AD Sync] LDAP Bind Successful.');
-        resolve();
+        resolve({ success: true });
       });
     });
+
+    if (!bindOperationResult.success && bindOperationResult.error) {
+      throw bindOperationResult.error; // This will be caught by the outer try/catch
+    }
+
 
     const attributesToFetch = [
         params.displayNameAttribute, 
@@ -1875,14 +1859,14 @@ export async function syncFromActiveDirectoryAction(params: AdSyncFormValues): P
         params.departmentAttribute,
         params.emailAttribute,
         params.phoneAttribute,
-        params.organizationAttribute, // New
-        params.jobTitleAttribute     // New
-      ].filter(Boolean); // Filter out empty strings if any attribute names are optional and not provided
+        params.organizationAttribute, 
+        params.jobTitleAttribute     
+      ].filter(Boolean); 
 
     const searchOptions: SearchOptions = {
       filter: params.searchFilter || '(objectClass=user)',
       scope: 'sub',
-      attributes: attributesToFetch.length > 0 ? attributesToFetch : undefined // Only specify attributes if some are defined
+      attributes: attributesToFetch.length > 0 ? attributesToFetch : undefined 
     };
 
     const entriesFromAd: SearchEntryObject[] = await new Promise((resolve, reject) => {
@@ -1916,8 +1900,8 @@ export async function syncFromActiveDirectoryAction(params: AdSyncFormValues): P
       return { success: true, message: 'No users found in Active Directory matching the criteria. No changes made.', details: results };
     }
     
-    const extensionsByLocality: Map<string, XmlDirectoryEntry[]> = new Map(); // For XML files
-    const detailsForDbByExtension: Map<string, Partial<Extension>> = new Map(); // For SQLite, key: extNumber_localityId
+    const extensionsByLocality: Map<string, XmlDirectoryEntry[]> = new Map(); 
+    const detailsForDbByExtension: Map<string, Partial<Extension>> = new Map(); 
 
     for (const adUser of entriesFromAd) {
       const getStringAttr = (attrName: string) => {
@@ -1943,9 +1927,9 @@ export async function syncFromActiveDirectoryAction(params: AdSyncFormValues): P
         const dbKey = `${extNum}_${localityId}`;
         detailsForDbByExtension.set(dbKey, {
             number: extNum,
-            name: userName, // Storing AD's display name as 'name' in DB
+            name: userName, 
             organization,
-            adDepartment, // Department from AD
+            adDepartment, 
             jobTitle,
             email,
             mainPhoneNumber: mainPhone
@@ -1953,14 +1937,13 @@ export async function syncFromActiveDirectoryAction(params: AdSyncFormValues): P
       }
     }
 
-    // Ensure "Active Directory Users" zone exists in MainMenu.xml and zonebranch/
     const existingZones = await readAndParseXML(path.join(paths.IVOXS_DIR, paths.MAINMENU_FILENAME));
     let adZoneExistsInMenu = false;
     if (existingZones && existingZones.CiscoIPPhoneMenu && ensureArray(existingZones.CiscoIPPhoneMenu.MenuItem).some(item => item.Name === adSyncZoneName)) {
         adZoneExistsInMenu = true;
     }
     if (!adZoneExistsInMenu) {
-        const addZoneResult = await addZoneAction(adSyncZoneName); // This adds to MainMenu and creates zonebranch file
+        const addZoneResult = await addZoneAction(adSyncZoneName); 
         if (addZoneResult.success) {
             results.zoneCreated = true;
         } else {
@@ -1978,7 +1961,6 @@ export async function syncFromActiveDirectoryAction(params: AdSyncFormValues): P
     let adZoneMenuItems = ensureArray(adZoneMenu.CiscoIPPhoneMenu.MenuItem);
     let adZoneMenuChanged = false;
 
-    // Get current network config for URLs
     let currentHost = '127.0.0.1';
     let currentPort = '3000';
     const networkConfigPath = path.join(paths.IVOXS_DIR, '.config.json');
@@ -2001,22 +1983,18 @@ export async function syncFromActiveDirectoryAction(params: AdSyncFormValues): P
             isNewDepartmentFile = true;
             results.localitiesCreated++;
         } else {
-            // If file exists, ensure Title is up-to-date
             if (departmentXml.CiscoIPPhoneDirectory.Title !== departmentDisplayName) {
                 departmentXml.CiscoIPPhoneDirectory.Title = departmentDisplayName;
-                // This counts as an update if title changes, even if entries are same
             }
-            results.localitiesUpdated++; // Counts even if only title changes or entries are re-sorted
+            results.localitiesUpdated++; 
         }
         
-        // Sort and set entries for XML
         entries.sort((a, b) => a.Name.localeCompare(b.Name) || a.Telephone.localeCompare(b.Telephone));
         departmentXml.CiscoIPPhoneDirectory.DirectoryEntry = entries.length > 0 ? entries : undefined;
-        results.extensionsAdded += entries.length; // This is total entries written to XMLs
+        results.extensionsAdded += entries.length; 
 
         await buildAndWriteXML(departmentFilePath, departmentXml);
 
-        // Update extension_details in DB for this locality
         for (const entry of entries) {
             const dbKey = `${entry.Telephone}_${localityId}`;
             const details = detailsForDbByExtension.get(dbKey);
@@ -2044,14 +2022,13 @@ export async function syncFromActiveDirectoryAction(params: AdSyncFormValues): P
             }
         }
 
-        // Update AD Zone menu file (zonebranch/ActiveDirectoryUsers.xml)
         const localityUrl = `http://${currentHost}:${currentPort}/ivoxsdir/department/${localityId}.xml`;
         const existingItemIndex = adZoneMenuItems.findIndex(item => extractIdFromUrl(item.URL) === localityId);
         if (existingItemIndex === -1) {
             adZoneMenuItems.push({ Name: departmentDisplayName, URL: localityUrl });
             adZoneMenuChanged = true;
         } else if (adZoneMenuItems[existingItemIndex].Name !== departmentDisplayName) {
-            adZoneMenuItems[existingItemIndex].Name = departmentDisplayName; // Update name if it changed
+            adZoneMenuItems[existingItemIndex].Name = departmentDisplayName; 
             adZoneMenuChanged = true;
         }
     }
@@ -2085,9 +2062,19 @@ export async function syncFromActiveDirectoryAction(params: AdSyncFormValues): P
     if (client) {
       client.unbind(err => {
         if (err) console.error('[AD Sync] LDAP Unbind Error:', err);
-        // else console.log('[AD Sync] LDAP Unbind Successful.');
       });
     }
   }
 }
 
+// Helper function (not exported)
+async function readFileContent(filePath: string): Promise<string> {
+  try {
+    return await fs.readFile(filePath, 'utf-8');
+  } catch (error: any) {
+    if (error.code === 'ENOENT') {
+      return ''; // Return empty string if file not found
+    }
+    throw error; // Re-throw other errors
+  }
+}
