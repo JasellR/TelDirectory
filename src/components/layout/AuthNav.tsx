@@ -28,14 +28,21 @@ export function AuthNav({ user }: AuthNavProps) {
         <UserMenu username={user.username} />
       </>
     );
-  } else {
-    return (
-      <Button variant="outline" asChild size="sm">
-        <Link href={`/login?redirect_to=${encodeURIComponent(pathname)}`}>
-          <LogIn className="mr-2 h-4 w-4" />
-          {t('loginButton')}
-        </Link>
-      </Button>
-    );
   }
+
+  // To prevent flash of login button on protected pages before redirect, we can check pathname.
+  // This is a simple client-side check. Middleware handles the actual security.
+  const isAuthPage = pathname.startsWith('/login');
+  if (isAuthPage) {
+    return null; // Don't show login button on the login page itself
+  }
+
+  return (
+    <Button variant="outline" asChild size="sm">
+      <Link href={`/login?redirect_to=${encodeURIComponent(pathname)}`}>
+        <LogIn className="mr-2 h-4 w-4" />
+        {t('loginButton')}
+      </Link>
+    </Button>
+  );
 }
