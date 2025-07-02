@@ -2,7 +2,7 @@
 'use client';
 
 import { useState, useTransition } from 'react';
-import { useSearchParams }  from 'next/navigation';
+import { useSearchParams, useRouter }  from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -15,6 +15,7 @@ import Link from 'next/link';
 
 export default function LoginForm() {
   const searchParams = useSearchParams();
+  const router = useRouter();
   const { toast } = useToast();
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
@@ -33,16 +34,18 @@ export default function LoginForm() {
     startTransition(async () => {
       const result = await loginAction(formData);
 
-      if (result) {
-        setError(result);
+      if (result && result.success === true) {
+        // On success, use the client-side router to navigate
+        router.push(result.redirectTo);
+      } else if (result && result.success === false) {
+        const errorMessage = result.error;
+        setError(errorMessage);
         toast({
           title: t('loginFailedTitle'),
-          description: result,
+          description: errorMessage,
           variant: 'destructive',
         });
       }
-      // If result is undefined, the server is handling the redirect.
-      // Nothing more to do on the client.
     });
   };
 
