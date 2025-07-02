@@ -15,6 +15,7 @@ import { LogOut, UserCircle } from 'lucide-react';
 import { logoutAction } from '@/lib/auth-actions';
 import { useTransition } from 'react';
 import { useTranslation } from '@/hooks/useTranslation';
+import { useRouter } from 'next/navigation';
 
 interface UserMenuProps {
   username: string;
@@ -23,10 +24,14 @@ interface UserMenuProps {
 export function UserMenu({ username }: UserMenuProps) {
   const [isPending, startTransition] = useTransition();
   const { t } = useTranslation();
+  const router = useRouter();
 
   const handleLogout = () => {
     startTransition(async () => {
       await logoutAction();
+      router.push('/'); // Navigate to home after logout action completes
+      // A refresh might be needed if the UI doesn't update automatically
+      router.refresh(); 
     });
   };
 

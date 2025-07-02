@@ -18,52 +18,47 @@ export async function loginAction(formData: FormData): Promise<{ error?: string 
     return { error: 'Username and password are required.' };
   }
 
-  let user;
   try {
     const db = await getDb();
-    user = await db.get('SELECT * FROM users WHERE username = ?', username);
-  } catch (dbError: any) {
-    console.error('[Login Action] Database error:', dbError);
-    return { error: 'An unexpected critical error occurred during login.' };
+    const user = await db.get('SELECT * FROM users WHERE username = ?', username);
+
+    if (!user) {
+      return { error: 'Invalid username or password.' };
+    }
+
+    const passwordMatch = await bcrypt.compare(password, user.hashedPassword);
+
+    if (!passwordMatch) {
+      return { error: 'Invalid username or password.' };
+    }
+
+    // Credentials are valid, set cookie
+    const sessionData: UserSession = { userId: user.id, username: user.username };
+    cookies().set(AUTH_COOKIE_NAME, JSON.stringify(sessionData), {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      path: '/',
+      sameSite: 'lax',
+      maxAge: 60 * 60 * 24 * 7, // 1 week
+    });
+
+    // Return success, no redirect
+    // An empty object or one without an 'error' key signifies success.
+    return {};
+
+  } catch (error: any) {
+    console.error('[Login Action] Critical error:', error);
+    // Use a generic error message for the user for security
+    return { error: 'An unexpected server error occurred.' };
   }
-
-  if (!user) {
-    return { error: 'Invalid username or password.' };
-  }
-
-  let passwordMatch = false;
-  try {
-    passwordMatch = await bcrypt.compare(password, user.hashedPassword);
-  } catch (bcryptError: any) {
-    console.error('[Login Action] Bcrypt error:', bcryptError);
-    return { error: 'An unexpected critical error occurred during login.' };
-  }
-
-  if (!passwordMatch) {
-    return { error: 'Invalid username or password.' };
-  }
-
-  // If we reach here, credentials are valid. Proceed with session setting and redirect.
-  const sessionData: UserSession = { userId: user.id, username: user.username };
-  cookies().set(AUTH_COOKIE_NAME, JSON.stringify(sessionData), {
-    httpOnly: true,
-    secure: process.env.NODE_ENV === 'production',
-    path: '/',
-    sameSite: 'lax',
-    maxAge: 60 * 60 * 24 * 7, // 1 week
-  });
-
-  revalidatePath('/', 'layout');
-
-  const redirectTo = formData.get('redirectTo') as string || '/import-xml';
-  redirect(redirectTo); // This throws NEXT_REDIRECT and should be handled by Next.js
 }
 
 
 export async function logoutAction(): Promise<void> {
+  // This action only clears the cookie. The client will handle navigation.
   cookies().delete(AUTH_COOKIE_NAME);
+  // Revalidate the root layout to ensure UI updates across the app
   revalidatePath('/', 'layout');
-  redirect('/');
 }
 
 export async function isAuthenticated(): Promise<boolean> {
