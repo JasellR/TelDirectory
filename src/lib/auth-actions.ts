@@ -10,10 +10,9 @@ import { revalidatePath } from 'next/cache';
 const AUTH_COOKIE_NAME = 'teldirectory-session';
 
 
-export async function loginAction(formData: FormData): Promise<{ success: true, redirectTo: string } | { success: false, error: string }> {
+export async function loginAction(formData: FormData): Promise<{ success: true } | { success: false, error: string }> {
   const username = formData.get('username') as string;
   const password = formData.get('password') as string;
-  const redirectTo = formData.get('redirectTo') as string | null;
 
   if (!username || !password) {
     return { success: false, error: 'Username and password are required.' };
@@ -48,14 +47,10 @@ export async function loginAction(formData: FormData): Promise<{ success: true, 
     console.error(`[Auth @ ${new Date().toISOString()}] General login error caught in loginAction:`, error);
     return { success: false, error: 'An unexpected critical error occurred during login.' };
   }
-
-  const targetRedirectPath = redirectTo || '/import-xml';
   
-  // Revalidate path to help bust cache for subsequent requests
   revalidatePath('/', 'layout');
   
-  // Return success and redirect path to client
-  return { success: true, redirectTo: targetRedirectPath };
+  return { success: true };
 }
 
 
