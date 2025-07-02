@@ -48,8 +48,6 @@ export async function loginAction(formData: FormData): Promise<{ success: true }
     return { success: false, error: 'An unexpected critical error occurred during login.' };
   }
   
-  revalidatePath('/', 'layout');
-  
   return { success: true };
 }
 

@@ -147,6 +147,8 @@
   "loggingOutButton": "Cerrando sesión...",
   "loginFailedTitle": "Error de Inicio de Sesión",
   "loginFailedError": "Usuario o contraseña incorrectos. Intente de nuevo.",
+  "loginSucceededTitle": "Inicio de Sesión Exitoso",
+  "loginSucceededDescription": "Redirigiendo al área administrativa...",
   "loginSucceeded": "Inicio de sesión exitoso. Redirigiendo...",
   "loginUnexpectedError": "Ocurrió un error inesperado. Intente de nuevo.",
   "backToHomeLink": "Volver a la Página Principal",

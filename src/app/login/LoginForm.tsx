@@ -2,7 +2,7 @@
 'use client';
 
 import { useState, useTransition } from 'react';
-import { useRouter }  from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -15,6 +15,7 @@ import Link from 'next/link';
 
 export default function LoginForm() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { toast } = useToast();
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
@@ -28,12 +29,14 @@ export default function LoginForm() {
     startTransition(async () => {
       const result = await loginAction(formData);
 
-      if (result && result.success === true) {
-        // Refresh the current route. The middleware will automatically handle
-        // redirecting the user from /login to the protected page because
-        // they are now authenticated.
-        router.refresh();
-      } else if (result && result.success === false) {
+      if (result?.success) {
+        toast({
+          title: t('loginSucceededTitle'),
+          description: t('loginSucceededDescription'),
+        });
+        const redirectTo = searchParams.get('redirect_to') || '/import-xml';
+        router.push(redirectTo);
+      } else if (result && !result.success) {
         const errorMessage = result.error;
         setError(errorMessage);
         toast({

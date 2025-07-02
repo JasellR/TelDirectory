@@ -147,6 +147,8 @@
   "loggingOutButton": "Logging out...",
   "loginFailedTitle": "Login Failed",
   "loginFailedError": "Invalid username or password. Please try again.",
+  "loginSucceededTitle": "Login Successful",
+  "loginSucceededDescription": "Redirecting to administrative area...",
   "loginSucceeded": "Login successful. Redirecting...",
   "loginUnexpectedError": "An unexpected error occurred. Please try again.",
   "backToHomeLink": "Back to Homepage",
