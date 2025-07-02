@@ -10,7 +10,7 @@ import { revalidatePath } from 'next/cache';
 const AUTH_COOKIE_NAME = 'teldirectory-session';
 
 
-export async function loginAction(formData: FormData): Promise<{ error?: string }> {
+export async function loginAction(formData: FormData): Promise<{ error?: string; success?: boolean }> {
   const username = formData.get('username') as string;
   const password = formData.get('password') as string;
 
@@ -18,46 +18,45 @@ export async function loginAction(formData: FormData): Promise<{ error?: string 
     return { error: 'Username and password are required.' };
   }
 
+  let user;
   try {
     const db = await getDb();
-    const user = await db.get('SELECT * FROM users WHERE username = ?', username);
-
-    if (!user) {
-      return { error: 'Invalid username or password.' };
-    }
-
-    const passwordMatch = await bcrypt.compare(password, user.hashedPassword);
-
-    if (!passwordMatch) {
-      return { error: 'Invalid username or password.' };
-    }
-
-    // Credentials are valid, set cookie
-    const sessionData: UserSession = { userId: user.id, username: user.username };
-    cookies().set(AUTH_COOKIE_NAME, JSON.stringify(sessionData), {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      path: '/',
-      sameSite: 'lax',
-      maxAge: 60 * 60 * 24 * 7, // 1 week
-    });
-
-    // Return success, no redirect
-    // An empty object or one without an 'error' key signifies success.
-    return {};
-
-  } catch (error: any) {
-    console.error('[Login Action] Critical error:', error);
-    // Use a generic error message for the user for security
-    return { error: 'An unexpected server error occurred.' };
+    user = await db.get('SELECT * FROM users WHERE username = ?', username);
+  } catch (dbError: any) {
+    console.error('[Login Action] DB Error:', dbError);
+    return { error: 'An unexpected server error occurred during authentication.' };
   }
+
+  if (!user) {
+    return { error: 'Invalid username or password.' };
+  }
+
+  const passwordMatch = await bcrypt.compare(password, user.hashedPassword);
+
+  if (!passwordMatch) {
+    return { error: 'Invalid username or password.' };
+  }
+
+  // At this point, login is successful.
+  const sessionData: UserSession = { userId: user.id, username: user.username };
+  cookies().set(AUTH_COOKIE_NAME, JSON.stringify(sessionData), {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === 'production',
+    path: '/',
+    sameSite: 'lax',
+    maxAge: 60 * 60 * 24 * 7, // 1 week
+  });
+
+  // Revalidate to ensure new session is picked up on next navigation.
+  revalidatePath('/', 'layout');
+
+  // Return success, no redirect from server.
+  return { success: true };
 }
 
 
 export async function logoutAction(): Promise<void> {
-  // This action only clears the cookie. The client will handle navigation.
   cookies().delete(AUTH_COOKIE_NAME);
-  // Revalidate the root layout to ensure UI updates across the app
   revalidatePath('/', 'layout');
 }
 

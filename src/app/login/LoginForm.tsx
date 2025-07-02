@@ -36,8 +36,8 @@ export default function LoginForm() {
           description: result.error,
           variant: 'destructive',
         });
-      } else {
-        // SUCCESS: The action was successful (no error returned)
+      } else if (result?.success) {
+        // SUCCESS: The action was successful
         const redirectTo = searchParams.get('redirect_to') || '/import-xml';
         toast({
           title: t('loginSucceededTitle'),
@@ -45,8 +45,18 @@ export default function LoginForm() {
         });
         
         // Use router.push() for client-side navigation.
-        // This ensures the browser has time to process the cookie before the new page loads.
+        // This gives the browser time to process the cookie before the new page loads.
         router.push(redirectTo);
+        // Refresh server components on the new route to ensure header, etc., update.
+        router.refresh();
+      } else {
+        // Handle unexpected empty or non-error/non-success response
+        setError(t('loginUnexpectedError'));
+         toast({
+          title: t('errorTitle'),
+          description: t('loginUnexpectedError'),
+          variant: 'destructive',
+        });
       }
     });
   };
