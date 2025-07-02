@@ -25,6 +25,7 @@ export default function LoginForm() {
     setError(null);
     const formData = new FormData(event.currentTarget);
     const redirectTo = searchParams.get('redirect_to') || '/import-xml';
+    formData.append('redirectTo', redirectTo);
     
     startTransition(async () => {
       const result = await loginAction(formData);
@@ -36,11 +37,8 @@ export default function LoginForm() {
           description: result.error,
           variant: 'destructive',
         });
-      } else if (result?.success) {
-        // Force a full page reload to the target URL.
-        // This is more reliable for ensuring the new cookie is sent on the next request.
-        window.location.href = redirectTo;
       }
+      // No success case needed here, the server action handles the redirect
     });
   };
 

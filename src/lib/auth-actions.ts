@@ -10,9 +10,10 @@ import { revalidatePath } from 'next/cache';
 const AUTH_COOKIE_NAME = 'teldirectory-session';
 
 
-export async function loginAction(formData: FormData): Promise<{ error?: string; success?: boolean }> {
+export async function loginAction(formData: FormData): Promise<{ error?: string }> {
   const username = formData.get('username') as string;
   const password = formData.get('password') as string;
+  const redirectTo = formData.get('redirectTo') as string || '/import-xml';
 
   if (!username || !password) {
     return { error: 'Username and password are required.' };
@@ -37,11 +38,18 @@ export async function loginAction(formData: FormData): Promise<{ error?: string;
         sameSite: 'lax',
         maxAge: 60 * 60 * 24 * 7, // 1 week
       });
-      return { success: true };
+
+      // Revalidate the layout to ensure the new session is picked up on redirect
+      revalidatePath('/', 'layout');
+      // Redirect from the server after setting the cookie
+      redirect(redirectTo);
     } else {
       return { error: 'Invalid username or password.' };
     }
   } catch (error: any) {
+    if (error.code === 'NEXT_REDIRECT') {
+        throw error;
+    }
     console.error(`[Auth @ ${new Date().toISOString()}] General login error caught in loginAction:`, error);
     return { error: 'An unexpected critical error occurred during login.' };
   }
@@ -50,6 +58,7 @@ export async function loginAction(formData: FormData): Promise<{ error?: string;
 
 export async function logoutAction(): Promise<void> {
   cookies().delete(AUTH_COOKIE_NAME);
+  revalidatePath('/', 'layout');
   redirect('/');
 }
 
