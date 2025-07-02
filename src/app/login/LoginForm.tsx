@@ -1,8 +1,8 @@
 
 'use client';
 
-import { useState, useTransition, useEffect } from 'react';
-import { useSearchParams, useRouter }  from 'next/navigation';
+import { useState, useTransition } from 'react';
+import { useSearchParams }  from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -15,7 +15,6 @@ import Link from 'next/link';
 
 export default function LoginForm() {
   const searchParams = useSearchParams();
-  const router = useRouter();
   const { toast } = useToast();
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
@@ -32,31 +31,18 @@ export default function LoginForm() {
     }
 
     startTransition(async () => {
-      try {
-        const result = await loginAction(formData);
+      const result = await loginAction(formData);
 
-        if (result && result.success && result.redirectTo) {
-          router.push(result.redirectTo);
-        } else if (result && !result.success) {
-          setError(result.message || t('loginFailedError'));
-          toast({
-            title: t('loginFailedTitle'),
-            description: result.message || t('loginFailedError'),
-            variant: 'destructive',
-          });
-        } else {
-            throw new Error("Invalid response from login action.");
-        }
-      } catch (e: any) {
-        console.error("Login page encountered an unexpected error during login attempt:", e);
-        const errorMessage = e.message || t('loginUnexpectedError');
-        setError(errorMessage);
+      if (result) {
+        setError(result);
         toast({
           title: t('loginFailedTitle'),
-          description: errorMessage,
+          description: result,
           variant: 'destructive',
         });
       }
+      // If result is undefined, the server is handling the redirect.
+      // Nothing more to do on the client.
     });
   };
 
