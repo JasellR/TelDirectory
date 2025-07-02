@@ -2,7 +2,7 @@
 'use client';
 
 import { useState, useTransition } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useSearchParams } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -14,7 +14,6 @@ import { useTranslation } from '@/hooks/useTranslation';
 import Link from 'next/link';
 
 export default function LoginForm() {
-  const router = useRouter();
   const searchParams = useSearchParams();
   const { toast } = useToast();
   const [isPending, startTransition] = useTransition();
@@ -25,26 +24,22 @@ export default function LoginForm() {
     event.preventDefault();
     setError(null);
     const formData = new FormData(event.currentTarget);
+    const redirectTo = searchParams.get('redirect_to') || '/import-xml';
+    formData.append('redirect_to', redirectTo);
 
     startTransition(async () => {
       const result = await loginAction(formData);
 
-      if (result?.success) {
-        toast({
-          title: t('loginSucceededTitle'),
-          description: t('loginSucceededDescription'),
-        });
-        const redirectTo = searchParams.get('redirect_to') || '/import-xml';
-        router.push(redirectTo);
-      } else if (result && !result.success) {
-        const errorMessage = result.error;
-        setError(errorMessage);
+      if (result?.error) {
+        setError(result.error);
         toast({
           title: t('loginFailedTitle'),
-          description: errorMessage,
+          description: result.error,
           variant: 'destructive',
         });
       }
+      // If there is no error, the server action will handle the redirect.
+      // The browser will follow the redirect, and this client-side code execution stops.
     });
   };
 
