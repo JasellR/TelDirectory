@@ -27,9 +27,13 @@ export default function LoginForm() {
     const formData = new FormData(event.currentTarget);
     const redirectTo = searchParams.get('redirect_to');
 
+    if (redirectTo) {
+      formData.append('redirectTo', redirectTo);
+    }
+
     startTransition(async () => {
       try {
-        const result = await loginAction(formData, redirectTo);
+        const result = await loginAction(formData);
 
         if (result && result.success && result.redirectTo) {
           router.push(result.redirectTo);

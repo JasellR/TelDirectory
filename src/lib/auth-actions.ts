@@ -9,11 +9,11 @@ import type { UserSession } from '@/types';
 const AUTH_COOKIE_NAME = 'teldirectory-session';
 
 export async function loginAction(
-  formData: FormData,
-  redirectTo?: string | null
+  formData: FormData
 ): Promise<{ success: boolean; message: string; redirectTo?: string }> {
   const username = formData.get('username') as string;
   const password = formData.get('password') as string;
+  const redirectTo = formData.get('redirectTo') as string | null;
 
   if (!username || !password) {
     console.log('[Auth] Username or password missing from form data.');
@@ -80,7 +80,6 @@ export async function loginAction(
       return { success: false, message: 'Invalid username or password.' };
     }
   } catch (error: any) {
-    // If it's a redirect error from a nested call (like redirect itself), rethrow it
     if (typeof error === 'object' && error !== null && 'digest' in error && (error as any).digest?.startsWith('NEXT_REDIRECT')) {
       throw error;
     }
@@ -97,7 +96,7 @@ export async function logoutAction(): Promise<void> {
   } catch (error) {
     console.error(`[Auth @ ${new Date().toISOString()}] Error during logout (clearing cookie):`, error);
   }
-  redirect('/'); // Redirect to homepage after logout
+  redirect('/');
 }
 
 export async function isAuthenticated(): Promise<boolean> {
@@ -115,7 +114,7 @@ export async function getCurrentUser(): Promise<UserSession | null> {
   }
   try {
     const session = JSON.parse(cookieValue) as UserSession;
-    if (session.userId && session.username) {
+    if (session.userId && session.username && typeof session.userId === 'number' && session.userId > 0) {
       return session;
     }
     return null;
