@@ -1,35 +1,43 @@
 
-'use server';
-
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
-import { isAuthenticated } from '@/lib/auth-actions';
+import type { UserSession } from '@/types';
 
+const AUTH_COOKIE_NAME = 'teldirectory-session';
 const PROTECTED_ROUTES = ['/import-xml'];
 const LOGIN_PATH = '/login';
 
+async function checkAuth(request: NextRequest): Promise<boolean> {
+    const cookie = request.cookies.get(AUTH_COOKIE_NAME);
+    if (!cookie?.value) {
+        return false;
+    }
+    try {
+        const session = JSON.parse(cookie.value) as UserSession;
+        // A valid session must have a numeric userId
+        return typeof session.userId === 'number' && session.userId > 0;
+    } catch (e) {
+        // If parsing fails, the cookie is invalid
+        return false;
+    }
+}
 
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
-  const userIsAuthenticated = await isAuthenticated();
-  // console.log(`[Middleware] Path: ${pathname}, IsAuthenticated: ${userIsAuthenticated}`);
+  const userIsAuthenticated = await checkAuth(request);
 
   if (PROTECTED_ROUTES.some(route => pathname.startsWith(route))) {
     if (!userIsAuthenticated) {
       const loginUrl = new URL(LOGIN_PATH, request.url);
       loginUrl.searchParams.set('redirect_to', pathname);
-      // console.log(`[Middleware] User not authenticated, redirecting from ${pathname} to ${loginUrl.toString()}`);
       return NextResponse.redirect(loginUrl);
     }
-    // console.log(`[Middleware] User authenticated, allowing access to protected route: ${pathname}`);
   }
 
   if (pathname === LOGIN_PATH && userIsAuthenticated) {
-    // console.log(`[Middleware] User authenticated, attempting to access login page. Redirecting to /import-xml.`);
     return NextResponse.redirect(new URL('/import-xml', request.url));
   }
 
-  // console.log(`[Middleware] Path ${pathname} not protected or user allowed. Proceeding.`);
   return NextResponse.next();
 }
 
