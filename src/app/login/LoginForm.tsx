@@ -2,7 +2,7 @@
 'use client';
 
 import { useState, useTransition, useEffect } from 'react';
-import { useSearchParams, useRouter }  from 'next/navigation'; // useRouter might be needed if redirects are handled here
+import { useSearchParams, useRouter }  from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -15,7 +15,7 @@ import Link from 'next/link';
 
 export default function LoginForm() {
   const searchParams = useSearchParams();
-  // const router = useRouter(); // Uncomment if client-side navigation is needed from here
+  const router = useRouter();
   const { toast } = useToast();
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
@@ -29,26 +29,21 @@ export default function LoginForm() {
 
     startTransition(async () => {
       try {
-        // loginAction will handle the redirect if successful (or throw NEXT_REDIRECT)
-        // if it returns, it means login failed
         const result = await loginAction(formData, redirectTo);
 
-        if (result && !result.success) {
+        if (result && result.success && result.redirectTo) {
+          router.push(result.redirectTo);
+        } else if (result && !result.success) {
           setError(result.message || t('loginFailedError'));
           toast({
             title: t('loginFailedTitle'),
             description: result.message || t('loginFailedError'),
             variant: 'destructive',
           });
+        } else {
+            throw new Error("Invalid response from login action.");
         }
-        // If loginAction is successful and redirects, this part of the code might not be reached
-        // due to the NEXT_REDIRECT error being thrown and caught by Next.js
       } catch (e: any) {
-        // Catch errors that are NOT Next.js redirect errors
-        if (typeof e === 'object' && e !== null && 'digest' in e && (e as { digest?: string }).digest?.startsWith('NEXT_REDIRECT')) {
-          // This is a redirect error, let Next.js handle it by re-throwing
-          throw e;
-        }
         console.error("Login page encountered an unexpected error during login attempt:", e);
         const errorMessage = e.message || t('loginUnexpectedError');
         setError(errorMessage);

@@ -11,7 +11,7 @@ const AUTH_COOKIE_NAME = 'teldirectory-session';
 export async function loginAction(
   formData: FormData,
   redirectTo?: string | null
-): Promise<{ success: boolean; message: string } | void> {
+): Promise<{ success: boolean; message: string; redirectTo?: string }> {
   const username = formData.get('username') as string;
   const password = formData.get('password') as string;
 
@@ -55,7 +55,7 @@ export async function loginAction(
     if (passwordMatch) {
       console.log(`[Auth @ ${new Date().toISOString()}] Password match for user:`, username);
       const sessionData: UserSession = { userId: user.id, username: user.username };
-      const cookieStore = await cookies(); // Corrected: Added await here as well if modification is needed for cookies
+      const cookieStore = await cookies();
       try {
         cookieStore.set(AUTH_COOKIE_NAME, JSON.stringify(sessionData), {
           httpOnly: true,
@@ -68,16 +68,12 @@ export async function loginAction(
         
       } catch (cookieError: any) {
         console.error(`[Auth @ ${new Date().toISOString()}] Error setting session cookie:`, cookieError);
-         // Check if it's a redirect error, if so, rethrow it
-        if (typeof cookieError === 'object' && cookieError !== null && 'digest' in cookieError && (cookieError as any).digest?.startsWith('NEXT_REDIRECT')) {
-          throw cookieError;
-        }
         return { success: false, message: 'Error finalizing login session. Please try again.'};
       }
       
       const targetRedirectPath = redirectTo || '/import-xml';
-      console.log(`[Auth @ ${new Date().toISOString()}] Login successful for ${username}. Redirecting to: ${targetRedirectPath}`);
-      redirect(targetRedirectPath); // Perform server-side redirect
+      console.log(`[Auth @ ${new Date().toISOString()}] Login successful for ${username}. Preparing client-side redirect to: ${targetRedirectPath}`);
+      return { success: true, message: 'Login successful', redirectTo: targetRedirectPath };
 
     } else {
       console.log(`[Auth @ ${new Date().toISOString()}] Invalid password for user: ${username}`);
@@ -95,7 +91,7 @@ export async function loginAction(
 
 export async function logoutAction(): Promise<void> {
   try {
-    const cookieStore = await cookies(); // Corrected: Added await
+    const cookieStore = await cookies();
     cookieStore.delete(AUTH_COOKIE_NAME);
     console.log(`[Auth @ ${new Date().toISOString()}] User logged out, cookie deleted.`);
   } catch (error) {
@@ -110,27 +106,21 @@ export async function isAuthenticated(): Promise<boolean> {
 }
 
 export async function getCurrentUser(): Promise<UserSession | null> {
-  const cookieStore = await cookies(); // Corrected: Re-added await
+  const cookieStore = await cookies();
   const sessionCookie = cookieStore.get(AUTH_COOKIE_NAME);
   const cookieValue = sessionCookie?.value;
   
-  // console.log(`[Auth - getCurrentUser @ ${new Date().toISOString()}] Attempting to read cookie "${AUTH_COOKIE_NAME}". Has value: ${!!cookieValue}`);
-
   if (!cookieValue) {
-    // console.log(`[Auth - getCurrentUser @ ${new Date().toISOString()}] Cookie "${AUTH_COOKIE_NAME}" not found or value is empty.`);
     return null;
   }
   try {
     const session = JSON.parse(cookieValue) as UserSession;
     if (session.userId && session.username) {
-      // console.log(`[Auth - getCurrentUser @ ${new Date().toISOString()}] Cookie found, parsed, returning user:`, {userId: session.userId, username: session.username});
       return session;
     }
-    // console.warn(`[Auth - getCurrentUser @ ${new Date().toISOString()}] Cookie found, parsed, but invalid session structure:`, session);
     return null;
   } catch (error) {
-    console.error(`[Auth - getCurrentUser @ ${new Date().toISOString()}] Error parsing session cookie:`, error, "Cookie Value (first 50 chars):", cookieValue.substring(0,50));
+    console.error(`[Auth - getCurrentUser] Error parsing session cookie:`, error, "Cookie Value (first 50 chars):", cookieValue.substring(0,50));
     return null;
   }
 }
-
