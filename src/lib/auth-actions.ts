@@ -10,10 +10,9 @@ import { revalidatePath } from 'next/cache';
 const AUTH_COOKIE_NAME = 'teldirectory-session';
 
 
-export async function loginAction(formData: FormData): Promise<{ error: string } | void> {
+export async function loginAction(formData: FormData): Promise<{ error?: string; success?: boolean }> {
   const username = formData.get('username') as string;
   const password = formData.get('password') as string;
-  const redirectTo = (formData.get('redirect_to') as string) || '/import-xml';
 
   if (!username || !password) {
     return { error: 'Username and password are required.' };
@@ -24,7 +23,6 @@ export async function loginAction(formData: FormData): Promise<{ error: string }
     const user = await db.get('SELECT * FROM users WHERE username = ?', username);
 
     if (!user) {
-      console.log(`[Auth @ ${new Date().toISOString()}] User not found:`, username);
       return { error: 'Invalid username or password.' };
     }
 
@@ -32,37 +30,26 @@ export async function loginAction(formData: FormData): Promise<{ error: string }
 
     if (passwordMatch) {
       const sessionData: UserSession = { userId: user.id, username: user.username };
-      const cookieStore = cookies();
-      cookieStore.set(AUTH_COOKIE_NAME, JSON.stringify(sessionData), {
+      cookies().set(AUTH_COOKIE_NAME, JSON.stringify(sessionData), {
         httpOnly: true,
         secure: process.env.NODE_ENV === 'production',
         path: '/',
         sameSite: 'lax',
         maxAge: 60 * 60 * 24 * 7, // 1 week
       });
-      // Revalidate the layout to ensure the new cookie is picked up on the next render
-      revalidatePath('/', 'layout');
+      return { success: true };
     } else {
-      console.log(`[Auth @ ${new Date().toISOString()}] Invalid password for user: ${username}`);
       return { error: 'Invalid username or password.' };
     }
   } catch (error: any) {
     console.error(`[Auth @ ${new Date().toISOString()}] General login error caught in loginAction:`, error);
     return { error: 'An unexpected critical error occurred during login.' };
   }
-  
-  // If we get here, login was successful, so redirect.
-  redirect(redirectTo);
 }
 
 
 export async function logoutAction(): Promise<void> {
-  try {
-    cookies().delete(AUTH_COOKIE_NAME);
-    revalidatePath('/', 'layout');
-  } catch (error) {
-    console.error(`[Auth @ ${new Date().toISOString()}] Error during logout (clearing cookie):`, error);
-  }
+  cookies().delete(AUTH_COOKIE_NAME);
   redirect('/');
 }
 
