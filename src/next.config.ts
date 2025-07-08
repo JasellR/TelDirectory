@@ -19,9 +19,7 @@ const nextConfig: NextConfig = {
       },
     ],
   },
-  experimental: {
-    serverComponentsExternalPackages: ['sqlite3', 'ldapjs', 'bcrypt'],
-  },
+  serverExternalPackages: ['sqlite3', 'ldapjs', 'bcrypt'],
 };
 
 export default nextConfig;
