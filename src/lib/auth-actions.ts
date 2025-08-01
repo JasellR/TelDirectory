@@ -51,11 +51,12 @@ export async function loginAction(formData: FormData): Promise<{ error?: string;
     
     // Revalidate to ensure new session is picked up on next navigation.
     revalidatePath('/', 'layout');
-    return { success: true };
+    
   } catch (cookieError: any) {
     console.error('[Login Action] Cookie or Revalidation Error:', cookieError);
     return { error: 'An unexpected server error occurred setting the session.' };
   }
+  return { success: true };
 }
 
 
