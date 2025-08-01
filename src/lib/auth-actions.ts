@@ -51,20 +51,17 @@ export async function loginAction(formData: FormData): Promise<{ error?: string;
     
     // Revalidate to ensure new session is picked up on next navigation.
     revalidatePath('/', 'layout');
+    return { success: true };
   } catch (cookieError: any) {
     console.error('[Login Action] Cookie or Revalidation Error:', cookieError);
     return { error: 'An unexpected server error occurred setting the session.' };
   }
-
-  // Redirect after successful cookie setting.
-  redirect('/import-xml');
 }
 
 
 export async function logoutAction(): Promise<void> {
   cookies().delete(AUTH_COOKIE_NAME);
   revalidatePath('/', 'layout');
-  redirect('/');
 }
 
 export async function isAuthenticated(): Promise<boolean> {
