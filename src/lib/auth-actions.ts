@@ -72,8 +72,7 @@ export async function isAuthenticated(): Promise<boolean> {
 
 export async function getCurrentUser(): Promise<UserSession | null> {
   const cookieStore = cookies();
-  const sessionCookie = cookieStore.get(AUTH_COOKIE_NAME);
-  const cookieValue = sessionCookie?.value;
+  const cookieValue = cookieStore.get(AUTH_COOKIE_NAME)?.value;
   
   if (!cookieValue) {
     return null;
