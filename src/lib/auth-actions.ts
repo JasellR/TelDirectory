@@ -9,55 +9,62 @@ import { revalidatePath } from 'next/cache';
 
 const AUTH_COOKIE_NAME = 'teldirectory-session';
 
-
 export async function loginAction(formData: FormData): Promise<{ error?: string; success?: boolean }> {
-  const username = formData.get('username') as string;
-  const password = formData.get('password') as string;
-
-  if (!username || !password) {
-    return { error: 'Username and password are required.' };
-  }
-
   let user;
   try {
+    const username = formData.get('username') as string;
+    const password = formData.get('password') as string;
+
+    if (!username || !password) {
+      return { error: 'Username and password are required.' };
+    }
+
     const db = await getDb();
     user = await db.get('SELECT * FROM users WHERE username = ?', username);
+    
+    if (!user) {
+      return { error: 'Invalid username or password.' };
+    }
+
+    const passwordMatch = await bcrypt.compare(password, user.hashedPassword);
+
+    if (!passwordMatch) {
+      return { error: 'Invalid username or password.' };
+    }
+
   } catch (dbError: any) {
-    console.error('[Login Action] DB Error:', dbError);
+    console.error('[Login Action] DB or bcrypt Error:', dbError);
     return { error: 'An unexpected server error occurred during authentication.' };
   }
-
-  if (!user) {
-    return { error: 'Invalid username or password.' };
-  }
-
-  const passwordMatch = await bcrypt.compare(password, user.hashedPassword);
-
-  if (!passwordMatch) {
-    return { error: 'Invalid username or password.' };
-  }
-
+  
   // At this point, login is successful.
-  const sessionData: UserSession = { userId: user.id, username: user.username };
-  cookies().set(AUTH_COOKIE_NAME, JSON.stringify(sessionData), {
-    httpOnly: true,
-    secure: process.env.NODE_ENV === 'production',
-    path: '/',
-    sameSite: 'lax',
-    maxAge: 60 * 60 * 24 * 7, // 1 week
-  });
+  // This part must be outside the main try block to avoid issues with redirect()
+  try {
+    const sessionData: UserSession = { userId: user.id, username: user.username };
+    cookies().set(AUTH_COOKIE_NAME, JSON.stringify(sessionData), {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      path: '/',
+      sameSite: 'lax',
+      maxAge: 60 * 60 * 24 * 7, // 1 week
+    });
+    
+    // Revalidate to ensure new session is picked up on next navigation.
+    revalidatePath('/', 'layout');
+  } catch (cookieError: any) {
+    console.error('[Login Action] Cookie or Revalidation Error:', cookieError);
+    return { error: 'An unexpected server error occurred setting the session.' };
+  }
 
-  // Revalidate to ensure new session is picked up on next navigation.
-  revalidatePath('/', 'layout');
-
-  // Return success, no redirect from server.
-  return { success: true };
+  // Redirect after successful cookie setting.
+  redirect('/import-xml');
 }
 
 
 export async function logoutAction(): Promise<void> {
   cookies().delete(AUTH_COOKIE_NAME);
   revalidatePath('/', 'layout');
+  redirect('/');
 }
 
 export async function isAuthenticated(): Promise<boolean> {
