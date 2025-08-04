@@ -9,19 +9,18 @@ import { revalidatePath } from 'next/cache';
 
 const AUTH_COOKIE_NAME = 'teldirectory-session';
 
-export async function loginAction(formData: FormData): Promise<{ error?: string; success?: boolean }> {
-  let user;
+export async function loginAction(formData: FormData): Promise<{ error?: string }> {
+  const username = formData.get('username') as string;
+  const password = formData.get('password') as string;
+
+  if (!username || !password) {
+    return { error: 'Username and password are required.' };
+  }
+
   try {
-    const username = formData.get('username') as string;
-    const password = formData.get('password') as string;
-
-    if (!username || !password) {
-      return { error: 'Username and password are required.' };
-    }
-
     const db = await getDb();
-    user = await db.get('SELECT * FROM users WHERE username = ?', username);
-    
+    const user = await db.get('SELECT * FROM users WHERE username = ?', username);
+
     if (!user) {
       return { error: 'Invalid username or password.' };
     }
@@ -32,14 +31,7 @@ export async function loginAction(formData: FormData): Promise<{ error?: string;
       return { error: 'Invalid username or password.' };
     }
 
-  } catch (dbError: any) {
-    console.error('[Login Action] DB or bcrypt Error:', dbError);
-    return { error: 'An unexpected server error occurred during authentication.' };
-  }
-  
-  // At this point, login is successful.
-  // This part must be outside the main try block to avoid issues with redirect()
-  try {
+    // If credentials are correct, set cookie and redirect.
     const sessionData: UserSession = { userId: user.id, username: user.username };
     cookies().set(AUTH_COOKIE_NAME, JSON.stringify(sessionData), {
       httpOnly: true,
@@ -48,15 +40,18 @@ export async function loginAction(formData: FormData): Promise<{ error?: string;
       sameSite: 'lax',
       maxAge: 60 * 60 * 24 * 7, // 1 week
     });
-    
-    // Revalidate to ensure new session is picked up on next navigation.
+
+    // Revalidate the entire app layout to ensure new session state is picked up
     revalidatePath('/', 'layout');
-    
-  } catch (cookieError: any) {
-    console.error('[Login Action] Cookie or Revalidation Error:', cookieError);
-    return { error: 'An unexpected server error occurred setting the session.' };
+
+  } catch (error: any) {
+    // Catch db errors or other unexpected issues
+    console.error('[Login Action] Error:', error);
+    return { error: 'An unexpected server error occurred.' };
   }
-  return { success: true };
+  
+  // Redirect must be called outside of try/catch blocks
+  redirect('/import-xml');
 }
 
 

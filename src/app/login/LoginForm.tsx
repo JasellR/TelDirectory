@@ -2,7 +2,7 @@
 'use client';
 
 import { useState, useTransition } from 'react';
-import { useSearchParams, useRouter } from 'next/navigation';
+import { useSearchParams } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -14,7 +14,6 @@ import { useTranslation } from '@/hooks/useTranslation';
 import Link from 'next/link';
 
 export default function LoginForm() {
-  const router = useRouter();
   const searchParams = useSearchParams();
   const { toast } = useToast();
   const [isPending, startTransition] = useTransition();
@@ -36,28 +35,8 @@ export default function LoginForm() {
           description: result.error,
           variant: 'destructive',
         });
-      } else if (result?.success) {
-        // SUCCESS: The action was successful
-        const redirectTo = searchParams.get('redirect_to') || '/import-xml';
-        toast({
-          title: t('loginSucceededTitle'),
-          description: t('loginSucceededDescription'),
-        });
-        
-        // Use router.push() for client-side navigation.
-        // This gives the browser time to process the cookie before the new page loads.
-        router.push(redirectTo);
-        // Refresh server components on the new route to ensure header, etc., update.
-        router.refresh();
-      } else {
-        // Handle unexpected empty or non-error/non-success response
-        setError(t('loginUnexpectedError'));
-         toast({
-          title: t('errorTitle'),
-          description: t('loginUnexpectedError'),
-          variant: 'destructive',
-        });
       }
+      // No 'success' case here, as the action now redirects on its own.
     });
   };
 
