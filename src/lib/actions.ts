@@ -645,16 +645,16 @@ export async function importExtensionsFromCsvAction(csvContent: string): Promise
 }
 
 export async function syncNamesFromXmlFeedAction(feedUrlsString: string): Promise<SyncResult> {
-  const authenticated = await isAuthenticated();
-  if (!authenticated) {
-    return { 
-        success: false, 
-        message: "Authentication required.",
-        updatedCount: 0, 
-        filesModified: 0, 
-        filesFailedToUpdate: 0, 
-        conflictedExtensions: [], 
-        missingExtensions: [] 
+  const user = await getCurrentUser();
+  if (!user) {
+    return {
+      success: false,
+      message: "Authentication required.",
+      updatedCount: 0,
+      filesModified: 0,
+      filesFailedToUpdate: 0,
+      conflictedExtensions: [],
+      missingExtensions: [],
     };
   }
 
@@ -895,3 +895,5 @@ async function processDirectory(
       }
     }
 }
+
+    
