@@ -50,6 +50,8 @@ export async function loginAction(formData: FormData): Promise<{ error?: string 
       maxAge: 60 * 60 * 24 * 7, // 1 week
     });
     
+    // Revalidating the layout ensures the header and other auth-dependent components
+    // get the new session state.
     revalidatePath('/', 'layout');
 
   } catch (error: any) {
@@ -57,6 +59,8 @@ export async function loginAction(formData: FormData): Promise<{ error?: string 
     return { error: 'An unexpected server error occurred.' };
   }
   
+  // By redirecting from the server action itself, we ensure the session is
+  // fully established before the next page loads. This is the key fix.
   redirect('/import-xml');
 }
 
@@ -81,12 +85,13 @@ export async function getCurrentUser(): Promise<UserSession | null> {
 
   try {
     const sessionData = JSON.parse(cookieValue);
+    // Use safeParse to validate the cookie structure.
     const validation = UserSessionSchema.safeParse(sessionData);
 
     if (validation.success) {
       return validation.data;
     } else {
-      console.warn('[Auth - getCurrentUser] Session data failed validation:', validation.error);
+      console.warn('[Auth - getCurrentUser] Session data in cookie failed validation:', validation.error);
       return null;
     }
   } catch (error) {
@@ -94,3 +99,4 @@ export async function getCurrentUser(): Promise<UserSession | null> {
     return null;
   }
 }
+
