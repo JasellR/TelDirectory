@@ -637,13 +637,25 @@ export async function updateXmlUrlsAction(host: string, port: string): Promise<{
 }
 
 export async function importExtensionsFromCsvAction(csvContent: string): Promise<CsvImportResult> {
+    const authenticated = await isAuthenticated();
+    if (!authenticated) {
+        return { success: false, message: "Authentication required." };
+    }
     return { success: false, message: "This feature is not yet implemented."};
 }
 
 export async function syncNamesFromXmlFeedAction(feedUrlsString: string): Promise<SyncResult> {
   const authenticated = await isAuthenticated();
   if (!authenticated) {
-    return { success: false, message: "Authentication required.", updatedCount: 0, filesModified: 0, filesFailedToUpdate: 0, conflictedExtensions: [], missingExtensions: [] };
+    return { 
+        success: false, 
+        message: "Authentication required.",
+        updatedCount: 0, 
+        filesModified: 0, 
+        filesFailedToUpdate: 0, 
+        conflictedExtensions: [], 
+        missingExtensions: [] 
+    };
   }
 
   const urls = feedUrlsString.split('\n').map(url => url.trim()).filter(Boolean);
@@ -759,6 +771,10 @@ export async function syncNamesFromXmlFeedAction(feedUrlsString: string): Promis
 }
 
 export async function syncFromActiveDirectoryAction(params: AdSyncFormValues): Promise<AdSyncResult> {
+    const authenticated = await isAuthenticated();
+    if (!authenticated) {
+        return { success: false, message: "Authentication required." };
+    }
     return { success: false, message: "This feature is not yet implemented."};
 }
 
