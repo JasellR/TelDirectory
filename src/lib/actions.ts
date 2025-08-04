@@ -412,11 +412,12 @@ export async function deleteLocalityOrBranchAction(params: {
         parentMenu.CiscoIPPhoneMenu.MenuItem = ensureArray(parentMenu.CiscoIPPhoneMenu.MenuItem).filter((item: any) => {
             return extractIdFromUrl(item.URL) !== itemId;
         });
+        
         if (ensureArray(parentMenu.CiscoIPPhoneMenu.MenuItem).length < originalLength) {
             itemRemoved = true;
         }
 
-        if (itemRemoved) {
+        if(itemRemoved) {
             await buildAndWriteXML(parentMenuPath, parentMenu);
         }
 
@@ -639,8 +640,122 @@ export async function importExtensionsFromCsvAction(csvContent: string): Promise
     return { success: false, message: "This feature is not yet implemented."};
 }
 
-export async function syncNamesFromXmlFeedAction(feedUrls: string): Promise<SyncResult> {
-    return { success: false, message: "This feature is not yet implemented.", updatedCount: 0, filesModified: 0, filesFailedToUpdate: 0, conflictedExtensions: [], missingExtensions: [] };
+export async function syncNamesFromXmlFeedAction(feedUrlsString: string): Promise<SyncResult> {
+  const authenticated = await isAuthenticated();
+  if (!authenticated) {
+    return { success: false, message: "Authentication required.", updatedCount: 0, filesModified: 0, filesFailedToUpdate: 0, conflictedExtensions: [], missingExtensions: [] };
+  }
+
+  const urls = feedUrlsString.split('\n').map(url => url.trim()).filter(Boolean);
+  if (urls.length === 0) {
+    return { success: false, message: "No feed URLs provided.", updatedCount: 0, filesModified: 0, filesFailedToUpdate: 0, conflictedExtensions: [], missingExtensions: [] };
+  }
+
+  const paths = await getPaths();
+  const allFeedExtensions: Record<string, { name: string, sourceFeed: string }[]> = {};
+
+  // 1. Fetch and parse all feeds
+  for (const url of urls) {
+    try {
+      const response = await fetch(url);
+      if (!response.ok) {
+        console.warn(`[SyncFeed] Failed to fetch ${url}: ${response.statusText}`);
+        continue;
+      }
+      const xmlContent = await response.text();
+      const parsed = await parseStringPromise(xmlContent, { explicitArray: false, trim: true });
+      const validated = CiscoIPPhoneDirectorySchema.safeParse(parsed.CiscoIPPhoneDirectory);
+
+      if (validated.success) {
+        const entries = ensureArray(validated.data.DirectoryEntry);
+        for (const entry of entries) {
+          if (!allFeedExtensions[entry.Telephone]) {
+            allFeedExtensions[entry.Telephone] = [];
+          }
+          allFeedExtensions[entry.Telephone].push({ name: entry.Name, sourceFeed: url });
+        }
+      }
+    } catch (e: any) {
+      console.warn(`[SyncFeed] Error processing feed ${url}:`, e.message);
+    }
+  }
+
+  // 2. Identify conflicts and prepare a clean update map
+  const extensionsToUpdate: Record<string, string> = {};
+  const conflictedExtensions: ConflictedExtensionInfo[] = [];
+  
+  for (const number in allFeedExtensions) {
+    const sources = allFeedExtensions[number];
+    const uniqueNames = new Set(sources.map(s => s.name));
+    if (uniqueNames.size > 1) {
+      conflictedExtensions.push({ number, conflicts: sources.map(s => ({ name: s.name, sourceFeed: s.sourceFeed })) });
+    } else {
+      extensionsToUpdate[number] = sources[0].name;
+    }
+  }
+
+  // 3. Scan local department files and update names
+  let updatedCount = 0;
+  let filesModified = 0;
+  let filesFailedToUpdate = 0;
+  const localExtensionsFound = new Set<string>();
+
+  try {
+    const departmentFiles = await fs.readdir(paths.DEPARTMENT_DIR);
+    for (const file of departmentFiles) {
+      if (file.endsWith('.xml')) {
+        const filePath = path.join(paths.DEPARTMENT_DIR, file);
+        try {
+          const content = await readAndParseXML(filePath);
+          if (!content?.CiscoIPPhoneDirectory) continue;
+
+          let fileWasModified = false;
+          const entries = ensureArray(content.CiscoIPPhoneDirectory.DirectoryEntry);
+          const updatedEntries = entries.map(entry => {
+            localExtensionsFound.add(entry.Telephone);
+            const newName = extensionsToUpdate[entry.Telephone];
+            if (newName && newName !== entry.Name) {
+              entry.Name = newName;
+              updatedCount++;
+              fileWasModified = true;
+            }
+            return entry;
+          });
+
+          if (fileWasModified) {
+            content.CiscoIPPhoneDirectory.DirectoryEntry = updatedEntries;
+            await buildAndWriteXML(filePath, content);
+            filesModified++;
+          }
+        } catch (e) {
+          filesFailedToUpdate++;
+          console.warn(`[SyncFeed] Could not process or update local file ${file}:`, e);
+        }
+      }
+    }
+  } catch (e: any) {
+    return { success: false, message: "Error reading local department directory.", error: e.message, updatedCount: 0, filesModified: 0, filesFailedToUpdate: 0, conflictedExtensions: [], missingExtensions: [] };
+  }
+
+  // 4. Identify missing extensions
+  const missingExtensions: MissingExtensionInfo[] = [];
+  for (const number in extensionsToUpdate) {
+    if (!localExtensionsFound.has(number)) {
+      missingExtensions.push({ number, name: extensionsToUpdate[number], sourceFeed: allFeedExtensions[number][0].sourceFeed });
+    }
+  }
+
+  revalidatePath('/', 'layout');
+
+  return {
+    success: true,
+    message: `Sync complete. ${updatedCount} extensions updated across ${filesModified} files.`,
+    updatedCount,
+    filesModified,
+    filesFailedToUpdate,
+    conflictedExtensions,
+    missingExtensions,
+  };
 }
 
 export async function syncFromActiveDirectoryAction(params: AdSyncFormValues): Promise<AdSyncResult> {
