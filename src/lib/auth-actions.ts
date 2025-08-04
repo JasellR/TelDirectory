@@ -6,8 +6,17 @@ import { redirect } from 'next/navigation';
 import { getDb, bcrypt } from './db';
 import type { UserSession } from '@/types';
 import { revalidatePath } from 'next/cache';
+import { z } from 'zod';
+
 
 const AUTH_COOKIE_NAME = 'teldirectory-session';
+
+// Define a Zod schema for robust session validation
+const UserSessionSchema = z.object({
+  userId: z.number().int().positive(),
+  username: z.string().min(1),
+});
+
 
 export async function loginAction(formData: FormData): Promise<{ error?: string }> {
   const username = formData.get('username') as string;
@@ -31,8 +40,8 @@ export async function loginAction(formData: FormData): Promise<{ error?: string 
       return { error: 'Invalid username or password.' };
     }
 
-    // If credentials are correct, set cookie and redirect.
     const sessionData: UserSession = { userId: user.id, username: user.username };
+    
     cookies().set(AUTH_COOKIE_NAME, JSON.stringify(sessionData), {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
@@ -40,17 +49,14 @@ export async function loginAction(formData: FormData): Promise<{ error?: string 
       sameSite: 'lax',
       maxAge: 60 * 60 * 24 * 7, // 1 week
     });
-
-    // Revalidate the entire app layout to ensure new session state is picked up
+    
     revalidatePath('/', 'layout');
 
   } catch (error: any) {
-    // Catch db errors or other unexpected issues
     console.error('[Login Action] Error:', error);
     return { error: 'An unexpected server error occurred.' };
   }
   
-  // Redirect must be called outside of try/catch blocks
   redirect('/import-xml');
 }
 
@@ -66,19 +72,25 @@ export async function isAuthenticated(): Promise<boolean> {
 }
 
 export async function getCurrentUser(): Promise<UserSession | null> {
-  const cookieValue = cookies().get(AUTH_COOKIE_NAME)?.value;
+  const cookieStore = cookies();
+  const cookieValue = cookieStore.get(AUTH_COOKIE_NAME)?.value;
   
   if (!cookieValue) {
     return null;
   }
+
   try {
-    const session = JSON.parse(cookieValue) as UserSession;
-    if (session.userId && session.username && typeof session.userId === 'number' && session.userId > 0) {
-      return session;
+    const sessionData = JSON.parse(cookieValue);
+    const validation = UserSessionSchema.safeParse(sessionData);
+
+    if (validation.success) {
+      return validation.data;
+    } else {
+      console.warn('[Auth - getCurrentUser] Session data failed validation:', validation.error);
+      return null;
     }
-    return null;
   } catch (error) {
-    console.error(`[Auth - getCurrentUser] Error parsing session cookie:`, error, "Cookie Value (first 50 chars):", cookieValue.substring(0,50));
+    console.error(`[Auth - getCurrentUser] Error parsing session cookie:`, error);
     return null;
   }
 }
