@@ -827,10 +827,10 @@ async function processDirectory(
     // Case 1: The item is a department/locality. Process its extensions.
     if (itemType === 'locality') {
       const departmentFilePath = path.join(paths.DEPARTMENT_DIR, `${itemId}.xml`);
-      const departmentContent = await readFileContent(departmentFilePath);
       let localityNameMatch = name.toLowerCase().includes(lowerQuery);
       const matchingExtensions: MatchedExtension[] = [];
 
+      const departmentContent = await readFileContent(departmentFilePath);
       if (departmentContent) {
         const parsedDept = await readAndParseXML(departmentFilePath);
         const extensions = ensureArray(parsedDept?.CiscoIPPhoneDirectory?.DirectoryEntry);
@@ -872,21 +872,15 @@ async function processDirectory(
     // Case 2: The item is a menu (zonebranch or branch). Recurse into it.
     else if (itemType === 'branch' || itemType === 'unknown') {
       let menuFilePath = '';
-      const urlPath = new URL(url).pathname;
-      const cleanPath = path.normalize(urlPath).replace(/^(\/|\\)/, ''); // Normalize and remove leading slash
       
-      // Construct an absolute path based on the ivoxsRoot
-      const ivoxsRoot = paths.IVOXS_DIR;
-      
-      // This logic is tricky because urlPath could be anything.
-      // A more robust way is to check the type and construct path from ID.
       if (url.includes('/zonebranch/')) {
         menuFilePath = path.join(paths.ZONE_BRANCH_DIR, `${itemId}.xml`);
       } else if (url.includes('/branch/')) {
         menuFilePath = path.join(paths.BRANCH_DIR, `${itemId}.xml`);
       } else {
-        // Fallback for unknown but potentially valid relative paths
-        menuFilePath = path.join(ivoxsRoot, cleanPath);
+        const urlPath = new URL(url).pathname;
+        const cleanPath = path.normalize(urlPath).replace(/^(\/|\\)/, '');
+        menuFilePath = path.join(paths.IVOXS_DIR, cleanPath);
       }
       
       let newContext = { ...context };
@@ -906,5 +900,3 @@ async function processDirectory(
       }
     }
 }
-
-    
