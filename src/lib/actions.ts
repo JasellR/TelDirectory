@@ -790,6 +790,9 @@ export async function searchAllDepartmentsAndExtensionsAction(query: string): Pr
     const paths = await getPaths();
     const lowerQuery = query.toLowerCase();
     let results: GlobalSearchResult[] = [];
+    
+    // This map will prevent adding duplicate localities.
+    const addedLocalities = new Map<string, GlobalSearchResult>();
   
     const mainMenuContent = await readFileContent(path.join(paths.IVOXS_DIR, paths.MAINMENU_FILENAME));
     if (!mainMenuContent) {
@@ -801,28 +804,26 @@ export async function searchAllDepartmentsAndExtensionsAction(query: string): Pr
   
     for (const zoneMenuItem of zones) {
       await processDirectory(
-        zoneMenuItem.URL,
-        zoneMenuItem.Name,
+        zoneMenuItem,
         lowerQuery,
-        results,
+        addedLocalities,
         { zoneId: extractIdFromUrl(zoneMenuItem.URL), zoneName: zoneMenuItem.Name },
         paths
       );
     }
   
-    return results;
+    return Array.from(addedLocalities.values());
 }
   
 async function processDirectory(
-    url: string,
-    name: string,
+    menuItem: { Name: string, URL: string },
     lowerQuery: string,
-    results: GlobalSearchResult[],
+    resultsMap: Map<string, GlobalSearchResult>,
     context: { zoneId: string; zoneName: string; branchId?: string; branchName?: string },
     paths: Awaited<ReturnType<typeof getPaths>>
 ) {
-    const itemType = getItemTypeFromUrl(url);
-    const itemId = extractIdFromUrl(url);
+    const itemType = getItemTypeFromUrl(menuItem.URL);
+    const itemId = extractIdFromUrl(menuItem.URL);
 
     if (itemType === 'locality') {
         const departmentFilePath = path.join(paths.DEPARTMENT_DIR, `${itemId}.xml`);
@@ -850,14 +851,14 @@ async function processDirectory(
                 console.warn(`Could not parse department XML ${itemId}.xml`, e);
             }
         }
-
-        const localityNameMatch = name.toLowerCase().includes(lowerQuery);
+        
+        const localityNameMatch = menuItem.Name.toLowerCase().includes(lowerQuery);
         
         if (localityNameMatch || matchingExtensions.length > 0) {
-            if (!results.some(r => r.localityId === itemId)) {
-                results.push({
+             if (!resultsMap.has(itemId)) {
+                resultsMap.set(itemId, {
                     localityId: itemId,
-                    localityName: name,
+                    localityName: menuItem.Name,
                     zoneId: context.zoneId,
                     zoneName: context.zoneName,
                     branchId: context.branchId,
@@ -868,20 +869,18 @@ async function processDirectory(
                     localityNameMatch,
                     matchingExtensions,
                 });
+            } else {
+                // If locality already exists due to a name match, just add the extension matches.
+                const existing = resultsMap.get(itemId)!;
+                existing.matchingExtensions.push(...matchingExtensions);
             }
         }
     } else { // It's a menu (zonebranch, branch, or unknown/main)
         let menuFilePath = '';
-        const urlPathObj = new URL(url, 'http://dummybase.com');
-        const urlPath = urlPathObj.pathname;
-
-        if (urlPath.includes('/zonebranch/')) {
-            menuFilePath = path.join(paths.ZONE_BRANCH_DIR, `${itemId}.xml`);
-        } else if (urlPath.includes('/branch/')) {
-            menuFilePath = path.join(paths.BRANCH_DIR, `${itemId}.xml`);
-        } else {
-             const cleanPath = path.normalize(urlPath).replace(/^(\/|\\)/, '');
-             menuFilePath = path.join(paths.IVOXS_DIR, cleanPath);
+        if (itemType === 'branch') {
+             menuFilePath = path.join(paths.BRANCH_DIR, `${itemId}.xml`);
+        } else { // Zone or other menu type
+             menuFilePath = path.join(paths.ZONE_BRANCH_DIR, `${itemId}.xml`);
         }
 
         const menuContent = await readFileContent(menuFilePath);
@@ -889,21 +888,20 @@ async function processDirectory(
 
         try {
             const parsedMenu = await parseStringPromise(menuContent, { explicitArray: false, trim: true });
-            const menuItems = ensureArray(parsedMenu?.CiscoIPPhoneMenu?.MenuItem);
+            const subMenuItems = ensureArray(parsedMenu?.CiscoIPPhoneMenu?.MenuItem);
             
             let newContext = { ...context };
-            if (itemType === 'branch') {
+             if (itemType === 'branch') {
                 newContext.branchId = itemId;
-                newContext.branchName = name;
+                newContext.branchName = menuItem.Name;
             }
 
-            for (const menuItem of menuItems) {
-                await processDirectory(menuItem.URL, menuItem.Name, lowerQuery, results, newContext, paths);
+            for (const subMenuItem of subMenuItems) {
+                await processDirectory(subMenuItem, lowerQuery, resultsMap, newContext, paths);
             }
         } catch (e) {
              console.warn(`Could not parse menu XML ${menuFilePath}`, e);
         }
     }
 }
-
     
