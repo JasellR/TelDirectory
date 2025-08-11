@@ -870,19 +870,30 @@ async function processDirectory(
     }
     
     // Case 2: The item is a menu (zonebranch or branch). Recurse into it.
-    else if (itemType === 'branch' || itemType === 'unknown') { // Treat unknown as a potential menu
+    else if (itemType === 'branch' || itemType === 'unknown') {
       let menuFilePath = '';
-      let newContext = { ...context };
-
+      const urlPath = new URL(url).pathname;
+      const cleanPath = path.normalize(urlPath).replace(/^(\/|\\)/, ''); // Normalize and remove leading slash
+      
+      // Construct an absolute path based on the ivoxsRoot
+      const ivoxsRoot = paths.IVOXS_DIR;
+      
+      // This logic is tricky because urlPath could be anything.
+      // A more robust way is to check the type and construct path from ID.
       if (url.includes('/zonebranch/')) {
         menuFilePath = path.join(paths.ZONE_BRANCH_DIR, `${itemId}.xml`);
       } else if (url.includes('/branch/')) {
         menuFilePath = path.join(paths.BRANCH_DIR, `${itemId}.xml`);
-        newContext.branchId = itemId;
-        newContext.branchName = name;
+      } else {
+        // Fallback for unknown but potentially valid relative paths
+        menuFilePath = path.join(ivoxsRoot, cleanPath);
       }
       
-      if (!menuFilePath) return;
+      let newContext = { ...context };
+      if (itemType === 'branch') {
+          newContext.branchId = itemId;
+          newContext.branchName = name;
+      }
 
       const menuContent = await readFileContent(menuFilePath);
       if (!menuContent) return;
