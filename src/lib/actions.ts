@@ -824,79 +824,80 @@ async function processDirectory(
     const itemType = getItemTypeFromUrl(url);
     const itemId = extractIdFromUrl(url);
 
-    // Case 1: The item is a department/locality. Process its extensions.
-    if (itemType === 'locality') {
-      const departmentFilePath = path.join(paths.DEPARTMENT_DIR, `${itemId}.xml`);
-      let localityNameMatch = name.toLowerCase().includes(lowerQuery);
-      const matchingExtensions: MatchedExtension[] = [];
-
-      const departmentContent = await readFileContent(departmentFilePath);
-      if (departmentContent) {
-        const parsedDept = await readAndParseXML(departmentFilePath);
-        const extensions = ensureArray(parsedDept?.CiscoIPPhoneDirectory?.DirectoryEntry);
-
-        for (const ext of extensions) {
-          let matchedOn: MatchedExtension['matchedOn'] | null = null;
-          if (ext.Name.toLowerCase().includes(lowerQuery)) {
-            matchedOn = 'extensionName';
-          } else if (ext.Telephone.toLowerCase().includes(lowerQuery)) {
-            matchedOn = 'extensionNumber';
-          }
-
-          if (matchedOn) {
-            matchingExtensions.push({ name: ext.Name, number: ext.Telephone, matchedOn });
-          }
-        }
-      }
-
-      if (localityNameMatch || matchingExtensions.length > 0) {
-        // Avoid adding duplicates if already found via another path
-        if (!results.some(r => r.localityId === itemId)) {
-            results.push({
-                localityId: itemId,
-                localityName: name,
-                zoneId: context.zoneId,
-                zoneName: context.zoneName,
-                branchId: context.branchId,
-                branchName: context.branchName,
-                fullPath: context.branchId
-                ? `/${context.zoneId}/branches/${context.branchId}/localities/${itemId}`
-                : `/${context.zoneId}/localities/${itemId}`,
-                localityNameMatch,
-                matchingExtensions,
-            });
-        }
-      }
-    }
+    // This function will now handle both menus and localities.
     
-    // Case 2: The item is a menu (zonebranch or branch). Recurse into it.
-    else if (itemType === 'branch' || itemType === 'unknown') {
-      let menuFilePath = '';
-      
-      if (url.includes('/zonebranch/')) {
-        menuFilePath = path.join(paths.ZONE_BRANCH_DIR, `${itemId}.xml`);
-      } else if (url.includes('/branch/')) {
-        menuFilePath = path.join(paths.BRANCH_DIR, `${itemId}.xml`);
-      } else {
-        const urlPath = new URL(url).pathname;
-        const cleanPath = path.normalize(urlPath).replace(/^(\/|\\)/, '');
-        menuFilePath = path.join(paths.IVOXS_DIR, cleanPath);
-      }
-      
-      let newContext = { ...context };
-      if (itemType === 'branch') {
-          newContext.branchId = itemId;
-          newContext.branchName = name;
-      }
+    // First, check if the current item (be it menu or locality) itself is a match
+    let isNameMatch = name.toLowerCase().includes(lowerQuery);
 
-      const menuContent = await readFileContent(menuFilePath);
-      if (!menuContent) return;
-      
-      const parsedMenu = await parseStringPromise(menuContent, { explicitArray: false, trim: true });
-      const menuItems = ensureArray(parsedMenu?.CiscoIPPhoneMenu?.MenuItem);
+    if (itemType === 'locality') {
+        const departmentFilePath = path.join(paths.DEPARTMENT_DIR, `${itemId}.xml`);
+        const matchingExtensions: MatchedExtension[] = [];
 
-      for (const menuItem of menuItems) {
-        await processDirectory(menuItem.URL, menuItem.Name, lowerQuery, results, newContext, paths);
-      }
+        const departmentContent = await readFileContent(departmentFilePath);
+        if (departmentContent) {
+            const parsedDept = await readAndParseXML(departmentFilePath);
+            const extensions = ensureArray(parsedDept?.CiscoIPPhoneDirectory?.DirectoryEntry);
+
+            for (const ext of extensions) {
+                let matchedOn: MatchedExtension['matchedOn'] | null = null;
+                if (ext.Name.toLowerCase().includes(lowerQuery)) {
+                    matchedOn = 'extensionName';
+                } else if (ext.Telephone.toLowerCase().includes(lowerQuery)) {
+                    matchedOn = 'extensionNumber';
+                }
+
+                if (matchedOn) {
+                    matchingExtensions.push({ name: ext.Name, number: ext.Telephone, matchedOn });
+                }
+            }
+        }
+
+        if (isNameMatch || matchingExtensions.length > 0) {
+            if (!results.some(r => r.localityId === itemId)) {
+                results.push({
+                    localityId: itemId,
+                    localityName: name,
+                    zoneId: context.zoneId,
+                    zoneName: context.zoneName,
+                    branchId: context.branchId,
+                    branchName: context.branchName,
+                    fullPath: context.branchId
+                        ? `/${context.zoneId}/branches/${context.branchId}/localities/${itemId}`
+                        : `/${context.zoneId}/localities/${itemId}`,
+                    localityNameMatch: isNameMatch,
+                    matchingExtensions,
+                });
+            }
+        }
+    } else { // It's a menu (zonebranch, branch, or unknown/main)
+        let menuFilePath = '';
+        if (url.includes('/zonebranch/')) {
+            menuFilePath = path.join(paths.ZONE_BRANCH_DIR, `${itemId}.xml`);
+        } else if (url.includes('/branch/')) {
+            menuFilePath = path.join(paths.BRANCH_DIR, `${itemId}.xml`);
+        } else {
+             const urlPath = new URL(url).pathname;
+             const cleanPath = path.normalize(urlPath).replace(/^(\/|\\)/, '');
+             menuFilePath = path.join(paths.IVOXS_DIR, cleanPath);
+        }
+
+        const menuContent = await readFileContent(menuFilePath);
+        if (!menuContent) return;
+
+        const parsedMenu = await parseStringPromise(menuContent, { explicitArray: false, trim: true });
+        const menuItems = ensureArray(parsedMenu?.CiscoIPPhoneMenu?.MenuItem);
+        
+        // The menu's name itself could be a match. If so, all its children are potential results.
+        // For simplicity, we recurse and let the children determine if they should be added.
+        
+        let newContext = { ...context };
+        if (itemType === 'branch') {
+            newContext.branchId = itemId;
+            newContext.branchName = name;
+        }
+
+        for (const menuItem of menuItems) {
+            await processDirectory(menuItem.URL, menuItem.Name, lowerQuery, results, newContext, paths);
+        }
     }
 }
