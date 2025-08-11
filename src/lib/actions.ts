@@ -783,125 +783,110 @@ export async function syncFromActiveDirectoryAction(params: AdSyncFormValues): P
 // ===================
 
 export async function searchAllDepartmentsAndExtensionsAction(query: string): Promise<GlobalSearchResult[]> {
-    if (query.trim().length < 2) {
-      return [];
-    }
+  if (query.trim().length < 2) {
+    return [];
+  }
+
+  const paths = await getPaths();
+  const lowerQuery = query.toLowerCase();
   
-    const paths = await getPaths();
-    const lowerQuery = query.toLowerCase();
-    let results: GlobalSearchResult[] = [];
-    
-    // This map will prevent adding duplicate localities.
-    const addedLocalities = new Map<string, GlobalSearchResult>();
+  const allLocalities = new Map<string, {name: string, zoneId: string, zoneName: string, branchId?: string, branchName?: string}>();
+
+  // Helper to recursively parse menus and populate the allLocalities map
+  const processMenu = async (filePath: string, context: {zoneId: string, zoneName: string, branchId?: string, branchName?: string}) => {
+      const menuContent = await readFileContent(filePath);
+      if (!menuContent) return;
+      
+      const parsedMenu = await parseStringPromise(menuContent, { explicitArray: false, trim: true });
+      const menuItems = ensureArray(parsedMenu?.CiscoIPPhoneMenu?.MenuItem);
+
+      for (const item of menuItems) {
+          const itemId = extractIdFromUrl(item.URL);
+          const itemType = getItemTypeFromUrl(item.URL);
+
+          if (itemType === 'locality') {
+              if (!allLocalities.has(itemId)) {
+                allLocalities.set(itemId, { name: item.Name, ...context });
+              }
+          } else if (itemType === 'branch') {
+              const newContext = { ...context, branchId: itemId, branchName: item.Name };
+              const branchFilePath = path.join(paths.BRANCH_DIR, `${itemId}.xml`);
+              await processMenu(branchFilePath, newContext);
+          }
+      }
+  };
+
+  // Start processing from MainMenu to discover all zones
+  const mainMenuContent = await readFileContent(path.join(paths.IVOXS_DIR, paths.MAINMENU_FILENAME));
+  if (mainMenuContent) {
+      const parsedMainMenu = await parseStringPromise(mainMenuContent, { explicitArray: false, trim: true });
+      const zones = ensureArray(parsedMainMenu.CiscoIPPhoneMenu.MenuItem);
+
+      for (const zoneMenuItem of zones) {
+          const zoneId = extractIdFromUrl(zoneMenuItem.URL);
+          const zoneContext = { zoneId: zoneId, zoneName: zoneMenuItem.Name };
+          const zoneFilePath = path.join(paths.ZONE_BRANCH_DIR, `${zoneId}.xml`);
+          await processMenu(zoneFilePath, zoneContext);
+      }
+  }
+
+  // Now, search within the fully mapped localities
+  const resultsMap = new Map<string, GlobalSearchResult>();
+
+  for (const [localityId, localityInfo] of allLocalities.entries()) {
+      const localityNameMatch = localityInfo.name.toLowerCase().includes(lowerQuery);
+      let matchingExtensions: MatchedExtension[] = [];
+
+      const departmentFilePath = path.join(paths.DEPARTMENT_DIR, `${localityId}.xml`);
+      const departmentContent = await readFileContent(departmentFilePath);
+      if (departmentContent) {
+          try {
+              const parsedDept = await readAndParseXML(departmentFilePath);
+              const extensions = ensureArray(parsedDept?.CiscoIPPhoneDirectory?.DirectoryEntry);
+
+              for (const ext of extensions) {
+                  let matchedOn: MatchedExtension['matchedOn'] | null = null;
+                  if (ext.Name.toLowerCase().includes(lowerQuery)) {
+                      matchedOn = 'extensionName';
+                  } else if (ext.Telephone.toLowerCase().includes(lowerQuery)) {
+                      matchedOn = 'extensionNumber';
+                  }
+                  if (matchedOn) {
+                      matchingExtensions.push({ name: ext.Name, number: ext.Telephone, matchedOn });
+                  }
+              }
+          } catch (e) {
+              console.warn(`Could not parse department XML ${localityId}.xml for search`, e);
+          }
+      }
+
+      if (localityNameMatch || matchingExtensions.length > 0) {
+          if (!resultsMap.has(localityId)) {
+               resultsMap.set(localityId, {
+                  localityId: localityId,
+                  localityName: localityInfo.name,
+                  zoneId: localityInfo.zoneId,
+                  zoneName: localityInfo.zoneName,
+                  branchId: localityInfo.branchId,
+                  branchName: localityInfo.branchName,
+                  fullPath: localityInfo.branchId
+                      ? `/${localityInfo.zoneId}/branches/${localityInfo.branchId}/localities/${localityId}`
+                      : `/${localityInfo.zoneId}/localities/${localityId}`,
+                  localityNameMatch,
+                  matchingExtensions,
+              });
+          } else {
+              // This case is less likely now but safe to keep: if it already exists, merge extension matches
+              const existing = resultsMap.get(localityId)!;
+              existing.matchingExtensions.push(...matchingExtensions);
+              if (localityNameMatch) {
+                  existing.localityNameMatch = true;
+              }
+          }
+      }
+  }
   
-    const mainMenuContent = await readFileContent(path.join(paths.IVOXS_DIR, paths.MAINMENU_FILENAME));
-    if (!mainMenuContent) {
-      return [];
-    }
-  
-    const parsedMainMenu = await parseStringPromise(mainMenuContent, { explicitArray: false, trim: true });
-    const zones = ensureArray(parsedMainMenu.CiscoIPPhoneMenu.MenuItem);
-  
-    for (const zoneMenuItem of zones) {
-      await processDirectory(
-        zoneMenuItem,
-        lowerQuery,
-        addedLocalities,
-        { zoneId: extractIdFromUrl(zoneMenuItem.URL), zoneName: zoneMenuItem.Name },
-        paths
-      );
-    }
-  
-    return Array.from(addedLocalities.values());
-}
-  
-async function processDirectory(
-    menuItem: { Name: string, URL: string },
-    lowerQuery: string,
-    resultsMap: Map<string, GlobalSearchResult>,
-    context: { zoneId: string; zoneName: string; branchId?: string; branchName?: string },
-    paths: Awaited<ReturnType<typeof getPaths>>
-) {
-    const itemType = getItemTypeFromUrl(menuItem.URL);
-    const itemId = extractIdFromUrl(menuItem.URL);
-
-    if (itemType === 'locality') {
-        const departmentFilePath = path.join(paths.DEPARTMENT_DIR, `${itemId}.xml`);
-        const matchingExtensions: MatchedExtension[] = [];
-
-        const departmentContent = await readFileContent(departmentFilePath);
-        if (departmentContent) {
-            try {
-                const parsedDept = await readAndParseXML(departmentFilePath);
-                const extensions = ensureArray(parsedDept?.CiscoIPPhoneDirectory?.DirectoryEntry);
-
-                for (const ext of extensions) {
-                    let matchedOn: MatchedExtension['matchedOn'] | null = null;
-                    if (ext.Name.toLowerCase().includes(lowerQuery)) {
-                        matchedOn = 'extensionName';
-                    } else if (ext.Telephone.toLowerCase().includes(lowerQuery)) {
-                        matchedOn = 'extensionNumber';
-                    }
-
-                    if (matchedOn) {
-                        matchingExtensions.push({ name: ext.Name, number: ext.Telephone, matchedOn });
-                    }
-                }
-            } catch (e) {
-                console.warn(`Could not parse department XML ${itemId}.xml`, e);
-            }
-        }
-        
-        const localityNameMatch = menuItem.Name.toLowerCase().includes(lowerQuery);
-        
-        if (localityNameMatch || matchingExtensions.length > 0) {
-             if (!resultsMap.has(itemId)) {
-                resultsMap.set(itemId, {
-                    localityId: itemId,
-                    localityName: menuItem.Name,
-                    zoneId: context.zoneId,
-                    zoneName: context.zoneName,
-                    branchId: context.branchId,
-                    branchName: context.branchName,
-                    fullPath: context.branchId
-                        ? `/${context.zoneId}/branches/${context.branchId}/localities/${itemId}`
-                        : `/${context.zoneId}/localities/${itemId}`,
-                    localityNameMatch,
-                    matchingExtensions,
-                });
-            } else {
-                // If locality already exists due to a name match, just add the extension matches.
-                const existing = resultsMap.get(itemId)!;
-                existing.matchingExtensions.push(...matchingExtensions);
-            }
-        }
-    } else { // It's a menu (zonebranch, branch, or unknown/main)
-        let menuFilePath = '';
-        if (itemType === 'branch') {
-             menuFilePath = path.join(paths.BRANCH_DIR, `${itemId}.xml`);
-        } else { // Zone or other menu type
-             menuFilePath = path.join(paths.ZONE_BRANCH_DIR, `${itemId}.xml`);
-        }
-
-        const menuContent = await readFileContent(menuFilePath);
-        if (!menuContent) return;
-
-        try {
-            const parsedMenu = await parseStringPromise(menuContent, { explicitArray: false, trim: true });
-            const subMenuItems = ensureArray(parsedMenu?.CiscoIPPhoneMenu?.MenuItem);
-            
-            let newContext = { ...context };
-             if (itemType === 'branch') {
-                newContext.branchId = itemId;
-                newContext.branchName = menuItem.Name;
-            }
-
-            for (const subMenuItem of subMenuItems) {
-                await processDirectory(subMenuItem, lowerQuery, resultsMap, newContext, paths);
-            }
-        } catch (e) {
-             console.warn(`Could not parse menu XML ${menuFilePath}`, e);
-        }
-    }
+  return Array.from(resultsMap.values());
 }
     
+
