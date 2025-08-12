@@ -889,4 +889,3 @@ export async function searchAllDepartmentsAndExtensionsAction(query: string): Pr
   return Array.from(resultsMap.values());
 }
     
-
