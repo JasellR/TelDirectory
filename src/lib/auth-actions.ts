@@ -41,8 +41,8 @@ export async function loginAction(formData: FormData): Promise<{ error?: string 
     }
 
     const sessionData: UserSession = { userId: user.id, username: user.username };
-    
-    cookies().set(AUTH_COOKIE_NAME, JSON.stringify(sessionData), {
+    const cookieStore = cookies();
+    cookieStore.set(AUTH_COOKIE_NAME, JSON.stringify(sessionData), {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
       path: '/',
@@ -66,7 +66,8 @@ export async function loginAction(formData: FormData): Promise<{ error?: string 
 
 
 export async function logoutAction(): Promise<void> {
-  cookies().delete(AUTH_COOKIE_NAME);
+  const cookieStore = cookies();
+  cookieStore.delete(AUTH_COOKIE_NAME);
   revalidatePath('/', 'layout');
 }
 
@@ -99,4 +100,3 @@ export async function getCurrentUser(): Promise<UserSession | null> {
     return null;
   }
 }
-
