@@ -4,20 +4,49 @@ import { promises as fs } from 'fs';
 import { NextResponse } from 'next/server';
 import path from 'path';
 
+// This function attempts to find a file in a directory, ignoring case.
+// This is crucial because the filesystem might be case-sensitive (like Linux)
+// while the IDs in the XML might have inconsistent casing.
+async function findFileCaseInsensitive(directory: string, filename: string): Promise<string | null> {
+    try {
+        const files = await fs.readdir(directory);
+        const lowerCaseFilename = filename.toLowerCase();
+        for (const file of files) {
+            if (file.toLowerCase() === lowerCaseFilename) {
+                return file; // Return the actual filename with its original casing
+            }
+        }
+        return null; // No match found
+    } catch (error) {
+        console.error(`[findFileCaseInsensitive] Error reading directory ${directory}:`, error);
+        return null;
+    }
+}
+
+
 export async function GET(
   request: Request,
   { params }: { params: { branchName: string } }
 ) {
-  const { branchName } = params;
-  if (!branchName || !/^[a-zA-Z0-9_-]+$/.test(branchName)) {
-    return new NextResponse('<error>Invalid branch name format</error>', { status: 400 });
+  const { branchName: requestedBranchName } = params;
+  // Basic sanitization
+  if (!requestedBranchName || !/^[a-zA-Z0-9_.-]+$/.test(requestedBranchName)) {
+    return new NextResponse('<error>Invalid branch name format</error>', { status: 400, headers: { 'Content-Type': 'application/xml' } });
   }
 
   try {
-    const paths = {
-      BRANCH_DIR: path.join(await getResolvedIvoxsRootPath(), 'branch'),
-    };
-    const filePath = path.join(paths.BRANCH_DIR, `${branchName}.xml`);
+    const branchDir = path.join(await getResolvedIvoxsRootPath(), 'branch');
+    const actualFilename = await findFileCaseInsensitive(branchDir, `${requestedBranchName}.xml`);
+
+    if (!actualFilename) {
+        console.error(`[Route /branch] File not found for branch: ${requestedBranchName}. Case-insensitive search failed in ${branchDir}`);
+        return new NextResponse(`<error>Branch file for ${requestedBranchName} not found</error>`, {
+            status: 404,
+            headers: { 'Content-Type': 'application/xml' },
+        });
+    }
+    
+    const filePath = path.join(branchDir, actualFilename);
     const xmlContent = await fs.readFile(filePath, 'utf-8');
 
     return new NextResponse(xmlContent, {
@@ -25,13 +54,7 @@ export async function GET(
       headers: { 'Content-Type': 'application/xml' },
     });
   } catch (error: any) {
-    console.error(`[Route /branch/${branchName}.xml] Error reading file:`, error);
-     if (error.code === 'ENOENT') {
-      return new NextResponse(`<error>Branch file for ${branchName} not found</error>`, {
-        status: 404,
-        headers: { 'Content-Type': 'application/xml' },
-      });
-    }
+    console.error(`[Route /branch/${requestedBranchName}.xml] Error reading file:`, error);
     return new NextResponse('<error>Internal Server Error</error>', {
       status: 500,
       headers: { 'Content-Type': 'application/xml' },
