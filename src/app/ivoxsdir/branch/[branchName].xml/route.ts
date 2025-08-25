@@ -5,8 +5,6 @@ import { NextResponse } from 'next/server';
 import path from 'path';
 
 // This function attempts to find a file in a directory, ignoring case.
-// This is crucial because the filesystem might be case-sensitive (like Linux)
-// while the IDs in the XML might have inconsistent casing.
 async function findFileCaseInsensitive(directory: string, filename: string): Promise<string | null> {
     try {
         const files = await fs.readdir(directory);
@@ -28,9 +26,11 @@ export async function GET(
   request: Request,
   { params }: { params: { branchName: string } }
 ) {
-  const { branchName: requestedBranchName } = params;
-  // Basic sanitization
-  if (!requestedBranchName || !/^[a-zA-Z0-9_.-]+$/.test(requestedBranchName)) {
+  // Decode the branchName from the URL (e.g., handles spaces like %20)
+  const requestedBranchName = decodeURIComponent(params.branchName);
+  
+  // Basic sanitization against path traversal
+  if (!requestedBranchName || requestedBranchName.includes('..') || requestedBranchName.includes('/')) {
     return new NextResponse('<error>Invalid branch name format</error>', { status: 400, headers: { 'Content-Type': 'application/xml' } });
   }
 

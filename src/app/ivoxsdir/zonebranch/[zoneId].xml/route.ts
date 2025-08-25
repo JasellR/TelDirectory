@@ -25,18 +25,21 @@ export async function GET(
   request: Request,
   { params }: { params: { zoneId: string } }
 ) {
-  const { zoneId } = params;
-  if (!zoneId || !/^[a-zA-Z0-9_.-]+$/.test(zoneId)) {
+  // Decode the zoneId from the URL (e.g., handles spaces like %20)
+  const requestedZoneId = decodeURIComponent(params.zoneId);
+  
+  // Basic sanitization against path traversal
+  if (!requestedZoneId || requestedZoneId.includes('..') || requestedZoneId.includes('/')) {
     return new NextResponse('<error>Invalid zone ID format</error>', { status: 400, headers: { 'Content-Type': 'application/xml' } });
   }
 
   try {
     const zoneBranchDir = path.join(await getResolvedIvoxsRootPath(), 'zonebranch');
-    const actualFilename = await findFileCaseInsensitive(zoneBranchDir, `${zoneId}.xml`);
+    const actualFilename = await findFileCaseInsensitive(zoneBranchDir, `${requestedZoneId}.xml`);
     
     if (!actualFilename) {
-        console.error(`[Route /zonebranch] File not found for zone: ${zoneId}. Case-insensitive search failed in ${zoneBranchDir}`);
-        return new NextResponse(`<error>Zone file for ${zoneId} not found</error>`, {
+        console.error(`[Route /zonebranch] File not found for zone: ${requestedZoneId}. Case-insensitive search failed in ${zoneBranchDir}`);
+        return new NextResponse(`<error>Zone file for ${requestedZoneId} not found</error>`, {
             status: 404,
             headers: { 'Content-Type': 'application/xml' },
         });
@@ -50,7 +53,7 @@ export async function GET(
       headers: { 'Content-Type': 'application/xml' },
     });
   } catch (error: any) {
-    console.error(`[Route /zonebranch/${zoneId}.xml] Error reading file:`, error);
+    console.error(`[Route /zonebranch/${requestedZoneId}.xml] Error reading file:`, error);
     return new NextResponse('<error>Internal Server Error</error>', {
       status: 500,
       headers: { 'Content-Type': 'application/xml' },

@@ -25,18 +25,21 @@ export async function GET(
   request: Request,
   { params }: { params: { localityId: string } }
 ) {
-  const { localityId } = params;
-  if (!localityId || !/^[a-zA-Z0-9_.-]+$/.test(localityId)) {
+  // Decode the localityId from the URL (e.g., handles spaces like %20)
+  const requestedLocalityId = decodeURIComponent(params.localityId);
+
+  // Basic sanitization against path traversal
+  if (!requestedLocalityId || requestedLocalityId.includes('..') || requestedLocalityId.includes('/')) {
     return new NextResponse('<error>Invalid locality ID format</error>', { status: 400, headers: { 'Content-Type': 'application/xml' } });
   }
 
   try {
     const departmentDir = path.join(await getResolvedIvoxsRootPath(), 'department');
-    const actualFilename = await findFileCaseInsensitive(departmentDir, `${localityId}.xml`);
+    const actualFilename = await findFileCaseInsensitive(departmentDir, `${requestedLocalityId}.xml`);
     
     if (!actualFilename) {
-        console.error(`[Route /department] File not found for locality: ${localityId}. Case-insensitive search failed in ${departmentDir}`);
-        return new NextResponse(`<error>Department file for ${localityId} not found</error>`, {
+        console.error(`[Route /department] File not found for locality: ${requestedLocalityId}. Case-insensitive search failed in ${departmentDir}`);
+        return new NextResponse(`<error>Department file for ${requestedLocalityId} not found</error>`, {
             status: 404,
             headers: { 'Content-Type': 'application/xml' },
         });
@@ -50,7 +53,7 @@ export async function GET(
       headers: { 'Content-Type': 'application/xml' },
     });
   } catch (error: any) {
-    console.error(`[Route /department/${localityId}.xml] Error reading file:`, error);
+    console.error(`[Route /department/${requestedLocalityId}.xml] Error reading file:`, error);
     return new NextResponse('<error>Internal Server Error</error>', {
       status: 500,
       headers: { 'Content-Type': 'application/xml' },
