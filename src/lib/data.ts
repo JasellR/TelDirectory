@@ -41,15 +41,15 @@ export const CiscoIPPhoneDirectorySchema = z.object({
   DirectoryEntry: z.preprocess(ensureArray, z.array(CiscoIPPhoneDirectoryEntrySchema).optional()),
 });
 
-// Dynamic path getters
+// Dynamic path getters - CORRECTED TO USE CAPITALIZED DIRECTORY NAMES
 async function getPaths() {
   const ivoxsRoot = await getResolvedIvoxsRootPath();
   return {
     IVOXS_DIR: ivoxsRoot,
     MAINMENU_PATH: path.join(ivoxsRoot, 'MainMenu.xml'), // PascalCase
-    ZONE_BRANCH_DIR: path.join(ivoxsRoot, 'zonebranch'), // lowercase
-    BRANCH_DIR: path.join(ivoxsRoot, 'branch'),         // lowercase
-    DEPARTMENT_DIR: path.join(ivoxsRoot, 'department'), // lowercase
+    ZONE_BRANCH_DIR: path.join(ivoxsRoot, 'ZoneBranch'), // Corrected Case
+    BRANCH_DIR: path.join(ivoxsRoot, 'Branch'),         // Corrected Case
+    DEPARTMENT_DIR: path.join(ivoxsRoot, 'Department'), // Corrected Case
   };
 }
 
@@ -75,8 +75,8 @@ function extractIdFromUrl(url: string): string {
 }
 
 function getItemTypeFromUrl(url: string): 'branch' | 'locality' | 'unknown' {
-  if (url.includes('/branch/')) return 'branch';
-  if (url.includes('/department/')) return 'locality';
+  if (url.includes('/Branch/')) return 'branch';
+  if (url.includes('/Department/')) return 'locality';
   return 'unknown';
 }
 
@@ -122,7 +122,15 @@ export async function getZoneItems(zoneId: string): Promise<ZoneItem[]> {
 
   const menuItems = validated.data.MenuItem || [];
   return menuItems.map(item => {
-    const itemType = getItemTypeFromUrl(item.URL);
+    // This logic needs to be smarter because URLS still have lowercase dirnames from previous changes
+    const urlPath = new URL(item.URL).pathname;
+    let itemType: 'branch' | 'locality' | 'unknown' = 'unknown';
+    if (urlPath.includes('/branch/') || urlPath.includes('/Branch/')) {
+        itemType = 'branch';
+    } else if (urlPath.includes('/department/') || urlPath.includes('/Department/')) {
+        itemType = 'locality';
+    }
+
     if (itemType === 'unknown') {
         console.warn(`Unknown URL type in ${zoneId}.xml for item ${item.Name}: ${item.URL}`);
     }
@@ -198,8 +206,6 @@ export async function getLocalityDetails(
                 localityName = validatedDept.data.Title; 
             } else if (!validatedDept.success) {
                 console.warn(`[DataLib] Zod validation failed for CiscoIPPhoneDirectory title in locality ID: ${localityId}. File: ${departmentFilePath}`);
-                console.warn("Data passed to Zod:", JSON.stringify(parsedDeptXml.CiscoIPPhoneDirectory, null, 2).substring(0, 300) + "...");
-                console.warn("Zod Errors:", JSON.stringify(validatedDept.error.flatten(), null, 2));
             }
         }
       } catch (e: any) {

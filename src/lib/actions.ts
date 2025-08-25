@@ -14,14 +14,14 @@ import { getDb, bcrypt } from './db';
 import ldap from 'ldapjs';
 
 
-// Helper to get all dynamic paths based on the resolved IVOXS root
+// Helper to get all dynamic paths based on the resolved IVOXS root - CORRECTED TO USE CAPITALIZED DIRECTORY NAMES
 async function getPaths() {
   const ivoxsRoot = await getResolvedIvoxsRootPath();
   return {
     IVOXS_DIR: ivoxsRoot,
-    ZONE_BRANCH_DIR: path.join(ivoxsRoot, 'zonebranch'), // lowercase
-    BRANCH_DIR: path.join(ivoxsRoot, 'branch'),         // lowercase
-    DEPARTMENT_DIR: path.join(ivoxsRoot, 'department'), // lowercase
+    ZONE_BRANCH_DIR: path.join(ivoxsRoot, 'ZoneBranch'), // Corrected Case
+    BRANCH_DIR: path.join(ivoxsRoot, 'Branch'),         // Corrected Case
+    DEPARTMENT_DIR: path.join(ivoxsRoot, 'Department'), // Corrected Case
     MAINMENU_FILENAME: 'MainMenu.xml' // PascalCase
   };
 }
@@ -88,36 +88,26 @@ function extractIdFromUrl(url: string): string {
 }
 
 function getItemTypeFromUrl(url: string): 'branch' | 'locality' | 'unknown' {
-  if (url.includes('/branch/')) return 'branch';
-  if (url.includes('/department/')) return 'locality';
+  const lowerUrl = url.toLowerCase();
+  if (lowerUrl.includes('/branch/')) return 'branch';
+  if (lowerUrl.includes('/department/')) return 'locality';
   return 'unknown';
 }
 
 // Helper to get configured service URL components
 async function getServiceUrlComponents(paths: Awaited<ReturnType<typeof getPaths>>): Promise<{ protocol: string, host: string, port: string }> {
-  const networkConfigPath = path.join(paths.IVOXS_DIR, '.config.json');
+  // This function is now less critical as URLs are relative to /directory/
+  // but can be kept for future absolute URL needs.
   let protocol = 'http';
   let host = '127.0.0.1';
   let port = '3000';
-  try {
-    const netConfigData = await fs.readFile(networkConfigPath, 'utf-8');
-    const netConfig = JSON.parse(netConfigData);
-    if (netConfig.protocol) protocol = netConfig.protocol;
-    if (netConfig.host) host = netConfig.host;
-    if (netConfig.port) port = netConfig.port;
-  } catch (e) {
-    // console.warn(`[getServiceUrlComponents] Network config for XML URLs at ${networkConfigPath} not found or unreadable. Using defaults.`);
-  }
+  
   return { protocol, host, port };
 }
 
 function constructServiceUrl(protocol: string, host: string, port: string, pathSegment: string): string {
-  let baseUrl = `${protocol}://${host}`;
-  if (port && !((protocol === 'http' && port === '80') || (protocol === 'https' && port === '443'))) {
-    baseUrl += `:${port}`;
-  }
-  // Use the new dynamic route path
-  return `${baseUrl}/directory/${pathSegment}`;
+  // The path segment now includes the directory type, e.g., "ZoneBranch/ZonaEste.xml"
+  return `${protocol}://${host}:${port}/directory/${pathSegment}`;
 }
 
 async function readFileContent(filePath: string): Promise<string> {
@@ -147,7 +137,7 @@ export async function addZoneAction(zoneName: string): Promise<{ success: boolea
   const mainMenuPath = path.join(paths.IVOXS_DIR, paths.MAINMENU_FILENAME);
   const newZoneBranchFilePath = path.join(paths.ZONE_BRANCH_DIR, `${newZoneId}.xml`);
   const { protocol, host, port } = await getServiceUrlComponents(paths);
-  const newZoneURL = constructServiceUrl(protocol, host, port, `zonebranch/${newZoneId}.xml`);
+  const newZoneURL = constructServiceUrl(protocol, host, port, `ZoneBranch/${newZoneId}.xml`);
 
   try {
     // 1. Create the new zone branch file
@@ -261,14 +251,14 @@ export async function addLocalityOrBranchAction(params: {
     if (itemType === 'branch') {
         parentMenuPath = path.join(paths.ZONE_BRANCH_DIR, `${zoneId}.xml`);
         newItemPath = path.join(paths.BRANCH_DIR, `${newItemId}.xml`);
-        newUrlPath = `branch/${newItemId}.xml`;
+        newUrlPath = `Branch/${newItemId}.xml`; // Corrected Case
         revalidationPath = `/${zoneId}`;
     } else { // It's a locality
         parentMenuPath = branchId 
             ? path.join(paths.BRANCH_DIR, `${branchId}.xml`)
             : path.join(paths.ZONE_BRANCH_DIR, `${zoneId}.xml`);
         newItemPath = path.join(paths.DEPARTMENT_DIR, `${newItemId}.xml`);
-        newUrlPath = `department/${newItemId}.xml`;
+        newUrlPath = `Department/${newItemId}.xml`; // Corrected Case
         revalidationPath = branchId ? `/${zoneId}/branches/${branchId}` : `/${zoneId}`;
     }
     
@@ -320,7 +310,7 @@ export async function editLocalityOrBranchAction(params: {
         parentMenuPath = path.join(paths.ZONE_BRANCH_DIR, `${zoneId}.xml`);
         oldItemPath = path.join(paths.BRANCH_DIR, `${oldItemId}.xml`);
         newItemPath = path.join(paths.BRANCH_DIR, `${newItemId}.xml`);
-        newUrlPath = `branch/${newItemId}.xml`;
+        newUrlPath = `Branch/${newItemId}.xml`; // Corrected Case
         revalidationPath = `/${zoneId}`;
     } else { // It's a locality
         parentMenuPath = branchId
@@ -328,7 +318,7 @@ export async function editLocalityOrBranchAction(params: {
             : path.join(paths.ZONE_BRANCH_DIR, `${zoneId}.xml`);
         oldItemPath = path.join(paths.DEPARTMENT_DIR, `${oldItemId}.xml`);
         newItemPath = path.join(paths.DEPARTMENT_DIR, `${newItemId}.xml`);
-        newUrlPath = `department/${newItemId}.xml`;
+        newUrlPath = `Department/${newItemId}.xml`; // Corrected Case
         revalidationPath = branchId ? `/${zoneId}/branches/${branchId}` : `/${zoneId}`;
     }
 
@@ -602,10 +592,9 @@ export async function updateXmlUrlsAction(host: string, port: string): Promise<{
         if (!fileContent?.CiscoIPPhoneMenu?.MenuItem) return;
 
         fileContent.CiscoIPPhoneMenu.MenuItem = ensureArray(fileContent.CiscoIPPhoneMenu.MenuItem).map((item: any) => {
-            const url = new URL(item.URL);
-            // Reconstruct path to be relative to the new dynamic route /directory/
-            // e.g. /directory/zonebranch/ZoneEste.xml -> zonebranch/ZoneEste.xml
-            const relativePath = url.pathname.split('/').slice(2).join('/');
+            const urlPath = new URL(item.URL).pathname;
+            const pathParts = urlPath.split('/').filter(p => p); // e.g., ['directory', 'ZoneBranch', 'ZoneEste.xml']
+            const relativePath = pathParts.slice(1).join('/'); // e.g., "ZoneBranch/ZoneEste.xml"
             item.URL = constructServiceUrl(protocol, host, port, relativePath);
             return item;
         });
@@ -790,41 +779,10 @@ export async function searchAllDepartmentsAndExtensionsAction(query: string): Pr
     return [];
   }
   
-  const paths = await getPaths(); // Correctly gets the configured root path
+  const paths = await getPaths();
   const lowerQuery = query.toLowerCase();
   
   const allLocalities = new Map<string, {name: string, zoneId: string, zoneName: string, branchId?: string, branchName?: string}>();
-
-  // Helper to recursively parse menus and populate the allLocalities map
-  const processMenu = async (filePath: string, context: {zoneId: string, zoneName: string, branchId?: string, branchName?: string}) => {
-    const menuContent = await readFileContent(filePath);
-    if (!menuContent) return;
-
-    try {
-        const parsedMenu = await parseStringPromise(menuContent, { explicitArray: false, trim: true });
-        const menuItems = ensureArray(parsedMenu?.CiscoIPPhoneMenu?.MenuItem);
-
-        for (const item of menuItems) {
-            const itemId = extractIdFromUrl(item.URL);
-            const itemType = getItemTypeFromUrl(item.URL);
-
-            if (itemType === 'locality') {
-                if (!allLocalities.has(itemId)) {
-                  allLocalities.set(itemId, { name: item.Name, ...context });
-                }
-            } else if (itemType === 'branch') {
-                const newContext = { ...context, branchId: itemId, branchName: item.Name };
-                // Use a case-insensitive find to get the correct filename for the branch
-                const branchFilename = await findFileCaseInsensitive(paths.BRANCH_DIR, `${itemId}.xml`);
-                if(branchFilename) {
-                   await processMenu(path.join(paths.BRANCH_DIR, branchFilename), newContext);
-                }
-            }
-        }
-    } catch(e) {
-      console.warn(`[Search] Could not process menu file ${filePath}:`, e);
-    }
-  };
 
   // Helper function to find a file in a directory, ignoring case.
   const findFileCaseInsensitive = async (directory: string, filename: string): Promise<string | null> => {
@@ -838,14 +796,41 @@ export async function searchAllDepartmentsAndExtensionsAction(query: string): Pr
           }
           return null; // No match found
       } catch (error: any) {
-          // This directory might not exist (e.g. no 'branch' subdir), which is okay.
-          if (error.code === 'ENOENT') {
-              return null;
-          }
+          if (error.code === 'ENOENT') return null;
           console.error(`[findFileCaseInsensitive] Error reading directory ${directory}:`, error);
           return null;
       }
   }
+  
+  // Helper to recursively parse menus and populate the allLocalities map
+  const processMenu = async (filePath: string, context: {zoneId: string, zoneName: string, branchId?: string, branchName?: string}) => {
+    const menuContent = await readFileContent(filePath);
+    if (!menuContent) return;
+
+    try {
+        const parsedMenu = await parseStringPromise(menuContent, { explicitArray: false, trim: true });
+        const menuItems = ensureArray(parsedMenu?.CiscoIPPhoneMenu?.MenuItem);
+
+        for (const item of menuItems) {
+            const itemId = extractIdFromUrl(item.URL);
+            const itemType = getItemTypeFromUrl(item.URL);
+            
+            if (itemType === 'locality') {
+                if (!allLocalities.has(itemId)) {
+                  allLocalities.set(itemId, { name: item.Name, ...context });
+                }
+            } else if (itemType === 'branch') {
+                const newContext = { ...context, branchId: itemId, branchName: item.Name };
+                const branchFilename = await findFileCaseInsensitive(paths.BRANCH_DIR, `${itemId}.xml`);
+                if(branchFilename) {
+                   await processMenu(path.join(paths.BRANCH_DIR, branchFilename), newContext);
+                }
+            }
+        }
+    } catch(e) {
+      console.warn(`[Search] Could not process menu file ${filePath}:`, e);
+    }
+  };
 
 
   // Start processing from MainMenu to discover all zones
@@ -930,8 +915,3 @@ export async function searchAllDepartmentsAndExtensionsAction(query: string): Pr
   
   return Array.from(resultsMap.values());
 }
-    
-
-    
-
-    
