@@ -566,25 +566,11 @@ export async function updateDirectoryRootPathAction(newPath: string): Promise<{ 
 
 export async function updateXmlUrlsAction(host: string, port: string): Promise<{ success: boolean, message: string, error?: string }> {
     const authenticated = await isAuthenticated();
-    if (!authenticated) return { success: false, message: "Authentication required." };
-
-    const paths = await getPaths();
-    
-    // Save host/port config
-    try {
-        const networkConfigPath = path.join(paths.IVOXS_DIR, '.config.json');
-        let currentConfig = {};
-        try {
-            const currentConfigData = await fs.readFile(networkConfigPath, 'utf-8');
-            currentConfig = JSON.parse(currentConfigData);
-        } catch (e) {} // Ignore if not found
-        const newConfig = { ...currentConfig, host, port };
-        await fs.writeFile(networkConfigPath, JSON.stringify(newConfig, null, 2));
-
-    } catch (e: any) {
-         return { success: false, message: "Failed to save network configuration.", error: e.message };
+    if (!authenticated) {
+        return { success: false, message: "Authentication required." };
     }
 
+    const paths = await getPaths();
     const { protocol } = await getServiceUrlComponents(paths);
     
     const updateUrlsInFile = async (filePath: string) => {
@@ -592,10 +578,20 @@ export async function updateXmlUrlsAction(host: string, port: string): Promise<{
         if (!fileContent?.CiscoIPPhoneMenu?.MenuItem) return;
 
         fileContent.CiscoIPPhoneMenu.MenuItem = ensureArray(fileContent.CiscoIPPhoneMenu.MenuItem).map((item: any) => {
-            const urlPath = new URL(item.URL).pathname;
-            const pathParts = urlPath.split('/').filter(p => p); // e.g., ['directory', 'ZoneBranch', 'ZoneEste.xml']
-            const relativePath = pathParts.slice(1).join('/'); // e.g., "ZoneBranch/ZoneEste.xml"
-            item.URL = constructServiceUrl(protocol, host, port, relativePath);
+            try {
+                // More robust way to get the last two parts of the path
+                const url = new URL(item.URL);
+                const pathParts = url.pathname.split('/').filter(p => p); // e.g., [directory, ZoneBranch, ZonaEste.xml]
+                
+                if (pathParts.length >= 2) {
+                    const relativePath = pathParts.slice(-2).join('/'); // Takes last two parts: ZoneBranch/ZonaEste.xml
+                    item.URL = constructServiceUrl(protocol, host, port, relativePath);
+                } else {
+                     console.warn(`[updateXmlUrlsAction] Could not process URL, not enough path segments: ${item.URL}`);
+                }
+            } catch (e) {
+                console.error(`[updateXmlUrlsAction] Skipping invalid URL "${item.URL}" in file ${filePath}. Error: ${(e as Error).message}`);
+            }
             return item;
         });
         await buildAndWriteXML(filePath, fileContent);
@@ -915,3 +911,5 @@ export async function searchAllDepartmentsAndExtensionsAction(query: string): Pr
   
   return Array.from(resultsMap.values());
 }
+
+    
