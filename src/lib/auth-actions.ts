@@ -41,7 +41,7 @@ export async function loginAction(formData: FormData): Promise<{ error?: string 
     }
 
     const sessionData: UserSession = { userId: user.id, username: user.username };
-    const cookieStore = cookies();
+    const cookieStore = await cookies();
     cookieStore.set(AUTH_COOKIE_NAME, JSON.stringify(sessionData), {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
@@ -50,8 +50,6 @@ export async function loginAction(formData: FormData): Promise<{ error?: string 
       maxAge: 60 * 60 * 24 * 7, // 1 week
     });
     
-    // Revalidating the layout ensures the header and other auth-dependent components
-    // get the new session state.
     revalidatePath('/', 'layout');
 
   } catch (error: any) {
@@ -59,14 +57,12 @@ export async function loginAction(formData: FormData): Promise<{ error?: string 
     return { error: 'An unexpected server error occurred.' };
   }
   
-  // By redirecting from the server action itself, we ensure the session is
-  // fully established before the next page loads. This is the key fix.
   redirect('/import-xml');
 }
 
 
 export async function logoutAction(): Promise<void> {
-  const cookieStore = cookies();
+  const cookieStore = await cookies();
   cookieStore.delete(AUTH_COOKIE_NAME);
   revalidatePath('/', 'layout');
 }
@@ -77,7 +73,7 @@ export async function isAuthenticated(): Promise<boolean> {
 }
 
 export async function getCurrentUser(): Promise<UserSession | null> {
-  const cookieStore = cookies();
+  const cookieStore = await cookies();
   const cookieValue = cookieStore.get(AUTH_COOKIE_NAME)?.value;
   
   if (!cookieValue) {
@@ -86,7 +82,6 @@ export async function getCurrentUser(): Promise<UserSession | null> {
 
   try {
     const sessionData = JSON.parse(cookieValue);
-    // Use safeParse to validate the cookie structure.
     const validation = UserSessionSchema.safeParse(sessionData);
 
     if (validation.success) {

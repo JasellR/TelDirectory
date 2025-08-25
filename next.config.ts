@@ -1,12 +1,17 @@
+
 import type { NextConfig } from 'next';
 
 const nextConfig: NextConfig = {
   /* config options here */
+  serverActions: true, // Enable Server Actions
   typescript: {
     ignoreBuildErrors: true,
   },
   eslint: {
     ignoreDuringBuilds: true,
+  },
+  experimental: {
+    allowedDevOrigins: ["directorio.farmaciacarol.com"],
   },
   images: {
     remotePatterns: [
