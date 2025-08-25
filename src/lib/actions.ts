@@ -14,15 +14,15 @@ import { getDb, bcrypt } from './db';
 import ldap from 'ldapjs';
 
 
-// Helper to get all dynamic paths based on the resolved IVOXS root - CORRECTED TO USE CAPITALIZED DIRECTORY NAMES
+// Helper to get all dynamic paths based on the resolved IVOXS root - CORRECTED TO USE CORRECT FILENAME CASING
 async function getPaths() {
   const ivoxsRoot = await getResolvedIvoxsRootPath();
   return {
     IVOXS_DIR: ivoxsRoot,
-    ZONE_BRANCH_DIR: path.join(ivoxsRoot, 'ZoneBranch'), // Corrected Case
-    BRANCH_DIR: path.join(ivoxsRoot, 'Branch'),         // Corrected Case
-    DEPARTMENT_DIR: path.join(ivoxsRoot, 'Department'), // Corrected Case
-    MAINMENU_FILENAME: 'MainMenu.xml' // PascalCase
+    ZONE_BRANCH_DIR: path.join(ivoxsRoot, 'ZoneBranch'),
+    BRANCH_DIR: path.join(ivoxsRoot, 'Branch'),
+    DEPARTMENT_DIR: path.join(ivoxsRoot, 'Department'),
+    MAINMENU_FILENAME: 'MAINMENU.xml' // Corrected: MAINMENU.xml
   };
 }
 
@@ -251,14 +251,14 @@ export async function addLocalityOrBranchAction(params: {
     if (itemType === 'branch') {
         parentMenuPath = path.join(paths.ZONE_BRANCH_DIR, `${zoneId}.xml`);
         newItemPath = path.join(paths.BRANCH_DIR, `${newItemId}.xml`);
-        newUrlPath = `Branch/${newItemId}.xml`; // Corrected Case
+        newUrlPath = `Branch/${newItemId}.xml`;
         revalidationPath = `/${zoneId}`;
     } else { // It's a locality
         parentMenuPath = branchId 
             ? path.join(paths.BRANCH_DIR, `${branchId}.xml`)
             : path.join(paths.ZONE_BRANCH_DIR, `${zoneId}.xml`);
         newItemPath = path.join(paths.DEPARTMENT_DIR, `${newItemId}.xml`);
-        newUrlPath = `Department/${newItemId}.xml`; // Corrected Case
+        newUrlPath = `Department/${newItemId}.xml`;
         revalidationPath = branchId ? `/${zoneId}/branches/${branchId}` : `/${zoneId}`;
     }
     
@@ -310,7 +310,7 @@ export async function editLocalityOrBranchAction(params: {
         parentMenuPath = path.join(paths.ZONE_BRANCH_DIR, `${zoneId}.xml`);
         oldItemPath = path.join(paths.BRANCH_DIR, `${oldItemId}.xml`);
         newItemPath = path.join(paths.BRANCH_DIR, `${newItemId}.xml`);
-        newUrlPath = `Branch/${newItemId}.xml`; // Corrected Case
+        newUrlPath = `Branch/${newItemId}.xml`;
         revalidationPath = `/${zoneId}`;
     } else { // It's a locality
         parentMenuPath = branchId
@@ -318,7 +318,7 @@ export async function editLocalityOrBranchAction(params: {
             : path.join(paths.ZONE_BRANCH_DIR, `${zoneId}.xml`);
         oldItemPath = path.join(paths.DEPARTMENT_DIR, `${oldItemId}.xml`);
         newItemPath = path.join(paths.DEPARTMENT_DIR, `${newItemId}.xml`);
-        newUrlPath = `Department/${newItemId}.xml`; // Corrected Case
+        newUrlPath = `Department/${newItemId}.xml`;
         revalidationPath = branchId ? `/${zoneId}/branches/${branchId}` : `/${zoneId}`;
     }
 
@@ -579,18 +579,24 @@ export async function updateXmlUrlsAction(host: string, port: string): Promise<{
 
         fileContent.CiscoIPPhoneMenu.MenuItem = ensureArray(fileContent.CiscoIPPhoneMenu.MenuItem).map((item: any) => {
             try {
-                // More robust way to get the last two parts of the path
-                const url = new URL(item.URL);
-                const pathParts = url.pathname.split('/').filter(p => p); // e.g., [directory, ZoneBranch, ZonaEste.xml]
+                let url;
+                try {
+                    url = new URL(item.URL);
+                } catch (e) {
+                    console.warn(`[updateXmlUrlsAction] Skipping invalid URL "${item.URL}" in file ${filePath}. Error: ${(e as Error).message}`);
+                    return item; // Return original item if URL is invalid
+                }
+
+                const pathParts = url.pathname.split('/').filter(p => p); 
                 
                 if (pathParts.length >= 2) {
-                    const relativePath = pathParts.slice(-2).join('/'); // Takes last two parts: ZoneBranch/ZonaEste.xml
+                    const relativePath = pathParts.slice(-2).join('/'); 
                     item.URL = constructServiceUrl(protocol, host, port, relativePath);
                 } else {
                      console.warn(`[updateXmlUrlsAction] Could not process URL, not enough path segments: ${item.URL}`);
                 }
             } catch (e) {
-                console.error(`[updateXmlUrlsAction] Skipping invalid URL "${item.URL}" in file ${filePath}. Error: ${(e as Error).message}`);
+                console.error(`[updateXmlUrlsAction] Unexpected error processing URL "${item.URL}" in file ${filePath}. Error: ${(e as Error).message}`);
             }
             return item;
         });

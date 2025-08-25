@@ -41,15 +41,15 @@ export const CiscoIPPhoneDirectorySchema = z.object({
   DirectoryEntry: z.preprocess(ensureArray, z.array(CiscoIPPhoneDirectoryEntrySchema).optional()),
 });
 
-// Dynamic path getters - CORRECTED TO USE CAPITALIZED DIRECTORY NAMES
+// Dynamic path getters - CORRECTED TO USE CORRECT FILENAME CASING
 async function getPaths() {
   const ivoxsRoot = await getResolvedIvoxsRootPath();
   return {
     IVOXS_DIR: ivoxsRoot,
-    MAINMENU_PATH: path.join(ivoxsRoot, 'MainMenu.xml'), // PascalCase
-    ZONE_BRANCH_DIR: path.join(ivoxsRoot, 'ZoneBranch'), // Corrected Case
-    BRANCH_DIR: path.join(ivoxsRoot, 'Branch'),         // Corrected Case
-    DEPARTMENT_DIR: path.join(ivoxsRoot, 'Department'), // Corrected Case
+    MAINMENU_PATH: path.join(ivoxsRoot, 'MAINMENU.xml'), // Corrected: MAINMENU.xml
+    ZONE_BRANCH_DIR: path.join(ivoxsRoot, 'ZoneBranch'),
+    BRANCH_DIR: path.join(ivoxsRoot, 'Branch'),
+    DEPARTMENT_DIR: path.join(ivoxsRoot, 'Department'),
   };
 }
 
