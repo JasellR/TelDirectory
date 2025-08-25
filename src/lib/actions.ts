@@ -794,31 +794,36 @@ export async function searchAllDepartmentsAndExtensionsAction(query: string): Pr
 
   // Helper to recursively parse menus and populate the allLocalities map
   const processMenu = async (filePath: string, context: {zoneId: string, zoneName: string, branchId?: string, branchName?: string}) => {
-      const menuContent = await readFileContent(filePath);
-      if (!menuContent) return;
-      
-      const parsedMenu = await parseStringPromise(menuContent, { explicitArray: false, trim: true });
-      const menuItems = ensureArray(parsedMenu?.CiscoIPPhoneMenu?.MenuItem);
+    const menuContent = await readFileContent(filePath);
+    if (!menuContent) return;
 
-      for (const item of menuItems) {
-          const itemId = extractIdFromUrl(item.URL);
-          const itemType = getItemTypeFromUrl(item.URL);
+    try {
+        const parsedMenu = await parseStringPromise(menuContent, { explicitArray: false, trim: true });
+        const menuItems = ensureArray(parsedMenu?.CiscoIPPhoneMenu?.MenuItem);
 
-          if (itemType === 'locality') {
-              if (!allLocalities.has(itemId)) {
-                allLocalities.set(itemId, { name: item.Name, ...context });
-              }
-          } else if (itemType === 'branch') {
-              const newContext = { ...context, branchId: itemId, branchName: item.Name };
-              const branchFilePath = path.join(paths.BRANCH_DIR, `${itemId}.xml`);
-              await processMenu(branchFilePath, newContext);
-          }
-      }
+        for (const item of menuItems) {
+            const itemId = extractIdFromUrl(item.URL);
+            const itemType = getItemTypeFromUrl(item.URL);
+
+            if (itemType === 'locality') {
+                if (!allLocalities.has(itemId)) {
+                  allLocalities.set(itemId, { name: item.Name, ...context });
+                }
+            } else if (itemType === 'branch') {
+                const newContext = { ...context, branchId: itemId, branchName: item.Name };
+                const branchFilePath = path.join(paths.BRANCH_DIR, `${itemId}.xml`);
+                await processMenu(branchFilePath, newContext);
+            }
+        }
+    } catch(e) {
+      console.warn(`[Search] Could not process menu file ${filePath}:`, e);
+    }
   };
 
   // Start processing from MainMenu to discover all zones
   const mainMenuContent = await readFileContent(path.join(paths.IVOXS_DIR, paths.MAINMENU_FILENAME));
   if (mainMenuContent) {
+    try {
       const parsedMainMenu = await parseStringPromise(mainMenuContent, { explicitArray: false, trim: true });
       const zones = ensureArray(parsedMainMenu.CiscoIPPhoneMenu.MenuItem);
 
@@ -828,6 +833,10 @@ export async function searchAllDepartmentsAndExtensionsAction(query: string): Pr
           const zoneFilePath = path.join(paths.ZONE_BRANCH_DIR, `${zoneId}.xml`);
           await processMenu(zoneFilePath, zoneContext);
       }
+    } catch(e) {
+      console.error(`[Search] Fatal: Could not process MainMenu.xml:`, e);
+      return [];
+    }
   }
 
   // Now, search within the fully mapped localities
@@ -856,7 +865,7 @@ export async function searchAllDepartmentsAndExtensionsAction(query: string): Pr
                   }
               }
           } catch (e) {
-              console.warn(`Could not parse department XML ${localityId}.xml for search`, e);
+              console.warn(`[Search] Could not parse department XML ${localityId}.xml for search`, e);
           }
       }
 
@@ -888,4 +897,6 @@ export async function searchAllDepartmentsAndExtensionsAction(query: string): Pr
   
   return Array.from(resultsMap.values());
 }
+    
+
     
