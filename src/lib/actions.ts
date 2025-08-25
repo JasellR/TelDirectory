@@ -117,7 +117,7 @@ function constructServiceUrl(protocol: string, host: string, port: string, pathS
     baseUrl += `:${port}`;
   }
   // Use the new dynamic route path
-  return `${baseUrl}/directory${pathSegment}`;
+  return `${baseUrl}/directory/${pathSegment}`;
 }
 
 async function readFileContent(filePath: string): Promise<string> {
@@ -147,7 +147,7 @@ export async function addZoneAction(zoneName: string): Promise<{ success: boolea
   const mainMenuPath = path.join(paths.IVOXS_DIR, paths.MAINMENU_FILENAME);
   const newZoneBranchFilePath = path.join(paths.ZONE_BRANCH_DIR, `${newZoneId}.xml`);
   const { protocol, host, port } = await getServiceUrlComponents(paths);
-  const newZoneURL = constructServiceUrl(protocol, host, port, `/zonebranch/${newZoneId}.xml`);
+  const newZoneURL = constructServiceUrl(protocol, host, port, `zonebranch/${newZoneId}.xml`);
 
   try {
     // 1. Create the new zone branch file
@@ -261,14 +261,14 @@ export async function addLocalityOrBranchAction(params: {
     if (itemType === 'branch') {
         parentMenuPath = path.join(paths.ZONE_BRANCH_DIR, `${zoneId}.xml`);
         newItemPath = path.join(paths.BRANCH_DIR, `${newItemId}.xml`);
-        newUrlPath = `/branch/${newItemId}.xml`;
+        newUrlPath = `branch/${newItemId}.xml`;
         revalidationPath = `/${zoneId}`;
     } else { // It's a locality
         parentMenuPath = branchId 
             ? path.join(paths.BRANCH_DIR, `${branchId}.xml`)
             : path.join(paths.ZONE_BRANCH_DIR, `${zoneId}.xml`);
         newItemPath = path.join(paths.DEPARTMENT_DIR, `${newItemId}.xml`);
-        newUrlPath = `/department/${newItemId}.xml`;
+        newUrlPath = `department/${newItemId}.xml`;
         revalidationPath = branchId ? `/${zoneId}/branches/${branchId}` : `/${zoneId}`;
     }
     
@@ -320,7 +320,7 @@ export async function editLocalityOrBranchAction(params: {
         parentMenuPath = path.join(paths.ZONE_BRANCH_DIR, `${zoneId}.xml`);
         oldItemPath = path.join(paths.BRANCH_DIR, `${oldItemId}.xml`);
         newItemPath = path.join(paths.BRANCH_DIR, `${newItemId}.xml`);
-        newUrlPath = `/branch/${newItemId}.xml`;
+        newUrlPath = `branch/${newItemId}.xml`;
         revalidationPath = `/${zoneId}`;
     } else { // It's a locality
         parentMenuPath = branchId
@@ -328,7 +328,7 @@ export async function editLocalityOrBranchAction(params: {
             : path.join(paths.ZONE_BRANCH_DIR, `${zoneId}.xml`);
         oldItemPath = path.join(paths.DEPARTMENT_DIR, `${oldItemId}.xml`);
         newItemPath = path.join(paths.DEPARTMENT_DIR, `${newItemId}.xml`);
-        newUrlPath = `/department/${newItemId}.xml`;
+        newUrlPath = `department/${newItemId}.xml`;
         revalidationPath = branchId ? `/${zoneId}/branches/${branchId}` : `/${zoneId}`;
     }
 
@@ -603,9 +603,10 @@ export async function updateXmlUrlsAction(host: string, port: string): Promise<{
 
         fileContent.CiscoIPPhoneMenu.MenuItem = ensureArray(fileContent.CiscoIPPhoneMenu.MenuItem).map((item: any) => {
             const url = new URL(item.URL);
-            const pathParts = url.pathname.split('/'); // e.g., ["", "directory", "zonebranch", "ZoneEste.xml"]
-            const pathSegment = path.join('/', pathParts.slice(2).join('/')); // a/b/c
-            item.URL = constructServiceUrl(protocol, host, port, pathSegment);
+            // Reconstruct path to be relative to the new dynamic route /directory/
+            // e.g. /directory/zonebranch/ZoneEste.xml -> zonebranch/ZoneEste.xml
+            const relativePath = url.pathname.split('/').slice(2).join('/');
+            item.URL = constructServiceUrl(protocol, host, port, relativePath);
             return item;
         });
         await buildAndWriteXML(filePath, fileContent);

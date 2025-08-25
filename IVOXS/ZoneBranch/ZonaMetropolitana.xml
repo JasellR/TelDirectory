@@ -4,18 +4,18 @@
   <Prompt>Select a Branch or Group</Prompt>
   <MenuItem>
     <Name>Adm 27 Febrero</Name>
-    <URL>http://127.0.0.1:3000/ivoxsdir/branch/EdificioAdm27Febrero.xml</URL>
+    <URL>http://127.0.0.1:3000/directory/branch/EdificioAdm27Febrero.xml</URL>
   </MenuItem>
   <MenuItem>
     <Name>Adm Corporativo</Name>
-    <URL>http://127.0.0.1:3000/ivoxsdir/branch/EdificioAdmCorporativo.xml</URL>
+    <URL>http://127.0.0.1:3000/directory/branch/EdificioAdmCorporativo.xml</URL>
   </MenuItem>
   <MenuItem>
     <Name>Adm Cendis</Name>
-    <URL>http://127.0.0.1:3000/ivoxsdir/branch/Cendis.xml</URL>
+    <URL>http://127.0.0.1:3000/directory/branch/Cendis.xml</URL>
   </MenuItem>
   <MenuItem>
     <Name>Localities List (Metropolitana)</Name>
-    <URL>http://127.0.0.1:3000/ivoxsdir/branch/ZonaMetropolitana.xml</URL>
+    <URL>http://127.0.0.1:3000/directory/branch/ZonaMetropolitana.xml</URL>
   </MenuItem>
 </CiscoIPPhoneMenu>

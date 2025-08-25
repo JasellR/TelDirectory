@@ -4,18 +4,18 @@
   <Prompt>Select a Locality</Prompt>
   <MenuItem>
     <Name>Bani</Name>
-    <URL>http://127.0.0.1:3000/ivoxsdir/department/Bani.xml</URL>
+    <URL>http://127.0.0.1:3000/directory/department/Bani.xml</URL>
   </MenuItem>
   <MenuItem>
     <Name>Haina</Name>
-    <URL>http://127.0.0.1:3000/ivoxsdir/department/Haina.xml</URL>
+    <URL>http://127.0.0.1:3000/directory/department/Haina.xml</URL>
   </MenuItem>
   <MenuItem>
     <Name>San Cristobal</Name>
-    <URL>http://127.0.0.1:3000/ivoxsdir/department/SanCristobal.xml</URL>
+    <URL>http://127.0.0.1:3000/directory/department/SanCristobal.xml</URL>
   </MenuItem>
   <MenuItem>
     <Name>San Juan</Name>
-    <URL>http://127.0.0.1:3000/ivoxsdir/department/SanJuan.xml</URL>
+    <URL>http://127.0.0.1:3000/directory/department/SanJuan.xml</URL>
   </MenuItem>
 </CiscoIPPhoneMenu>

@@ -31,14 +31,13 @@ export async function GET(
   const requestedPath = params.filePath.join('/');
   
   // Basic sanitization against path traversal and invalid characters
-  if (!requestedPath || requestedPath.includes('..')) {
+  if (!requestedPath || requestedPath.includes('..') || !requestedPath.toLowerCase().endsWith('.xml')) {
     return new NextResponse('<error>Invalid request path</error>', { status: 400, headers: { 'Content-Type': 'application/xml' } });
   }
 
   try {
     const ivoxsRoot = await getResolvedIvoxsRootPath();
-    const fullFilePath = path.join(ivoxsRoot, requestedPath);
-
+    
     // For case-insensitivity, we need to check the directory and filename
     const dirName = path.dirname(requestedPath);
     const fileName = path.basename(requestedPath);

@@ -4,122 +4,122 @@
   <Prompt>Select a Locality</Prompt>
   <MenuItem>
     <Name>Bibbia HOMS</Name>
-    <URL>http://127.0.0.1:3000/ivoxsdir/department/BibbiaHOMS.xml</URL>
+    <URL>http://127.0.0.1:3000/directory/department/BibbiaHOMS.xml</URL>
   </MenuItem>
   <MenuItem>
     <Name>Bonao</Name>
-    <URL>http://127.0.0.1:3000/ivoxsdir/department/Bonao.xml</URL>
+    <URL>http://127.0.0.1:3000/directory/department/Bonao.xml</URL>
   </MenuItem>
   <MenuItem>
     <Name>Bravo Santiago</Name>
-    <URL>http://127.0.0.1:3000/ivoxsdir/department/BravoSantiago.xml</URL>
+    <URL>http://127.0.0.1:3000/directory/department/BravoSantiago.xml</URL>
   </MenuItem>
   <MenuItem>
     <Name>ColinaCentro</Name>
-    <URL>http://127.0.0.1:3000/ivoxsdir/department/ColinaCentro.xml</URL>
+    <URL>http://127.0.0.1:3000/directory/department/ColinaCentro.xml</URL>
   </MenuItem>
   <MenuItem>
     <Name>Colinas Mall</Name>
-    <URL>http://127.0.0.1:3000/ivoxsdir/department/ColinasMall.xml</URL>
+    <URL>http://127.0.0.1:3000/directory/department/ColinasMall.xml</URL>
   </MenuItem>
   <MenuItem>
     <Name>El Encanto</Name>
-    <URL>http://127.0.0.1:3000/ivoxsdir/department/ElEncanto.xml</URL>
+    <URL>http://127.0.0.1:3000/directory/department/ElEncanto.xml</URL>
   </MenuItem>
   <MenuItem>
     <Name>Embrujo</Name>
-    <URL>http://127.0.0.1:3000/ivoxsdir/department/Embrujo.xml</URL>
+    <URL>http://127.0.0.1:3000/directory/department/Embrujo.xml</URL>
   </MenuItem>
   <MenuItem>
     <Name>Estrella Sadhala</Name>
-    <URL>http://127.0.0.1:3000/ivoxsdir/department/EstrellaSadhala.xml</URL>
+    <URL>http://127.0.0.1:3000/directory/department/EstrellaSadhala.xml</URL>
   </MenuItem>
   <MenuItem>
     <Name>Galerias Del Atlantico</Name>
-    <URL>http://127.0.0.1:3000/ivoxsdir/department/GaleriasDelAtlantico.xml</URL>
+    <URL>http://127.0.0.1:3000/directory/department/GaleriasDelAtlantico.xml</URL>
   </MenuItem>
   <MenuItem>
     <Name>Gurabito</Name>
-    <URL>http://127.0.0.1:3000/ivoxsdir/department/Gurabito.xml</URL>
+    <URL>http://127.0.0.1:3000/directory/department/Gurabito.xml</URL>
   </MenuItem>
   <MenuItem>
     <Name>Gurabo</Name>
-    <URL>http://127.0.0.1:3000/ivoxsdir/department/Gurabo.xml</URL>
+    <URL>http://127.0.0.1:3000/directory/department/Gurabo.xml</URL>
   </MenuItem>
   <MenuItem>
     <Name>La Normal</Name>
-    <URL>http://127.0.0.1:3000/ivoxsdir/department/LaNormal.xml</URL>
+    <URL>http://127.0.0.1:3000/directory/department/LaNormal.xml</URL>
   </MenuItem>
   <MenuItem>
     <Name>La Rinconada</Name>
-    <URL>http://127.0.0.1:3000/ivoxsdir/department/LaRinconada.xml</URL>
+    <URL>http://127.0.0.1:3000/directory/department/LaRinconada.xml</URL>
   </MenuItem>
   <MenuItem>
     <Name>Las Terrenas</Name>
-    <URL>http://127.0.0.1:3000/ivoxsdir/department/LasTerrenas.xml</URL>
+    <URL>http://127.0.0.1:3000/directory/department/LasTerrenas.xml</URL>
   </MenuItem>
   <MenuItem>
     <Name>Los Jardines</Name>
-    <URL>http://127.0.0.1:3000/ivoxsdir/department/LosJardines.xml</URL>
+    <URL>http://127.0.0.1:3000/directory/department/LosJardines.xml</URL>
   </MenuItem>
   <MenuItem>
     <Name>Los Jazmines</Name>
-    <URL>http://127.0.0.1:3000/ivoxsdir/department/LosJazmines.xml</URL>
+    <URL>http://127.0.0.1:3000/directory/department/LosJazmines.xml</URL>
   </MenuItem>
   <MenuItem>
     <Name>LS Bartolome Colon</Name>
-    <URL>http://127.0.0.1:3000/ivoxsdir/department/LSBartolomeColon.xml</URL>
+    <URL>http://127.0.0.1:3000/directory/department/LSBartolomeColon.xml</URL>
   </MenuItem>
   <MenuItem>
     <Name>LS del Sol</Name>
-    <URL>http://127.0.0.1:3000/ivoxsdir/department/LSdelSol.xml</URL>
+    <URL>http://127.0.0.1:3000/directory/department/LSdelSol.xml</URL>
   </MenuItem>
   <MenuItem>
     <Name>LS San Francisco de Macoris</Name>
-    <URL>http://127.0.0.1:3000/ivoxsdir/department/LSSanFranciscodeMacoris.xml</URL>
+    <URL>http://127.0.0.1:3000/directory/department/LSSanFranciscodeMacoris.xml</URL>
   </MenuItem>
   <MenuItem>
     <Name>Moca</Name>
-    <URL>http://127.0.0.1:3000/ivoxsdir/department/Moca.xml</URL>
+    <URL>http://127.0.0.1:3000/directory/department/Moca.xml</URL>
   </MenuItem>
   <MenuItem>
     <Name>Plaza Porvenir</Name>
-    <URL>http://127.0.0.1:3000/ivoxsdir/department/PlazaPorvenir.xml</URL>
+    <URL>http://127.0.0.1:3000/directory/department/PlazaPorvenir.xml</URL>
   </MenuItem>
   <MenuItem>
     <Name>Portal del Norte</Name>
-    <URL>http://127.0.0.1:3000/ivoxsdir/department/PortaldelNorte.xml</URL>
+    <URL>http://127.0.0.1:3000/directory/department/PortaldelNorte.xml</URL>
   </MenuItem>
   <MenuItem>
     <Name>PpalmaresMall</Name>
-    <URL>http://127.0.0.1:3000/ivoxsdir/department/PpalmaresMall.xml</URL>
+    <URL>http://127.0.0.1:3000/directory/department/PpalmaresMall.xml</URL>
   </MenuItem>
   <MenuItem>
     <Name>Samana</Name>
-    <URL>http://127.0.0.1:3000/ivoxsdir/department/Samana.xml</URL>
+    <URL>http://127.0.0.1:3000/directory/department/Samana.xml</URL>
   </MenuItem>
   <MenuItem>
     <Name>San Francisco de Macoris</Name>
-    <URL>http://127.0.0.1:3000/ivoxsdir/department/SanFranciscodeMacoris.xml</URL>
+    <URL>http://127.0.0.1:3000/directory/department/SanFranciscodeMacoris.xml</URL>
   </MenuItem>
   <MenuItem>
     <Name>Santiago Centro</Name>
-    <URL>http://127.0.0.1:3000/ivoxsdir/department/SantiagoCentro.xml</URL>
+    <URL>http://127.0.0.1:3000/directory/department/SantiagoCentro.xml</URL>
   </MenuItem>
   <MenuItem>
     <Name>SN EMBRUJO</Name>
-    <URL>http://127.0.0.1:3000/ivoxsdir/department/SNEMBRUJO.xml</URL>
+    <URL>http://127.0.0.1:3000/directory/department/SNEMBRUJO.xml</URL>
   </MenuItem>
   <MenuItem>
     <Name>SN Estrella Sadhala</Name>
-    <URL>http://127.0.0.1:3000/ivoxsdir/department/SNEstrellaSadhala.xml</URL>
+    <URL>http://127.0.0.1:3000/directory/department/SNEstrellaSadhala.xml</URL>
   </MenuItem>
   <MenuItem>
     <Name>SN Villa Olga</Name>
-    <URL>http://127.0.0.1:3000/ivoxsdir/department/SNVillaOlga.xml</URL>
+    <URL>http://127.0.0.1:3000/directory/department/SNVillaOlga.xml</URL>
   </MenuItem>
   <MenuItem>
     <Name>Sosua</Name>
-    <URL>http://127.0.0.1:3000/ivoxsdir/department/Sosua.xml</URL>
+    <URL>http://127.0.0.1:3000/directory/department/Sosua.xml</URL>
   </MenuItem>
 </CiscoIPPhoneMenu>

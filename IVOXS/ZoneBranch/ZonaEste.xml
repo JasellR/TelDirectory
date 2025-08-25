@@ -4,66 +4,66 @@
   <Prompt>Select a Locality</Prompt>
   <MenuItem>
     <Name>Bavaro</Name>
-    <URL>http://127.0.0.1:3000/ivoxsdir/department/Bavaro.xml</URL>
+    <URL>http://127.0.0.1:3000/directory/department/Bavaro.xml</URL>
   </MenuItem>
   <MenuItem>
     <Name>Blue Mall Punta Cana</Name>
-    <URL>http://127.0.0.1:3000/ivoxsdir/department/BlueMallPuntaCana.xml</URL>
+    <URL>http://127.0.0.1:3000/directory/department/BlueMallPuntaCana.xml</URL>
   </MenuItem>
   <MenuItem>
     <Name>Casa de Campo</Name>
-    <URL>http://127.0.0.1:3000/ivoxsdir/department/CasadeCampo.xml</URL>
+    <URL>http://127.0.0.1:3000/directory/department/CasadeCampo.xml</URL>
   </MenuItem>
   <MenuItem>
     <Name>Downtown Center Punta Cana</Name>
-    <URL>http://127.0.0.1:3000/ivoxsdir/department/DowntownCenterPuntaCana.xml</URL>
+    <URL>http://127.0.0.1:3000/directory/department/DowntownCenterPuntaCana.xml</URL>
   </MenuItem>
   <MenuItem>
     <Name>Hemingway</Name>
-    <URL>http://127.0.0.1:3000/ivoxsdir/department/Hemingway.xml</URL>
+    <URL>http://127.0.0.1:3000/directory/department/Hemingway.xml</URL>
   </MenuItem>
   <MenuItem>
     <Name>Higuey</Name>
-    <URL>http://127.0.0.1:3000/ivoxsdir/department/Higuey.xml</URL>
+    <URL>http://127.0.0.1:3000/directory/department/Higuey.xml</URL>
   </MenuItem>
   <MenuItem>
     <Name>Juan Dolio</Name>
-    <URL>http://127.0.0.1:3000/ivoxsdir/department/JuanDolio.xml</URL>
+    <URL>http://127.0.0.1:3000/directory/department/JuanDolio.xml</URL>
   </MenuItem>
   <MenuItem>
     <Name>Jumbo La Romana</Name>
-    <URL>http://127.0.0.1:3000/ivoxsdir/department/JumboLaRomana.xml</URL>
+    <URL>http://127.0.0.1:3000/directory/department/JumboLaRomana.xml</URL>
   </MenuItem>
   <MenuItem>
     <Name>Jumbo San Pedro de Macoris</Name>
-    <URL>http://127.0.0.1:3000/ivoxsdir/department/JumboSanPedrodeMacoris.xml</URL>
+    <URL>http://127.0.0.1:3000/directory/department/JumboSanPedrodeMacoris.xml</URL>
   </MenuItem>
   <MenuItem>
     <Name>MUSA SPM</Name>
-    <URL>http://127.0.0.1:3000/ivoxsdir/department/MUSASPM.xml</URL>
+    <URL>http://127.0.0.1:3000/directory/department/MUSASPM.xml</URL>
   </MenuItem>
   <MenuItem>
     <Name>Restauracion</Name>
-    <URL>http://127.0.0.1:3000/ivoxsdir/department/Restauracion.xml</URL>
+    <URL>http://127.0.0.1:3000/directory/department/Restauracion.xml</URL>
   </MenuItem>
   <MenuItem>
     <Name>Romana</Name>
-    <URL>http://127.0.0.1:3000/ivoxsdir/department/Romana.xml</URL>
+    <URL>http://127.0.0.1:3000/directory/department/Romana.xml</URL>
   </MenuItem>
   <MenuItem>
     <Name>Romana Multiplaza</Name>
-    <URL>http://127.0.0.1:3000/ivoxsdir/department/RomanaMultiplaza.xml</URL>
+    <URL>http://127.0.0.1:3000/directory/department/RomanaMultiplaza.xml</URL>
   </MenuItem>
   <MenuItem>
     <Name>SPM</Name>
-    <URL>http://127.0.0.1:3000/ivoxsdir/department/SPM.xml</URL>
+    <URL>http://127.0.0.1:3000/directory/department/SPM.xml</URL>
   </MenuItem>
   <MenuItem>
     <Name>Veron</Name>
-    <URL>http://127.0.0.1:3000/ivoxsdir/department/Veron.xml</URL>
+    <URL>http://127.0.0.1:3000/directory/department/Veron.xml</URL>
   </MenuItem>
   <MenuItem>
     <Name>Villa Hermosa</Name>
-    <URL>http://127.0.0.1:3000/ivoxsdir/department/VillaHermosa.xml</URL>
+    <URL>http://127.0.0.1:3000/directory/department/VillaHermosa.xml</URL>
   </MenuItem>
 </CiscoIPPhoneMenu>
