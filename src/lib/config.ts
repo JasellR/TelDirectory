@@ -35,26 +35,25 @@ export async function saveDirectoryConfig(config: DirectoryConfig): Promise<void
 
 /**
  * Resolves the root path for the ivoxsdir directory.
- * Uses the path from directory.config.json if set, otherwise defaults to 'ivoxsdir' in the project root.
+ * It will prioritize the custom path from the config file.
+ * If no custom path is set, it defaults to 'ivoxsdir' in the project root.
  */
 export async function getResolvedIvoxsRootPath(): Promise<string> {
   const config = await getDirectoryConfig();
+  
   if (config.ivoxsRootPath && path.isAbsolute(config.ivoxsRootPath)) {
-    try {
-      // Basic check: does the path exist and is it a directory?
-      const stats = await fs.stat(config.ivoxsRootPath);
-      if (stats.isDirectory()) {
-        return config.ivoxsRootPath;
-      } else {
-        console.warn(`Configured ivoxsdir root path "${config.ivoxsRootPath}" is not a directory. Falling back to default.`);
-      }
-    } catch (error) {
-      console.warn(`Error accessing configured ivoxsdir root path "${config.ivoxsRootPath}": ${error}. Falling back to default.`);
-    }
-  } else if (config.ivoxsRootPath) {
-    console.warn(`Configured ivoxsdir root path "${config.ivoxsRootPath}" is not an absolute path. Falling back to default.`);
+    // If a custom, absolute path is provided, use it directly.
+    // The responsibility for the path's existence and permissions lies with the user/environment.
+    return config.ivoxsRootPath;
   }
-  // Default to 'ivoxsdir' in the project root
+  
+  if (config.ivoxsRootPath) {
+     // This case handles a non-absolute path in the config, which is discouraged.
+     // We log a warning but still attempt to use it relative to the current working directory.
+    console.warn(`[Config] The configured ivoxsRootPath "${config.ivoxsRootPath}" is not an absolute path. It's recommended to use absolute paths to avoid ambiguity. Resolving relative to project root.`);
+    return path.join(process.cwd(), config.ivoxsRootPath);
+  }
+
+  // If ivoxsRootPath is null, empty, or not in the config, use the default.
   return path.join(process.cwd(), 'ivoxsdir');
 }
-
