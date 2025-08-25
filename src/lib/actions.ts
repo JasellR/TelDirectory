@@ -786,8 +786,8 @@ export async function searchAllDepartmentsAndExtensionsAction(query: string): Pr
   if (query.trim().length < 2) {
     return [];
   }
-
-  const paths = await getPaths();
+  
+  const paths = await getPaths(); // Correctly gets the configured root path
   const lowerQuery = query.toLowerCase();
   
   const allLocalities = new Map<string, {name: string, zoneId: string, zoneName: string, branchId?: string, branchName?: string}>();
@@ -811,14 +811,39 @@ export async function searchAllDepartmentsAndExtensionsAction(query: string): Pr
                 }
             } else if (itemType === 'branch') {
                 const newContext = { ...context, branchId: itemId, branchName: item.Name };
-                const branchFilePath = path.join(paths.BRANCH_DIR, `${itemId}.xml`);
-                await processMenu(branchFilePath, newContext);
+                // Use a case-insensitive find to get the correct filename for the branch
+                const branchFilename = await findFileCaseInsensitive(paths.BRANCH_DIR, `${itemId}.xml`);
+                if(branchFilename) {
+                   await processMenu(path.join(paths.BRANCH_DIR, branchFilename), newContext);
+                }
             }
         }
     } catch(e) {
       console.warn(`[Search] Could not process menu file ${filePath}:`, e);
     }
   };
+
+  // Helper function to find a file in a directory, ignoring case.
+  const findFileCaseInsensitive = async (directory: string, filename: string): Promise<string | null> => {
+      try {
+          const files = await fs.readdir(directory);
+          const lowerCaseFilename = filename.toLowerCase();
+          for (const file of files) {
+              if (file.toLowerCase() === lowerCaseFilename) {
+                  return file; // Return the actual filename with its original casing
+              }
+          }
+          return null; // No match found
+      } catch (error) {
+          // This directory might not exist (e.g. no 'branch' subdir), which is okay.
+          if (error.code === 'ENOENT') {
+              return null;
+          }
+          console.error(`[findFileCaseInsensitive] Error reading directory ${directory}:`, error);
+          return null;
+      }
+  }
+
 
   // Start processing from MainMenu to discover all zones
   const mainMenuContent = await readFileContent(path.join(paths.IVOXS_DIR, paths.MAINMENU_FILENAME));
@@ -830,8 +855,10 @@ export async function searchAllDepartmentsAndExtensionsAction(query: string): Pr
       for (const zoneMenuItem of zones) {
           const zoneId = extractIdFromUrl(zoneMenuItem.URL);
           const zoneContext = { zoneId: zoneId, zoneName: zoneMenuItem.Name };
-          const zoneFilePath = path.join(paths.ZONE_BRANCH_DIR, `${zoneId}.xml`);
-          await processMenu(zoneFilePath, zoneContext);
+          const zoneFilename = await findFileCaseInsensitive(paths.ZONE_BRANCH_DIR, `${zoneId}.xml`);
+          if(zoneFilename) {
+            await processMenu(path.join(paths.ZONE_BRANCH_DIR, zoneFilename), zoneContext);
+          }
       }
     } catch(e) {
       console.error(`[Search] Fatal: Could not process MainMenu.xml:`, e);
@@ -846,28 +873,31 @@ export async function searchAllDepartmentsAndExtensionsAction(query: string): Pr
       const localityNameMatch = localityInfo.name.toLowerCase().includes(lowerQuery);
       let matchingExtensions: MatchedExtension[] = [];
 
-      const departmentFilePath = path.join(paths.DEPARTMENT_DIR, `${localityId}.xml`);
-      const departmentContent = await readFileContent(departmentFilePath);
-      if (departmentContent) {
-          try {
-              const parsedDept = await readAndParseXML(departmentFilePath);
-              const extensions = ensureArray(parsedDept?.CiscoIPPhoneDirectory?.DirectoryEntry);
+      const departmentFilename = await findFileCaseInsensitive(paths.DEPARTMENT_DIR, `${localityId}.xml`);
+      if (departmentFilename) {
+          const departmentContent = await readFileContent(path.join(paths.DEPARTMENT_DIR, departmentFilename));
+          if (departmentContent) {
+              try {
+                  const parsedDept = await readAndParseXML(path.join(paths.DEPARTMENT_DIR, departmentFilename));
+                  const extensions = ensureArray(parsedDept?.CiscoIPPhoneDirectory?.DirectoryEntry);
 
-              for (const ext of extensions) {
-                  let matchedOn: MatchedExtension['matchedOn'] | null = null;
-                  if (ext.Name.toLowerCase().includes(lowerQuery)) {
-                      matchedOn = 'extensionName';
-                  } else if (ext.Telephone.toLowerCase().includes(lowerQuery)) {
-                      matchedOn = 'extensionNumber';
+                  for (const ext of extensions) {
+                      let matchedOn: MatchedExtension['matchedOn'] | null = null;
+                      if (ext.Name.toLowerCase().includes(lowerQuery)) {
+                          matchedOn = 'extensionName';
+                      } else if (ext.Telephone.toLowerCase().includes(lowerQuery)) {
+                          matchedOn = 'extensionNumber';
+                      }
+                      if (matchedOn) {
+                          matchingExtensions.push({ name: ext.Name, number: ext.Telephone, matchedOn });
+                      }
                   }
-                  if (matchedOn) {
-                      matchingExtensions.push({ name: ext.Name, number: ext.Telephone, matchedOn });
-                  }
+              } catch (e) {
+                  console.warn(`[Search] Could not parse department XML ${localityId}.xml for search`, e);
               }
-          } catch (e) {
-              console.warn(`[Search] Could not parse department XML ${localityId}.xml for search`, e);
           }
       }
+
 
       if (localityNameMatch || matchingExtensions.length > 0) {
           if (!resultsMap.has(localityId)) {
@@ -897,6 +927,8 @@ export async function searchAllDepartmentsAndExtensionsAction(query: string): Pr
   
   return Array.from(resultsMap.values());
 }
+    
+
     
 
     
