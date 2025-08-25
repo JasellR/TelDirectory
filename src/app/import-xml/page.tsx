@@ -52,28 +52,39 @@ export default function SettingsPage() {
 
   useEffect(() => {
     let isMounted = true;
-    setIsLoadingPath(true);
+    
+    const fetchConfig = async () => {
+      setIsLoadingPath(true);
+      try {
+        const config = await getDirectoryConfig();
+        if (isMounted) {
+          const savedPath = config.ivoxsRootPath || '';
+          setDirectoryRootPath(savedPath); 
+          setCurrentConfigDisplayPath(savedPath); 
+        }
+      } catch (e) {
+        if (isMounted) {
+          console.error("Failed to fetch directory config:", e);
+          setCurrentConfigDisplayPath(null); // Indicates an error
+        }
+      } finally {
+        if (isMounted) setIsLoadingPath(false);
+      }
+    };
+    
+    const fetchUser = async () => {
+        try {
+            const user = await getCurrentUser();
+            if (isMounted) {
+                setCurrentUser(user);
+            }
+        } catch(e) {
+            if (isMounted) setCurrentUser(null);
+        }
+    };
 
-    getDirectoryConfig().then(config => {
-      if (isMounted) {
-        const savedPath = config.ivoxsRootPath || '';
-        setDirectoryRootPath(savedPath); 
-        setCurrentConfigDisplayPath(savedPath); 
-      }
-    }).catch(() => {
-      if (isMounted) {
-        setDirectoryRootPath('');
-        setCurrentConfigDisplayPath(null);
-      }
-    }).finally(() => {
-      if (isMounted) setIsLoadingPath(false);
-    });
-
-    getCurrentUser().then(user => {
-      if (isMounted) {
-        setCurrentUser(user);
-      }
-    });
+    fetchConfig();
+    fetchUser();
 
     return () => { isMounted = false; };
   }, []);
@@ -85,13 +96,7 @@ export default function SettingsPage() {
         setPathStatus({type: 'error', message: t('directoryPathCannotBeEmpty')});
         return;
     }
-    const isAbsolutePath = (p: string) => p.startsWith('/') || /^[a-zA-Z]:[\\/]/.test(p);
-
-    if (!isAbsolutePath(directoryRootPath.trim())) {
-        toast({ title: t('errorTitle'), description: t('directoryPathMustBeAbsolute'), variant: 'destructive' });
-        setPathStatus({type: 'error', message: t('directoryPathMustBeAbsolute')});
-        return;
-    }
+    
     startPathTransition(async () => {
         const result = await updateDirectoryRootPathAction(directoryRootPath.trim());
         if (result.success) {
@@ -245,7 +250,7 @@ export default function SettingsPage() {
                   : currentConfigDisplayPath === null
                     ? t('errorFetchingPathLabel')
                     : currentConfigDisplayPath
-                      ? currentConfigDisplayPath
+                      ? <strong>{currentConfigDisplayPath}</strong>
                       : t('defaultPathLabel', { path: 'ivoxsdir (project root)' })}
               </p>
             </div>

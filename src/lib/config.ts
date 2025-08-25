@@ -17,13 +17,14 @@ export async function getDirectoryConfig(): Promise<DirectoryConfig> {
     await fs.mkdir(CONFIG_DIR, { recursive: true });
     const data = await fs.readFile(DIRECTORY_CONFIG_PATH, 'utf-8');
     const parsedData = JSON.parse(data);
-    if (typeof parsedData.ivoxsRootPath === 'string' || parsedData.ivoxsRootPath === null) {
-      return parsedData;
+    // Basic validation to ensure the object has the expected key
+    if (parsedData && typeof parsedData.ivoxsRootPath !== 'undefined') {
+      return { ivoxsRootPath: parsedData.ivoxsRootPath };
     }
     // If structure is unexpected, return default
     return { ivoxsRootPath: null };
   } catch (error) {
-    // If file doesn't exist or is invalid, return default
+    // If file doesn't exist or is invalid JSON, it's not an application error, just means no config is set.
     return { ivoxsRootPath: null };
   }
 }
@@ -37,23 +38,23 @@ export async function saveDirectoryConfig(config: DirectoryConfig): Promise<void
  * Resolves the root path for the ivoxsdir directory.
  * It will prioritize the custom path from the config file.
  * If no custom path is set, it defaults to 'ivoxsdir' in the project root.
+ * This is the single source of truth for the data path.
  */
 export async function getResolvedIvoxsRootPath(): Promise<string> {
-  const config = await getDirectoryConfig();
-  
-  if (config.ivoxsRootPath && path.isAbsolute(config.ivoxsRootPath)) {
-    // If a custom, absolute path is provided, use it directly.
-    // The responsibility for the path's existence and permissions lies with the user/environment.
-    return config.ivoxsRootPath;
-  }
-  
-  if (config.ivoxsRootPath) {
-     // This case handles a non-absolute path in the config, which is discouraged.
-     // We log a warning but still attempt to use it relative to the current working directory.
-    console.warn(`[Config] The configured ivoxsRootPath "${config.ivoxsRootPath}" is not an absolute path. It's recommended to use absolute paths to avoid ambiguity. Resolving relative to project root.`);
-    return path.join(process.cwd(), config.ivoxsRootPath);
+  try {
+    const config = await getDirectoryConfig();
+    
+    // If a custom path is set in the config, it is the source of truth.
+    if (config.ivoxsRootPath) {
+      // It's the user's responsibility to ensure this path is absolute and correct.
+      // The application will use it as is.
+      return config.ivoxsRootPath;
+    }
+  } catch (e) {
+      // This catch block is for potential errors in getDirectoryConfig itself, though it's designed to be resilient.
+      console.error("[Config] Error retrieving directory configuration. Falling back to default path.", e);
   }
 
-  // If ivoxsRootPath is null, empty, or not in the config, use the default.
+  // If no custom path is configured or an error occurred, fall back to the default path.
   return path.join(process.cwd(), 'ivoxsdir');
 }
