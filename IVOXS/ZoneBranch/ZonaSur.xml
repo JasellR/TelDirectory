@@ -1,1 +1,21 @@
-<?xml version="1.0" encoding="UTF-8" standalone="no"?><CiscoIPPhoneMenu><MenuItem><Name>Bani</Name><URL>http://192.168.103.4:3128/ivoxsdir/department/Bani.xml</URL></MenuItem><MenuItem><Name>Haina</Name><URL>http://192.168.103.4:3128/ivoxsdir/department/Haina.xml</URL></MenuItem><MenuItem><Name>San Cristobal</Name><URL>http://192.168.103.4:3128/ivoxsdir/department/SanCristobal.xml</URL></MenuItem><MenuItem><Name>San Juan</Name><URL>http://192.168.103.4:3128/ivoxsdir/department/SanJuan.xml</URL></MenuItem></CiscoIPPhoneMenu>
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<CiscoIPPhoneMenu>
+  <Title>Zona Sur</Title>
+  <Prompt>Select a Locality</Prompt>
+  <MenuItem>
+    <Name>Bani</Name>
+    <URL>http://127.0.0.1:3000/ivoxsdir/department/Bani.xml</URL>
+  </MenuItem>
+  <MenuItem>
+    <Name>Haina</Name>
+    <URL>http://127.0.0.1:3000/ivoxsdir/department/Haina.xml</URL>
+  </MenuItem>
+  <MenuItem>
+    <Name>San Cristobal</Name>
+    <URL>http://127.0.0.1:3000/ivoxsdir/department/SanCristobal.xml</URL>
+  </MenuItem>
+  <MenuItem>
+    <Name>San Juan</Name>
+    <URL>http://127.0.0.1:3000/ivoxsdir/department/SanJuan.xml</URL>
+  </MenuItem>
+</CiscoIPPhoneMenu>
