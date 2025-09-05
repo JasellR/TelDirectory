@@ -41,12 +41,12 @@ export const CiscoIPPhoneDirectorySchema = z.object({
   DirectoryEntry: z.preprocess(ensureArray, z.array(CiscoIPPhoneDirectoryEntrySchema).optional()),
 });
 
-// Dynamic path getters - CORRECTED TO USE CORRECT FILENAME CASING
+// Dynamic path getters
 async function getPaths() {
   const ivoxsRoot = await getResolvedIvoxsRootPath();
   return {
     IVOXS_DIR: ivoxsRoot,
-    MAINMENU_PATH: path.join(ivoxsRoot, 'MAINMENU.xml'), // Corrected: MAINMENU.xml
+    MAINMENU_PATH: path.join(ivoxsRoot, 'MAINMENU.xml'),
     ZONE_BRANCH_DIR: path.join(ivoxsRoot, 'ZoneBranch'),
     BRANCH_DIR: path.join(ivoxsRoot, 'Branch'),
     DEPARTMENT_DIR: path.join(ivoxsRoot, 'Department'),
@@ -59,8 +59,6 @@ async function readFileContent(filePath: string): Promise<string> {
     return await fs.readFile(filePath, 'utf-8');
   } catch (error: any) {
     if (error.code === 'ENOENT') {
-      // File not found, return empty string, higher level functions will handle it.
-      // console.warn(`[DataLib - readFileContent] File not found: ${filePath}`); // Reduced verbosity
       return '';
     }
     console.error(`Error reading file ${filePath}:`, error);
@@ -75,8 +73,9 @@ function extractIdFromUrl(url: string): string {
 }
 
 function getItemTypeFromUrl(url: string): 'branch' | 'locality' | 'unknown' {
-  if (url.includes('/Branch/')) return 'branch';
-  if (url.includes('/Department/')) return 'locality';
+  const lowerUrl = url.toLowerCase();
+  if (lowerUrl.includes('/branch/')) return 'branch';
+  if (lowerUrl.includes('/department/')) return 'locality';
   return 'unknown';
 }
 
@@ -90,7 +89,7 @@ export async function getZones(): Promise<Omit<Zone, 'items'>[]> {
   const validated = CiscoIPPhoneMenuSchema.safeParse(parsedXml.CiscoIPPhoneMenu);
 
   if (!validated.success) {
-    console.error("Failed to parse MainMenu.xml:", validated.error.issues);
+    console.error("Failed to parse MAINMENU.xml:", validated.error.issues);
     return [];
   }
 
@@ -122,12 +121,19 @@ export async function getZoneItems(zoneId: string): Promise<ZoneItem[]> {
 
   const menuItems = validated.data.MenuItem || [];
   return menuItems.map(item => {
-    // This logic needs to be smarter because URLS still have lowercase dirnames from previous changes
-    const urlPath = new URL(item.URL).pathname;
+    let urlPath;
+    try {
+        urlPath = new URL(item.URL).pathname;
+    } catch {
+        urlPath = item.URL; // Fallback if URL is relative or malformed
+    }
+    
     let itemType: 'branch' | 'locality' | 'unknown' = 'unknown';
-    if (urlPath.includes('/branch/') || urlPath.includes('/Branch/')) {
+    const lowerUrlPath = urlPath.toLowerCase();
+
+    if (lowerUrlPath.includes('/branch/')) {
         itemType = 'branch';
-    } else if (urlPath.includes('/department/') || urlPath.includes('/Department/')) {
+    } else if (lowerUrlPath.includes('/department/')) {
         itemType = 'locality';
     }
 
@@ -137,9 +143,9 @@ export async function getZoneItems(zoneId: string): Promise<ZoneItem[]> {
     return {
         id: extractIdFromUrl(item.URL),
         name: item.Name,
-        type: itemType as 'branch' | 'locality', // Assume it's one of these if not unknown
+        type: itemType as 'branch' | 'locality',
     };
-  }).filter(item => item.type === 'branch' || item.type === 'locality'); // Ensure only valid types
+  }).filter(item => item.type === 'branch' || item.type === 'locality');
 }
 
 
@@ -177,9 +183,8 @@ export async function getLocalityDetails(
   context?: { zoneId?: string; branchId?: string }
 ): Promise<Omit<Locality, 'extensions'> | undefined> {
   const paths = await getPaths();
-  let localityName = localityId; // Default to ID if name isn't found
+  let localityName = localityId; 
 
-  // Try to find a more descriptive name from parent menus first
   if (context?.branchId && context?.zoneId) {
     const branchItems = await getBranchItems(context.branchId);
     const itemInfo = branchItems.find(item => item.id === localityId);
@@ -190,7 +195,6 @@ export async function getLocalityDetails(
      if (itemInfo) localityName = itemInfo.name;
   }
 
-  // Then, try to get the title from the department XML itself, which might be more authoritative
   const departmentFilePath = path.join(paths.DEPARTMENT_DIR, `${localityId}.xml`);
   const departmentXmlContent = await readFileContent(departmentFilePath);
   
@@ -280,3 +284,5 @@ export async function getLocalityWithExtensions(localityId: string): Promise<Loc
     extensions,
   };
 }
+
+    

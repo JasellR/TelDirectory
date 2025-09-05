@@ -14,7 +14,7 @@ import { getDb, bcrypt } from './db';
 import ldap from 'ldapjs';
 
 
-// Helper to get all dynamic paths based on the resolved IVOXS root - CORRECTED TO USE CORRECT FILENAME CASING
+// Helper to get all dynamic paths based on the resolved IVOXS root
 async function getPaths() {
   const ivoxsRoot = await getResolvedIvoxsRootPath();
   return {
@@ -22,7 +22,7 @@ async function getPaths() {
     ZONE_BRANCH_DIR: path.join(ivoxsRoot, 'ZoneBranch'),
     BRANCH_DIR: path.join(ivoxsRoot, 'Branch'),
     DEPARTMENT_DIR: path.join(ivoxsRoot, 'Department'),
-    MAINMENU_FILENAME: 'MAINMENU.xml' // Corrected: MAINMENU.xml
+    MAINMENU_FILENAME: 'MAINMENU.xml'
   };
 }
 
@@ -41,7 +41,7 @@ const sanitizeFilenamePart = (filenamePart: string): string => {
 
 
 function generateIdFromName(name: string): string {
-  const cleanedName = name.replace(/[^a-zA-Z0-9\\s_.-]/g, ''); // Allow specific characters, remove others
+  const cleanedName = name.replace(/[^a-zA-Z0-9\s_.-]/g, ''); // Allow specific characters, remove others
   if (!cleanedName.trim()) return `UnnamedItem${Date.now()}`; // Fallback for empty/invalid names
   return cleanedName
     .replace(/\s+/g, '') // Remove all spaces
@@ -96,8 +96,6 @@ function getItemTypeFromUrl(url: string): 'branch' | 'locality' | 'unknown' {
 
 // Helper to get configured service URL components
 async function getServiceUrlComponents(paths: Awaited<ReturnType<typeof getPaths>>): Promise<{ protocol: string, host: string, port: string }> {
-  // This function is now less critical as URLs are relative to /directory/
-  // but can be kept for future absolute URL needs.
   let protocol = 'http';
   let host = '127.0.0.1';
   let port = '3000';
@@ -106,7 +104,6 @@ async function getServiceUrlComponents(paths: Awaited<ReturnType<typeof getPaths
 }
 
 function constructServiceUrl(protocol: string, host: string, port: string, pathSegment: string): string {
-  // The path segment now includes the directory type, e.g., "ZoneBranch/ZonaEste.xml"
   return `${protocol}://${host}:${port}/directory/${pathSegment}`;
 }
 
@@ -149,7 +146,7 @@ export async function addZoneAction(zoneName: string): Promise<{ success: boolea
     };
     await buildAndWriteXML(newZoneBranchFilePath, newZoneBranchContent);
 
-    // 2. Add the new zone to MainMenu.xml
+    // 2. Add the new zone to MAINMENU.xml
     const mainMenu = await readAndParseXML(mainMenuPath) || { CiscoIPPhoneMenu: { MenuItem: [] } };
     mainMenu.CiscoIPPhoneMenu.MenuItem = ensureArray(mainMenu.CiscoIPPhoneMenu.MenuItem);
     mainMenu.CiscoIPPhoneMenu.MenuItem.push({
@@ -213,7 +210,7 @@ export async function deleteZoneAction(zoneId: string): Promise<{ success: boole
     // 2. Delete the zone branch file itself
     await fs.unlink(zoneBranchFilePath).catch(err => console.warn(`Could not delete zone branch file ${zoneBranchFilePath}: ${err.message}`));
 
-    // 3. Remove the zone from MainMenu.xml
+    // 3. Remove the zone from MAINMENU.xml
     const mainMenu = await readAndParseXML(mainMenuPath);
     if (mainMenu?.CiscoIPPhoneMenu?.MenuItem) {
       const menuItems = ensureArray(mainMenu.CiscoIPPhoneMenu.MenuItem);
@@ -435,7 +432,7 @@ export async function addExtensionAction(localityId: string, newName: string, ne
     const departmentFilePath = path.join(paths.DEPARTMENT_DIR, `${localityId}.xml`);
 
     try {
-        const department = await readAndParseXML(departmentFilePath);
+        const department = await readAndParseXML(departmentFilePath) || { CiscoIPPhoneDirectory: { DirectoryEntry: [] } };
         if (!department.CiscoIPPhoneDirectory) department.CiscoIPPhoneDirectory = {};
         
         department.CiscoIPPhoneDirectory.DirectoryEntry = ensureArray(department.CiscoIPPhoneDirectory.DirectoryEntry);
@@ -581,14 +578,17 @@ export async function updateXmlUrlsAction(host: string, port: string): Promise<{
             try {
                 let url;
                 try {
+                    // This handles potentially malformed URLs by trying to parse them first
                     url = new URL(item.URL);
                 } catch (e) {
+                    // If the URL is invalid, log it and return the item without changing it.
                     console.warn(`[updateXmlUrlsAction] Skipping invalid URL "${item.URL}" in file ${filePath}. Error: ${(e as Error).message}`);
-                    return item; // Return original item if URL is invalid
+                    return item; 
                 }
 
                 const pathParts = url.pathname.split('/').filter(p => p); 
                 
+                // Ensure there's a path to work with. e.g., /directory/Department/Bavaro.xml -> ['directory', 'Department', 'Bavaro.xml']
                 if (pathParts.length >= 2) {
                     const relativePath = pathParts.slice(-2).join('/'); 
                     item.URL = constructServiceUrl(protocol, host, port, relativePath);
@@ -596,6 +596,7 @@ export async function updateXmlUrlsAction(host: string, port: string): Promise<{
                      console.warn(`[updateXmlUrlsAction] Could not process URL, not enough path segments: ${item.URL}`);
                 }
             } catch (e) {
+                // Catch any other unexpected errors during processing
                 console.error(`[updateXmlUrlsAction] Unexpected error processing URL "${item.URL}" in file ${filePath}. Error: ${(e as Error).message}`);
             }
             return item;
@@ -604,10 +605,8 @@ export async function updateXmlUrlsAction(host: string, port: string): Promise<{
     };
     
     try {
-        // Update MainMenu.xml
         await updateUrlsInFile(path.join(paths.IVOXS_DIR, paths.MAINMENU_FILENAME));
 
-        // Update all zonebranch files
         const zoneFiles = await fs.readdir(paths.ZONE_BRANCH_DIR);
         for(const file of zoneFiles) {
             if(file.endsWith('.xml')) {
@@ -615,7 +614,6 @@ export async function updateXmlUrlsAction(host: string, port: string): Promise<{
             }
         }
         
-        // Update all branch files
         const branchFiles = await fs.readdir(paths.BRANCH_DIR);
          for(const file of branchFiles) {
             if(file.endsWith('.xml')) {
@@ -660,7 +658,6 @@ export async function syncNamesFromXmlFeedAction(feedUrlsString: string): Promis
   const paths = await getPaths();
   const allFeedExtensions: Record<string, { name: string, sourceFeed: string }[]> = {};
 
-  // 1. Fetch and parse all feeds
   for (const url of urls) {
     try {
       const response = await fetch(url);
@@ -686,7 +683,6 @@ export async function syncNamesFromXmlFeedAction(feedUrlsString: string): Promis
     }
   }
 
-  // 2. Identify conflicts and prepare a clean update map
   const extensionsToUpdate: Record<string, string> = {};
   const conflictedExtensions: ConflictedExtensionInfo[] = [];
   
@@ -700,7 +696,6 @@ export async function syncNamesFromXmlFeedAction(feedUrlsString: string): Promis
     }
   }
 
-  // 3. Scan local department files and update names
   let updatedCount = 0;
   let filesModified = 0;
   let filesFailedToUpdate = 0;
@@ -743,7 +738,6 @@ export async function syncNamesFromXmlFeedAction(feedUrlsString: string): Promis
     return { success: false, message: "Error reading local department directory.", error: e.message, updatedCount: 0, filesModified: 0, filesFailedToUpdate: 0, conflictedExtensions: [], missingExtensions: [] };
   }
 
-  // 4. Identify missing extensions
   const missingExtensions: MissingExtensionInfo[] = [];
   for (const number in extensionsToUpdate) {
     if (!localExtensionsFound.has(number)) {
@@ -786,25 +780,8 @@ export async function searchAllDepartmentsAndExtensionsAction(query: string): Pr
   
   const allLocalities = new Map<string, {name: string, zoneId: string, zoneName: string, branchId?: string, branchName?: string}>();
 
-  // Helper function to find a file in a directory, ignoring case.
-  const findFileCaseInsensitive = async (directory: string, filename: string): Promise<string | null> => {
-      try {
-          const files = await fs.readdir(directory);
-          const lowerCaseFilename = filename.toLowerCase();
-          for (const file of files) {
-              if (file.toLowerCase() === lowerCaseFilename) {
-                  return file; // Return the actual filename with its original casing
-              }
-          }
-          return null; // No match found
-      } catch (error: any) {
-          if (error.code === 'ENOENT') return null;
-          console.error(`[findFileCaseInsensitive] Error reading directory ${directory}:`, error);
-          return null;
-      }
-  }
+  // This helper is not needed here as we read the directory listing directly
   
-  // Helper to recursively parse menus and populate the allLocalities map
   const processMenu = async (filePath: string, context: {zoneId: string, zoneName: string, branchId?: string, branchName?: string}) => {
     const menuContent = await readFileContent(filePath);
     if (!menuContent) return;
@@ -823,9 +800,13 @@ export async function searchAllDepartmentsAndExtensionsAction(query: string): Pr
                 }
             } else if (itemType === 'branch') {
                 const newContext = { ...context, branchId: itemId, branchName: item.Name };
-                const branchFilename = await findFileCaseInsensitive(paths.BRANCH_DIR, `${itemId}.xml`);
-                if(branchFilename) {
-                   await processMenu(path.join(paths.BRANCH_DIR, branchFilename), newContext);
+                const branchFilePath = path.join(paths.BRANCH_DIR, `${itemId}.xml`);
+                // Check if branch file exists before recursing
+                try {
+                  await fs.access(branchFilePath);
+                  await processMenu(branchFilePath, newContext);
+                } catch {
+                  console.warn(`[Search] Branch file not found, skipping: ${branchFilePath}`);
                 }
             }
         }
@@ -835,8 +816,15 @@ export async function searchAllDepartmentsAndExtensionsAction(query: string): Pr
   };
 
 
-  // Start processing from MainMenu to discover all zones
-  const mainMenuContent = await readFileContent(path.join(paths.IVOXS_DIR, paths.MAINMENU_FILENAME));
+  const mainMenuPath = path.join(paths.IVOXS_DIR, paths.MAINMENU_FILENAME);
+  try {
+      await fs.access(mainMenuPath); // Check if MainMenu exists
+  } catch {
+      console.error(`[Search] Fatal: ${paths.MAINMENU_FILENAME} not found at ${paths.IVOXS_DIR}. Search cannot proceed.`);
+      return [];
+  }
+  
+  const mainMenuContent = await readFileContent(mainMenuPath);
   if (mainMenuContent) {
     try {
       const parsedMainMenu = await parseStringPromise(mainMenuContent, { explicitArray: false, trim: true });
@@ -845,47 +833,49 @@ export async function searchAllDepartmentsAndExtensionsAction(query: string): Pr
       for (const zoneMenuItem of zones) {
           const zoneId = extractIdFromUrl(zoneMenuItem.URL);
           const zoneContext = { zoneId: zoneId, zoneName: zoneMenuItem.Name };
-          const zoneFilename = await findFileCaseInsensitive(paths.ZONE_BRANCH_DIR, `${zoneId}.xml`);
-          if(zoneFilename) {
-            await processMenu(path.join(paths.ZONE_BRANCH_DIR, zoneFilename), zoneContext);
+          const zoneFilePath = path.join(paths.ZONE_BRANCH_DIR, `${zoneId}.xml`);
+          try {
+            await fs.access(zoneFilePath);
+            await processMenu(zoneFilePath, zoneContext);
+          } catch {
+            console.warn(`[Search] Zone file not found, skipping: ${zoneFilePath}`);
           }
       }
     } catch(e) {
-      console.error(`[Search] Fatal: Could not process MainMenu.xml:`, e);
+      console.error(`[Search] Fatal: Could not process ${paths.MAINMENU_FILENAME}:`, e);
       return [];
     }
   }
 
-  // Now, search within the fully mapped localities
   const resultsMap = new Map<string, GlobalSearchResult>();
 
   for (const [localityId, localityInfo] of allLocalities.entries()) {
       const localityNameMatch = localityInfo.name.toLowerCase().includes(lowerQuery);
       let matchingExtensions: MatchedExtension[] = [];
 
-      const departmentFilename = await findFileCaseInsensitive(paths.DEPARTMENT_DIR, `${localityId}.xml`);
-      if (departmentFilename) {
-          const departmentContent = await readFileContent(path.join(paths.DEPARTMENT_DIR, departmentFilename));
-          if (departmentContent) {
-              try {
-                  const parsedDept = await readAndParseXML(path.join(paths.DEPARTMENT_DIR, departmentFilename));
-                  const extensions = ensureArray(parsedDept?.CiscoIPPhoneDirectory?.DirectoryEntry);
+      const departmentFilePath = path.join(paths.DEPARTMENT_DIR, `${localityId}.xml`);
+      
+      try {
+        await fs.access(departmentFilePath);
+        const departmentContent = await readFileContent(departmentFilePath);
+        if (departmentContent) {
+            const parsedDept = await readAndParseXML(departmentFilePath);
+            const extensions = ensureArray(parsedDept?.CiscoIPPhoneDirectory?.DirectoryEntry);
 
-                  for (const ext of extensions) {
-                      let matchedOn: MatchedExtension['matchedOn'] | null = null;
-                      if (ext.Name.toLowerCase().includes(lowerQuery)) {
-                          matchedOn = 'extensionName';
-                      } else if (ext.Telephone.toLowerCase().includes(lowerQuery)) {
-                          matchedOn = 'extensionNumber';
-                      }
-                      if (matchedOn) {
-                          matchingExtensions.push({ name: ext.Name, number: ext.Telephone, matchedOn });
-                      }
-                  }
-              } catch (e) {
-                  console.warn(`[Search] Could not parse department XML ${localityId}.xml for search`, e);
-              }
-          }
+            for (const ext of extensions) {
+                let matchedOn: MatchedExtension['matchedOn'] | null = null;
+                if (ext.Name.toLowerCase().includes(lowerQuery)) {
+                    matchedOn = 'extensionName';
+                } else if (ext.Telephone.toLowerCase().includes(lowerQuery)) {
+                    matchedOn = 'extensionNumber';
+                }
+                if (matchedOn) {
+                    matchingExtensions.push({ name: ext.Name, number: ext.Telephone, matchedOn });
+                }
+            }
+        }
+      } catch {
+        // File not found is a normal condition here, just means no extensions to search
       }
 
 
@@ -905,7 +895,6 @@ export async function searchAllDepartmentsAndExtensionsAction(query: string): Pr
                   matchingExtensions,
               });
           } else {
-              // This case is less likely now but safe to keep: if it already exists, merge extension matches
               const existing = resultsMap.get(localityId)!;
               existing.matchingExtensions.push(...matchingExtensions);
               if (localityNameMatch) {
