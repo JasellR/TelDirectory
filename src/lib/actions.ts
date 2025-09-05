@@ -14,15 +14,36 @@ import { getDb, bcrypt } from './db';
 import ldap from 'ldapjs';
 
 
+// Case-insensitive file finder
+async function findFileCaseInsensitive(directory: string, filename: string): Promise<string | null> {
+    try {
+        const files = await fs.readdir(directory);
+        const lowerCaseFilename = filename.toLowerCase();
+        for (const file of files) {
+            if (file.toLowerCase() === lowerCaseFilename) {
+                return file; // Return the actual filename with its original casing
+            }
+        }
+        return null; // No match found
+    } catch (error: any) {
+        if (error.code === 'ENOENT') return null; // Directory doesn't exist is a valid case
+        console.error(`[findFileCaseInsensitive] Error reading directory ${directory}:`, error);
+        return null;
+    }
+}
+
 // Helper to get all dynamic paths based on the resolved IVOXS root
 async function getPaths() {
   const ivoxsRoot = await getResolvedIvoxsRootPath();
+  const mainMenuFilename = await findFileCaseInsensitive(ivoxsRoot, 'mainmenu.xml');
+
   return {
     IVOXS_DIR: ivoxsRoot,
+    MAINMENU_FILENAME: mainMenuFilename, // This will be the actual filename, or null
+    MAINMENU_PATH: mainMenuFilename ? path.join(ivoxsRoot, mainMenuFilename) : null,
     ZONE_BRANCH_DIR: path.join(ivoxsRoot, 'ZoneBranch'),
     BRANCH_DIR: path.join(ivoxsRoot, 'Branch'),
     DEPARTMENT_DIR: path.join(ivoxsRoot, 'Department'),
-    MAINMENU_FILENAME: 'MAINMENU.xml'
   };
 }
 
@@ -131,7 +152,10 @@ export async function addZoneAction(zoneName: string): Promise<{ success: boolea
   
   const newZoneId = generateIdFromName(zoneName);
   const paths = await getPaths();
-  const mainMenuPath = path.join(paths.IVOXS_DIR, paths.MAINMENU_FILENAME);
+  if (!paths.MAINMENU_PATH) {
+    return { success: false, message: "Main menu file (e.g., MainMenu.xml) not found in the directory root." };
+  }
+  const mainMenuPath = paths.MAINMENU_PATH;
   const newZoneBranchFilePath = path.join(paths.ZONE_BRANCH_DIR, `${newZoneId}.xml`);
   const { protocol, host, port } = await getServiceUrlComponents();
   const newZoneURL = constructServiceUrl(protocol, host, port, `ZoneBranch/${newZoneId}.xml`);
@@ -171,7 +195,10 @@ export async function deleteZoneAction(zoneId: string): Promise<{ success: boole
   }
 
   const paths = await getPaths();
-  const mainMenuPath = path.join(paths.IVOXS_DIR, paths.MAINMENU_FILENAME);
+  if (!paths.MAINMENU_PATH) {
+    return { success: false, message: "Main menu file (e.g., MainMenu.xml) not found. Cannot delete zone." };
+  }
+  const mainMenuPath = paths.MAINMENU_PATH;
   const zoneBranchFilePath = path.join(paths.ZONE_BRANCH_DIR, `${zoneId}.xml`);
 
   try {
@@ -570,7 +597,11 @@ export async function updateXmlUrlsAction(host: string, port: string): Promise<{
     const paths = await getPaths();
     const { protocol } = await getServiceUrlComponents();
     
-    const updateUrlsInFile = async (filePath: string) => {
+    const updateUrlsInFile = async (filePath: string | null) => {
+        if (!filePath) {
+            console.warn("[updateXmlUrlsAction] Skipping update because file path is null.");
+            return;
+        }
         const fileContent = await readAndParseXML(filePath);
         if (!fileContent?.CiscoIPPhoneMenu?.MenuItem) return;
 
@@ -605,7 +636,7 @@ export async function updateXmlUrlsAction(host: string, port: string): Promise<{
     };
     
     try {
-        await updateUrlsInFile(path.join(paths.IVOXS_DIR, paths.MAINMENU_FILENAME));
+        await updateUrlsInFile(paths.MAINMENU_PATH);
 
         const zoneFiles = await fs.readdir(paths.ZONE_BRANCH_DIR);
         for(const file of zoneFiles) {
@@ -816,12 +847,10 @@ export async function searchAllDepartmentsAndExtensionsAction(query: string): Pr
   };
 
 
-  const mainMenuPath = path.join(paths.IVOXS_DIR, paths.MAINMENU_FILENAME);
-  try {
-      await fs.access(mainMenuPath); // Check if MainMenu exists
-  } catch {
-      console.error(`[Search] Fatal: ${paths.MAINMENU_FILENAME} not found at ${paths.IVOXS_DIR}. Search cannot proceed.`);
-      return [];
+  const mainMenuPath = paths.MAINMENU_PATH;
+  if (!mainMenuPath) {
+    console.error(`[Search] Fatal: Main menu file (e.g., MainMenu.xml) not found at ${paths.IVOXS_DIR}. Search cannot proceed.`);
+    return [];
   }
   
   const mainMenuContent = await readFileContent(mainMenuPath);

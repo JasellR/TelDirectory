@@ -41,12 +41,34 @@ export const CiscoIPPhoneDirectorySchema = z.object({
   DirectoryEntry: z.preprocess(ensureArray, z.array(CiscoIPPhoneDirectoryEntrySchema).optional()),
 });
 
+
+// Case-insensitive file finder
+async function findFileCaseInsensitive(directory: string, filename: string): Promise<string | null> {
+    try {
+        const files = await fs.readdir(directory);
+        const lowerCaseFilename = filename.toLowerCase();
+        for (const file of files) {
+            if (file.toLowerCase() === lowerCaseFilename) {
+                return file; // Return the actual filename with its original casing
+            }
+        }
+        return null; // No match found
+    } catch (error: any) {
+        if (error.code === 'ENOENT') return null; // Directory doesn't exist is a valid case
+        console.error(`[findFileCaseInsensitive] Error reading directory ${directory}:`, error);
+        return null;
+    }
+}
+
+
 // Dynamic path getters
 async function getPaths() {
   const ivoxsRoot = await getResolvedIvoxsRootPath();
+  const mainMenuFilename = await findFileCaseInsensitive(ivoxsRoot, 'mainmenu.xml');
   return {
     IVOXS_DIR: ivoxsRoot,
-    MAINMENU_PATH: path.join(ivoxsRoot, 'MAINMENU.xml'),
+    MAINMENU_FILENAME: mainMenuFilename,
+    MAINMENU_PATH: mainMenuFilename ? path.join(ivoxsRoot, mainMenuFilename) : null,
     ZONE_BRANCH_DIR: path.join(ivoxsRoot, 'ZoneBranch'),
     BRANCH_DIR: path.join(ivoxsRoot, 'Branch'),
     DEPARTMENT_DIR: path.join(ivoxsRoot, 'Department'),
@@ -82,19 +104,23 @@ function getItemTypeFromUrl(url: string): 'branch' | 'locality' | 'unknown' {
 
 export async function getZones(): Promise<Omit<Zone, 'items'>[]> {
   const paths = await getPaths();
+  if (!paths.MAINMENU_PATH) {
+      console.warn("[getZones] Main menu file (e.g., MainMenu.xml) not found in the root directory.");
+      return [];
+  }
   const xmlContent = await readFileContent(paths.MAINMENU_PATH);
   if (!xmlContent) return [];
 
   const parsedXml = await parseStringPromise(xmlContent, { explicitArray: false, trim: true });
   // Ensure we validate the correct object
   if (!parsedXml || !parsedXml.CiscoIPPhoneMenu) {
-    console.error("MAINMENU.xml is malformed. Missing CiscoIPPhoneMenu root element.");
+    console.error(`Main menu file ${paths.MAINMENU_FILENAME} is malformed. Missing CiscoIPPhoneMenu root element.`);
     return [];
   }
   const validated = CiscoIPPhoneMenuSchema.safeParse(parsedXml.CiscoIPPhoneMenu);
 
   if (!validated.success) {
-    console.error("Failed to parse MAINMENU.xml:", validated.error.issues);
+    console.error(`Failed to parse ${paths.MAINMENU_FILENAME}:`, validated.error.issues);
     return [];
   }
 
