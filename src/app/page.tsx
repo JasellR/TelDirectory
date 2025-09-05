@@ -8,6 +8,9 @@ import { GlobalSearch } from '@/components/search/GlobalSearch';
 import { Separator } from '@/components/ui/separator';
 import { isAuthenticated } from '@/lib/auth-actions';
 import { DeleteZoneButton } from '@/components/actions/DeleteZoneButton'; 
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { AlertCircle } from 'lucide-react';
+
 
 export default async function HomePage() {
   const zones = await getZones();
@@ -52,7 +55,13 @@ export default async function HomePage() {
           ))}
         </div>
       ) : (
-        <p className="text-muted-foreground">{t('noZonesAvailable')}</p>
+         <Alert variant="destructive">
+            <AlertCircle className="h-4 w-4" />
+            <AlertTitle>Directory Not Found</AlertTitle>
+            <AlertDescription>
+              Could not load the directory zones. Please ensure that <strong>MAINMENU.xml</strong> exists at the root of your configured directory path and is not empty or malformed.
+            </AlertDescription>
+        </Alert>
       )}
     </div>
   );

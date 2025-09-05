@@ -11,6 +11,8 @@ import Link from 'next/link';
 import { ArrowLeft } from 'lucide-react'; 
 import { getTranslations } from '@/lib/translations-server'; 
 import { isAuthenticated } from '@/lib/auth-actions';
+import { AlertCircle } from 'lucide-react';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 
 interface ZonePageProps {
   params: {
@@ -40,7 +42,7 @@ export default async function ZonePage({ params }: ZonePageProps) {
   const t = await getTranslations(); 
   const userIsAuthenticated = await isAuthenticated();
   
-  if (!zone) { 
+  if (!zone) {
     notFound();
   }
   
@@ -73,13 +75,23 @@ export default async function ZonePage({ params }: ZonePageProps) {
           )}
         </div>
         
-        <LocalityBranchSearch 
-          items={items} 
-          zoneId={zoneId} 
-          itemType={itemTypeName} 
-          itemTypePlural={itemTypeNamePlural} 
-          isAuthenticated={userIsAuthenticated} 
-        />
+        {items.length > 0 ? (
+           <LocalityBranchSearch 
+              items={items} 
+              zoneId={zoneId} 
+              itemType={itemTypeName} 
+              itemTypePlural={itemTypeNamePlural} 
+              isAuthenticated={userIsAuthenticated} 
+            />
+        ) : (
+            <Alert variant="destructive">
+                <AlertCircle className="h-4 w-4" />
+                <AlertTitle>No Items Found</AlertTitle>
+                <AlertDescription>
+                    No localities or branches could be found for this zone. This may be because the corresponding ZoneBranch XML file (<code>{zoneId}.xml</code>) is empty, missing, or malformed.
+                </AlertDescription>
+            </Alert>
+        )}
         
       </div>
 
@@ -88,7 +100,7 @@ export default async function ZonePage({ params }: ZonePageProps) {
       <div>
         <h2 className="text-2xl font-bold text-foreground mb-2">Data Management</h2>
         <p className="text-muted-foreground">
-          {itemTypeNamePlural} for the <strong>{zone.name}</strong> zone are managed by editing the XML file at <code>ivoxsdir/zonebranch/{zone.id}.xml</code>.
+          {itemTypeNamePlural} for the <strong>{zone.name}</strong> zone are managed by editing the XML file at <code>ivoxsdir/ZoneBranch/{zone.id}.xml</code>.
           Ensure this file contains <code>&lt;MenuItem&gt;</code> tags representing each {itemTypeName.toLowerCase()}. Deleting an item here will remove it from this list and attempt to delete its corresponding {itemTypeHelpText(isZonaMetropolitana)}.
         </p>
       </div>
@@ -98,7 +110,7 @@ export default async function ZonePage({ params }: ZonePageProps) {
 
 function itemTypeHelpText(isZonaMetropolitana: boolean) {
   if (isZonaMetropolitana) {
-    return "branch XML file (in ivoxsdir/branch/) and recursively its contents";
+    return "branch XML file (in ivoxsdir/Branch/) and recursively its contents";
   }
-  return "department XML file (in ivoxsdir/department/)";
+  return "department XML file (in ivoxsdir/Department/)";
 }

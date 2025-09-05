@@ -86,6 +86,11 @@ export async function getZones(): Promise<Omit<Zone, 'items'>[]> {
   if (!xmlContent) return [];
 
   const parsedXml = await parseStringPromise(xmlContent, { explicitArray: false, trim: true });
+  // Ensure we validate the correct object
+  if (!parsedXml || !parsedXml.CiscoIPPhoneMenu) {
+    console.error("MAINMENU.xml is malformed. Missing CiscoIPPhoneMenu root element.");
+    return [];
+  }
   const validated = CiscoIPPhoneMenuSchema.safeParse(parsedXml.CiscoIPPhoneMenu);
 
   if (!validated.success) {
@@ -112,6 +117,10 @@ export async function getZoneItems(zoneId: string): Promise<ZoneItem[]> {
   if (!xmlContent) return [];
 
   const parsedXml = await parseStringPromise(xmlContent, { explicitArray: false, trim: true });
+   if (!parsedXml || !parsedXml.CiscoIPPhoneMenu) {
+    console.error(`Zone file ${zoneId}.xml is malformed. Missing CiscoIPPhoneMenu root element.`);
+    return [];
+  }
   const validated = CiscoIPPhoneMenuSchema.safeParse(parsedXml.CiscoIPPhoneMenu);
 
   if (!validated.success) {
@@ -163,6 +172,10 @@ export async function getBranchItems(branchId: string): Promise<BranchItem[]> {
   if (!xmlContent) return [];
 
   const parsedXml = await parseStringPromise(xmlContent, { explicitArray: false, trim: true });
+  if (!parsedXml || !parsedXml.CiscoIPPhoneMenu) {
+    console.error(`Branch file ${branchId}.xml is malformed. Missing CiscoIPPhoneMenu root element.`);
+    return [];
+  }
   const validated = CiscoIPPhoneMenuSchema.safeParse(parsedXml.CiscoIPPhoneMenu);
 
   if (!validated.success) {
@@ -202,7 +215,7 @@ export async function getLocalityDetails(
       try {
         const parsedDeptXml = await parseStringPromise(departmentXmlContent, { explicitArray: false, trim: true });
         
-        if (!parsedDeptXml || typeof parsedDeptXml !== 'object' || !parsedDeptXml.CiscoIPPhoneDirectory || typeof parsedDeptXml.CiscoIPPhoneDirectory !== 'object') {
+        if (!parsedDeptXml || typeof parsedDeptXml !== 'object' || !parsedDeptXml.CiscoIPPhoneDirectory) {
             console.warn(`[DataLib] Invalid or empty XML structure for CiscoIPPhoneDirectory when fetching details for locality ID: ${localityId}. File: ${departmentFilePath}`);
         } else {
             const validatedDept = CiscoIPPhoneDirectorySchema.safeParse(parsedDeptXml.CiscoIPPhoneDirectory);
@@ -247,7 +260,7 @@ export async function getLocalityWithExtensions(localityId: string): Promise<Loc
     };
   }
   
-  if (!parsedXml || typeof parsedXml !== 'object' || !parsedXml.CiscoIPPhoneDirectory || typeof parsedXml.CiscoIPPhoneDirectory !== 'object') {
+  if (!parsedXml || typeof parsedXml !== 'object' || !parsedXml.CiscoIPPhoneDirectory) {
     console.warn(`[DataLib] Invalid or empty XML structure for CiscoIPPhoneDirectory in locality ID: ${localityId}. File: ${departmentFilePath}`);
     return { 
         id: localityId,
@@ -284,5 +297,3 @@ export async function getLocalityWithExtensions(localityId: string): Promise<Loc
     extensions,
   };
 }
-
-    

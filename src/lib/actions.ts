@@ -95,7 +95,7 @@ function getItemTypeFromUrl(url: string): 'branch' | 'locality' | 'unknown' {
 }
 
 // Helper to get configured service URL components
-async function getServiceUrlComponents(paths: Awaited<ReturnType<typeof getPaths>>): Promise<{ protocol: string, host: string, port: string }> {
+async function getServiceUrlComponents(): Promise<{ protocol: string, host: string, port: string }> {
   let protocol = 'http';
   let host = '127.0.0.1';
   let port = '3000';
@@ -133,7 +133,7 @@ export async function addZoneAction(zoneName: string): Promise<{ success: boolea
   const paths = await getPaths();
   const mainMenuPath = path.join(paths.IVOXS_DIR, paths.MAINMENU_FILENAME);
   const newZoneBranchFilePath = path.join(paths.ZONE_BRANCH_DIR, `${newZoneId}.xml`);
-  const { protocol, host, port } = await getServiceUrlComponents(paths);
+  const { protocol, host, port } = await getServiceUrlComponents();
   const newZoneURL = constructServiceUrl(protocol, host, port, `ZoneBranch/${newZoneId}.xml`);
 
   try {
@@ -241,7 +241,7 @@ export async function addLocalityOrBranchAction(params: {
     const { zoneId, branchId, itemName, itemType } = params;
     const newItemId = generateIdFromName(itemName);
     const paths = await getPaths();
-    const { protocol, host, port } = await getServiceUrlComponents(paths);
+    const { protocol, host, port } = await getServiceUrlComponents();
     
     let parentMenuPath, newItemPath, newUrlPath, revalidationPath;
 
@@ -299,7 +299,7 @@ export async function editLocalityOrBranchAction(params: {
     const { zoneId, branchId, oldItemId, newItemName, itemType } = params;
     const newItemId = generateIdFromName(newItemName);
     const paths = await getPaths();
-    const { protocol, host, port } = await getServiceUrlComponents(paths);
+    const { protocol, host, port } = await getServiceUrlComponents();
 
     let parentMenuPath, oldItemPath, newItemPath, newUrlPath, revalidationPath;
 
@@ -568,7 +568,7 @@ export async function updateXmlUrlsAction(host: string, port: string): Promise<{
     }
 
     const paths = await getPaths();
-    const { protocol } = await getServiceUrlComponents(paths);
+    const { protocol } = await getServiceUrlComponents();
     
     const updateUrlsInFile = async (filePath: string) => {
         const fileContent = await readAndParseXML(filePath);
@@ -906,5 +906,3 @@ export async function searchAllDepartmentsAndExtensionsAction(query: string): Pr
   
   return Array.from(resultsMap.values());
 }
-
-    
