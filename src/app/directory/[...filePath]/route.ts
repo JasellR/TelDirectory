@@ -4,20 +4,20 @@ import { promises as fs } from 'fs';
 import { NextResponse } from 'next/server';
 import path from 'path';
 
-// This function attempts to find a file in a directory, ignoring case.
-async function findFileCaseInsensitive(directory: string, filename: string): Promise<string | null> {
+// This function attempts to find a file or directory in a parent directory, ignoring case.
+async function findCaseInsensitive(directory: string, name: string): Promise<string | null> {
     try {
         const files = await fs.readdir(directory);
-        const lowerCaseFilename = filename.toLowerCase();
+        const lowerCaseName = name.toLowerCase();
         for (const file of files) {
-            if (file.toLowerCase() === lowerCaseFilename) {
-                return file; // Return the actual filename with its original casing
+            if (file.toLowerCase() === lowerCaseName) {
+                return file; // Return the actual name with its original casing
             }
         }
         return null; // No match found
     } catch (error: any) {
         if (error.code === 'ENOENT') return null; // Directory doesn't exist, which is a valid case
-        console.error(`[findFileCaseInsensitive] Error reading directory ${directory}:`, error);
+        console.error(`[findCaseInsensitive] Error reading directory ${directory}:`, error);
         return null;
     }
 }
@@ -27,33 +27,35 @@ export async function GET(
   request: Request,
   { params }: { params: { filePath: string[] } }
 ) {
-  // Join the filePath array into a single path string. e.g., ['zonebranch', 'ZonaEste.xml'] -> 'zonebranch/ZonaEste.xml'
-  const requestedPath = params.filePath.join('/');
+  // Join the filePath array into a single path string. e.g., ['ZoneBranch', 'ZonaEste.xml'] -> 'ZoneBranch/ZonaEste.xml'
+  const requestedPathSegments = params.filePath;
   
-  // Basic sanitization against path traversal and invalid characters
-  if (!requestedPath || requestedPath.includes('..') || !requestedPath.toLowerCase().endsWith('.xml')) {
+  // Basic sanitization
+  if (!requestedPathSegments || requestedPathSegments.includes('..') || !requestedPathSegments.slice(-1)[0].toLowerCase().endsWith('.xml')) {
     return new NextResponse('<error>Invalid request path</error>', { status: 400, headers: { 'Content-Type': 'application/xml' } });
   }
 
   try {
     const ivoxsRoot = await getResolvedIvoxsRootPath();
-    
-    // For case-insensitivity, we need to check the directory and filename
-    const dirName = path.dirname(requestedPath);
-    const fileName = path.basename(requestedPath);
-    
-    const absoluteDir = path.join(ivoxsRoot, dirName);
-    const actualFilename = await findFileCaseInsensitive(absoluteDir, fileName);
+    let currentPath = ivoxsRoot;
+    let actualPathSegments: string[] = [];
 
-    if (!actualFilename) {
-        console.error(`[Route /directory] File not found: ${fileName} in directory ${absoluteDir}. Case-insensitive search failed.`);
-        return new NextResponse(`<error>File for ${requestedPath} not found</error>`, {
-            status: 404,
-            headers: { 'Content-Type': 'application/xml' },
-        });
+    // Traverse the path segments case-insensitively
+    for (const segment of requestedPathSegments) {
+        const actualName = await findCaseInsensitive(currentPath, segment);
+        if (!actualName) {
+            console.error(`[Route /directory] Path segment not found: "${segment}" in directory "${currentPath}". Case-insensitive search failed.`);
+            const requestedPathForError = requestedPathSegments.join('/');
+            return new NextResponse(`<error>File or directory for path "${requestedPathForError}" not found</error>`, {
+                status: 404,
+                headers: { 'Content-Type': 'application/xml' },
+            });
+        }
+        actualPathSegments.push(actualName);
+        currentPath = path.join(currentPath, actualName);
     }
     
-    const finalFilePath = path.join(absoluteDir, actualFilename);
+    const finalFilePath = path.join(ivoxsRoot, ...actualPathSegments);
     const xmlContent = await fs.readFile(finalFilePath, 'utf-8');
 
     return new NextResponse(xmlContent, {
@@ -61,7 +63,7 @@ export async function GET(
       headers: { 'Content-Type': 'application/xml; charset=utf-8' }, // Specify charset
     });
   } catch (error: any) {
-    console.error(`[Route /directory/${requestedPath}] Error reading file:`, error);
+    console.error(`[Route /directory/${requestedPathSegments.join('/')}] Error reading file:`, error);
     return new NextResponse('<error>Internal Server Error</error>', {
       status: 500,
       headers: { 'Content-Type': 'application/xml' },
