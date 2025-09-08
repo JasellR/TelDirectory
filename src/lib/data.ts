@@ -137,8 +137,9 @@ export async function getZoneDetails(zoneId: string): Promise<Omit<Zone, 'items'
 }
 
 export async function getZoneItems(zoneId: string): Promise<ZoneItem[]> {
-  const paths = await getPaths();
-  const zoneFilePath = path.join(paths.ZONE_BRANCH_DIR, `${zoneId}.xml`);
+  const { IVOXS_DIR } = await getPaths();
+  const zoneUrlPart = `ZoneBranch/${zoneId}.xml`; // Assuming this part is relatively stable or derived
+  const zoneFilePath = path.join(IVOXS_DIR, "ZoneBranch", `${zoneId}.xml`);
   const xmlContent = await readFileContent(zoneFilePath);
   if (!xmlContent) return [];
 
@@ -163,12 +164,13 @@ export async function getZoneItems(zoneId: string): Promise<ZoneItem[]> {
         urlPath = item.URL; // Fallback if URL is relative or malformed
     }
     
+    // Determine type by looking at the URL structure, which is more reliable
+    const pathSegments = urlPath.split('/').map(s => s.toLowerCase());
     let itemType: 'branch' | 'locality' | 'unknown' = 'unknown';
-    const lowerUrlPath = urlPath.toLowerCase();
 
-    if (lowerUrlPath.includes('/branch/')) {
+    if (pathSegments.includes('branch')) {
         itemType = 'branch';
-    } else if (lowerUrlPath.includes('/department/')) {
+    } else if (pathSegments.includes('department')) {
         itemType = 'locality';
     }
 
@@ -192,8 +194,8 @@ export async function getBranchDetails(zoneId: string, branchId: string): Promis
 }
 
 export async function getBranchItems(branchId: string): Promise<BranchItem[]> {
-  const paths = await getPaths();
-  const branchFilePath = path.join(paths.BRANCH_DIR, `${branchId}.xml`);
+  const { IVOXS_DIR } = await getPaths();
+  const branchFilePath = path.join(IVOXS_DIR, "Branch", `${branchId}.xml`);
   const xmlContent = await readFileContent(branchFilePath);
   if (!xmlContent) return [];
 
@@ -221,7 +223,7 @@ export async function getLocalityDetails(
   localityId: string,
   context?: { zoneId?: string; branchId?: string }
 ): Promise<Omit<Locality, 'extensions'> | undefined> {
-  const paths = await getPaths();
+  const { DEPARTMENT_DIR } = await getPaths();
   let localityName = localityId; 
 
   if (context?.branchId && context?.zoneId) {
@@ -234,7 +236,7 @@ export async function getLocalityDetails(
      if (itemInfo) localityName = itemInfo.name;
   }
 
-  const departmentFilePath = path.join(paths.DEPARTMENT_DIR, `${localityId}.xml`);
+  const departmentFilePath = path.join(DEPARTMENT_DIR, `${localityId}.xml`);
   const departmentXmlContent = await readFileContent(departmentFilePath);
   
   if (departmentXmlContent && departmentXmlContent.trim() !== '') {
@@ -261,8 +263,8 @@ export async function getLocalityDetails(
 
 
 export async function getLocalityWithExtensions(localityId: string): Promise<Locality | undefined> {
-  const paths = await getPaths();
-  const departmentFilePath = path.join(paths.DEPARTMENT_DIR, `${localityId}.xml`);
+  const { DEPARTMENT_DIR } = await getPaths();
+  const departmentFilePath = path.join(DEPARTMENT_DIR, `${localityId}.xml`);
   const xmlContent = await readFileContent(departmentFilePath);
   if (!xmlContent || xmlContent.trim() === '') {
     console.warn(`[DataLib] Department file for locality ID "${localityId}" is empty or not found at ${departmentFilePath}. Returning locality with no extensions.`);

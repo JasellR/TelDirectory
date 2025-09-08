@@ -47,7 +47,7 @@ export default async function ZonePage({ params }: ZonePageProps) {
   }
   
   const items = await getZoneItems(zoneId);
-  const isZonaMetropolitana = zone.id === 'ZonaMetropolitana';
+  const isZonaMetropolitana = items.some(item => item.type === 'branch');
   const itemTypeName = isZonaMetropolitana ? 'Branch' : 'Locality';
   const itemTypeNamePlural = isZonaMetropolitana ? 'Branches' : 'Localities';
 
@@ -100,7 +100,7 @@ export default async function ZonePage({ params }: ZonePageProps) {
       <div>
         <h2 className="text-2xl font-bold text-foreground mb-2">Data Management</h2>
         <p className="text-muted-foreground">
-          {itemTypeNamePlural} for the <strong>{zone.name}</strong> zone are managed by editing the XML file at <code>ivoxsdir/ZoneBranch/{zone.id}.xml</code>.
+          {itemTypeNamePlural} for the <strong>{zone.name}</strong> zone are managed by editing the XML file at <code>.../ZoneBranch/{zone.id}.xml</code> (path relative to your configured directory).
           Ensure this file contains <code>&lt;MenuItem&gt;</code> tags representing each {itemTypeName.toLowerCase()}. Deleting an item here will remove it from this list and attempt to delete its corresponding {itemTypeHelpText(isZonaMetropolitana)}.
         </p>
       </div>
@@ -110,7 +110,7 @@ export default async function ZonePage({ params }: ZonePageProps) {
 
 function itemTypeHelpText(isZonaMetropolitana: boolean) {
   if (isZonaMetropolitana) {
-    return "branch XML file (in ivoxsdir/Branch/) and recursively its contents";
+    return "branch XML file (in a .../Branch/ directory) and recursively its contents";
   }
-  return "department XML file (in ivoxsdir/Department/)";
+  return "department XML file (in a .../Department/ directory)";
 }

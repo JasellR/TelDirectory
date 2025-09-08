@@ -110,8 +110,10 @@ function extractIdFromUrl(url: string): string {
 
 function getItemTypeFromUrl(url: string): 'branch' | 'locality' | 'unknown' {
   const lowerUrl = url.toLowerCase();
-  if (lowerUrl.includes('/branch/')) return 'branch';
-  if (lowerUrl.includes('/department/')) return 'locality';
+  // Check for the sub-directory name in the path to determine type.
+  // This is more flexible than a fixed structure.
+  if (/\/branch\//i.test(url)) return 'branch';
+  if (/\/department\//i.test(url)) return 'locality';
   return 'unknown';
 }
 
@@ -806,13 +808,11 @@ export async function searchAllDepartmentsAndExtensionsAction(query: string): Pr
     return [];
   }
   
-  const paths = await getPaths();
+  const { IVOXS_DIR, MAINMENU_PATH, MAINMENU_FILENAME } = await getPaths();
   const lowerQuery = query.toLowerCase();
   
   const allLocalities = new Map<string, {name: string, zoneId: string, zoneName: string, branchId?: string, branchName?: string}>();
 
-  // This helper is not needed here as we read the directory listing directly
-  
   const processMenu = async (filePath: string, context: {zoneId: string, zoneName: string, branchId?: string, branchName?: string}) => {
     const menuContent = await readFileContent(filePath);
     if (!menuContent) return;
@@ -831,8 +831,10 @@ export async function searchAllDepartmentsAndExtensionsAction(query: string): Pr
                 }
             } else if (itemType === 'branch') {
                 const newContext = { ...context, branchId: itemId, branchName: item.Name };
-                const branchFilePath = path.join(paths.BRANCH_DIR, `${itemId}.xml`);
-                // Check if branch file exists before recursing
+                // Instead of assuming the sub-directory, parse it from the URL
+                const url = new URL(item.URL);
+                const branchFilePath = path.join(IVOXS_DIR, ...url.pathname.split('/').slice(2)); // Reconstruct path from URL
+                
                 try {
                   await fs.access(branchFilePath);
                   await processMenu(branchFilePath, newContext);
@@ -847,13 +849,12 @@ export async function searchAllDepartmentsAndExtensionsAction(query: string): Pr
   };
 
 
-  const mainMenuPath = paths.MAINMENU_PATH;
-  if (!mainMenuPath) {
-    console.error(`[Search] Fatal: Main menu file (e.g., MainMenu.xml) not found at ${paths.IVOXS_DIR}. Search cannot proceed.`);
+  if (!MAINMENU_PATH) {
+    console.error(`[Search] Fatal: Main menu file (e.g., mainmenu.xml) not found at ${IVOXS_DIR}. Search cannot proceed.`);
     return [];
   }
   
-  const mainMenuContent = await readFileContent(mainMenuPath);
+  const mainMenuContent = await readFileContent(MAINMENU_PATH);
   if (mainMenuContent) {
     try {
       const parsedMainMenu = await parseStringPromise(mainMenuContent, { explicitArray: false, trim: true });
@@ -862,7 +863,9 @@ export async function searchAllDepartmentsAndExtensionsAction(query: string): Pr
       for (const zoneMenuItem of zones) {
           const zoneId = extractIdFromUrl(zoneMenuItem.URL);
           const zoneContext = { zoneId: zoneId, zoneName: zoneMenuItem.Name };
-          const zoneFilePath = path.join(paths.ZONE_BRANCH_DIR, `${zoneId}.xml`);
+          const url = new URL(zoneMenuItem.URL);
+          const zoneFilePath = path.join(IVOXS_DIR, ...url.pathname.split('/').slice(2));
+          
           try {
             await fs.access(zoneFilePath);
             await processMenu(zoneFilePath, zoneContext);
@@ -871,7 +874,7 @@ export async function searchAllDepartmentsAndExtensionsAction(query: string): Pr
           }
       }
     } catch(e) {
-      console.error(`[Search] Fatal: Could not process ${paths.MAINMENU_FILENAME}:`, e);
+      console.error(`[Search] Fatal: Could not process ${MAINMENU_FILENAME}:`, e);
       return [];
     }
   }
@@ -882,7 +885,10 @@ export async function searchAllDepartmentsAndExtensionsAction(query: string): Pr
       const localityNameMatch = localityInfo.name.toLowerCase().includes(lowerQuery);
       let matchingExtensions: MatchedExtension[] = [];
 
-      const departmentFilePath = path.join(paths.DEPARTMENT_DIR, `${localityId}.xml`);
+      // We don't know the subdirectory for department, so we have to search for it.
+      // This is inefficient. A better approach would be to get the full path from the locality's URL.
+      // For now, we assume it is in a "Department" subfolder. This is a remaining assumption.
+      const departmentFilePath = path.join(IVOXS_DIR, 'Department', `${localityId}.xml`);
       
       try {
         await fs.access(departmentFilePath);
