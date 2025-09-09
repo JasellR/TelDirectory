@@ -88,7 +88,7 @@ async function buildAndWriteXML(filePath: string, jsObject: any): Promise<void> 
   const builder = new Builder({
     headless: false,
     renderOpts: { pretty: true, indent: '  ', newline: '\n' },
-    xmldec: { version: '1.0', encoding: 'UTF-8', standalone: false }
+    xmldec: { version: '1.0', encoding: 'UTF-8', standalone: no }
   });
 
   const xmlContentBuiltByBuilder = builder.buildObject(jsObject);
@@ -111,15 +111,17 @@ function extractIdFromUrl(url: string): string {
 function getItemTypeFromUrl(url: string): 'branch' | 'locality' | 'zone' | 'unknown' {
     const lowerUrl = url.toLowerCase();
     if (lowerUrl.includes('/branch/')) return 'branch';
-    if (lowerUrl.includes('/department/')) return 'locality'; // Correctly map /department/ to 'locality' type
+    if (lowerUrl.includes('/department/')) return 'locality';
     if (lowerUrl.includes('/zonebranch/')) return 'zone';
+    // New fault-tolerant check: if it has /locality/ it's a misformed locality URL
+    if (lowerUrl.includes('/locality/')) return 'locality';
     return 'unknown';
 }
 
 const itemTypeToDir: Record<'zone' | 'branch' | 'locality', string> = {
     zone: 'zonebranch',
     branch: 'branch',
-    locality: 'department', // Correctly map 'locality' type to 'department' folder
+    locality: 'department',
 };
 
 
@@ -135,7 +137,6 @@ async function getServiceUrlComponents(): Promise<{ protocol: string, host: stri
 }
 
 function constructServiceUrl(protocol: string, host: string, port: string, rootDirName: string, pathSegment: string): string {
-  // Now correctly constructs the URL to point to the file path without the '/directory' prefix.
   return `${protocol}://${host}:${port}/${rootDirName}/${pathSegment}`;
 }
 
@@ -623,14 +624,23 @@ export async function updateXmlUrlsAction(host: string, port: string): Promise<{
 
         fileContent.CiscoIPPhoneMenu.MenuItem = ensureArray(fileContent.CiscoIPPhoneMenu.MenuItem).map((item: any) => {
             const fileName = (item.URL || '').split('/').pop();
-            const itemType = getItemTypeFromUrl(item.URL);
+            let itemType = getItemTypeFromUrl(item.URL);
             
+            // Fault tolerance: If type is unknown, try to infer it. This is a fallback.
+            if (itemType === 'unknown' && fileName) {
+                // A simple heuristic: if it's in a branch XML, it's likely a locality. Otherwise, can't be sure.
+                // A better approach is to not fail, but to reconstruct based on a best guess.
+                // We'll guess it's a locality as it's the most common destination.
+                console.warn(`[updateXmlUrlsAction] URL type for ${item.URL} is unknown. Attempting to correct it as a 'locality'.`);
+                itemType = 'locality';
+            }
+
             if (fileName && itemType !== 'unknown') {
                 const subDirectory = itemTypeToDir[itemType];
                 const relativePath = `${subDirectory}/${fileName}`;
                 item.URL = constructServiceUrl(protocol, host, port, rootDirName, relativePath);
             } else {
-                 console.warn(`[updateXmlUrlsAction] Could not process URL: ${item.URL}. It might be malformed or pointing to an unknown type.`);
+                 console.warn(`[updateXmlUrlsAction] Could not process URL: ${item.URL}. It remains un-typed and was not updated.`);
             }
             return item;
         });
@@ -963,3 +973,5 @@ export async function searchAllDepartmentsAndExtensionsAction(query: string): Pr
   
   return Array.from(resultsMap.values());
 }
+
+    
