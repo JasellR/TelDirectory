@@ -156,22 +156,7 @@ export async function getZoneItems(zoneId: string): Promise<ZoneItem[]> {
 
   const menuItems = validated.data.MenuItem || [];
   return menuItems.map(item => {
-    let urlPath;
-    try {
-        urlPath = new URL(item.URL).pathname;
-    } catch {
-        urlPath = item.URL; // Fallback if URL is relative or malformed
-    }
-    
-    // Determine type by looking at the URL structure, which is more reliable
-    const pathSegments = urlPath.split('/').map(s => s.toLowerCase());
-    let itemType: 'branch' | 'locality' | 'unknown' = 'unknown';
-
-    if (pathSegments.includes('branch')) {
-        itemType = 'branch';
-    } else if (pathSegments.includes('department')) {
-        itemType = 'locality';
-    }
+    const itemType = getItemTypeFromUrl(item.URL);
 
     if (itemType === 'unknown') {
         console.warn(`Unknown URL type in ${zoneId}.xml for item ${item.Name}: ${item.URL}`);
@@ -324,3 +309,5 @@ export async function getLocalityWithExtensions(localityId: string): Promise<Loc
     extensions,
   };
 }
+
+    

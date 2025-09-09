@@ -110,12 +110,17 @@ function extractIdFromUrl(url: string): string {
 
 function getItemTypeFromUrl(url: string): 'branch' | 'locality' | 'zone' | 'unknown' {
     const lowerUrl = url.toLowerCase();
-    const segments = lowerUrl.split('/').filter(p => p && p !== 'http:' && p !== 'https:');
-    if (segments.includes('branch')) return 'branch';
-    if (segments.includes('department')) return 'locality';
-    if (segments.includes('zonebranch')) return 'zone';
+    if (lowerUrl.includes('/branch/')) return 'branch';
+    if (lowerUrl.includes('/department/')) return 'locality';
+    if (lowerUrl.includes('/zonebranch/')) return 'zone';
     return 'unknown';
 }
+
+const itemTypeToDir: Record<'zone' | 'branch' | 'locality', string> = {
+    zone: 'zonebranch',
+    branch: 'branch',
+    locality: 'department',
+};
 
 
 // Helper to get configured service URL components
@@ -281,18 +286,19 @@ export async function addLocalityOrBranchAction(params: {
     const { protocol, host, port, rootDirName } = await getServiceUrlComponents();
     
     let parentMenuPath, newItemPath, newUrlPath, revalidationPath;
+    const subDir = itemTypeToDir[itemType];
 
     if (itemType === 'branch') {
         parentMenuPath = path.join(paths.ZONE_BRANCH_DIR, `${zoneId}.xml`);
         newItemPath = path.join(paths.BRANCH_DIR, `${newItemId}.xml`);
-        newUrlPath = `branch/${newItemId}.xml`;
+        newUrlPath = `${subDir}/${newItemId}.xml`;
         revalidationPath = `/${zoneId}`;
     } else { // It's a locality
         parentMenuPath = branchId 
             ? path.join(paths.BRANCH_DIR, `${branchId}.xml`)
             : path.join(paths.ZONE_BRANCH_DIR, `${zoneId}.xml`);
         newItemPath = path.join(paths.DEPARTMENT_DIR, `${newItemId}.xml`);
-        newUrlPath = `department/${newItemId}.xml`;
+        newUrlPath = `${subDir}/${newItemId}.xml`;
         revalidationPath = branchId ? `/${zoneId}/branches/${branchId}` : `/${zoneId}`;
     }
     
@@ -337,6 +343,7 @@ export async function editLocalityOrBranchAction(params: {
     const newItemId = generateIdFromName(newItemName);
     const paths = await getPaths();
     const { protocol, host, port, rootDirName } = await getServiceUrlComponents();
+    const subDir = itemTypeToDir[itemType];
 
     let parentMenuPath, oldItemPath, newItemPath, newUrlPath, revalidationPath;
 
@@ -344,7 +351,7 @@ export async function editLocalityOrBranchAction(params: {
         parentMenuPath = path.join(paths.ZONE_BRANCH_DIR, `${zoneId}.xml`);
         oldItemPath = path.join(paths.BRANCH_DIR, `${oldItemId}.xml`);
         newItemPath = path.join(paths.BRANCH_DIR, `${newItemId}.xml`);
-        newUrlPath = `branch/${newItemId}.xml`;
+        newUrlPath = `${subDir}/${newItemId}.xml`;
         revalidationPath = `/${zoneId}`;
     } else { // It's a locality
         parentMenuPath = branchId
@@ -352,7 +359,7 @@ export async function editLocalityOrBranchAction(params: {
             : path.join(paths.ZONE_BRANCH_DIR, `${zoneId}.xml`);
         oldItemPath = path.join(paths.DEPARTMENT_DIR, `${oldItemId}.xml`);
         newItemPath = path.join(paths.DEPARTMENT_DIR, `${newItemId}.xml`);
-        newUrlPath = `department/${newItemId}.xml`;
+        newUrlPath = `${subDir}/${newItemId}.xml`;
         revalidationPath = branchId ? `/${zoneId}/branches/${branchId}` : `/${zoneId}`;
     }
 
@@ -620,11 +627,11 @@ export async function updateXmlUrlsAction(host: string, port: string): Promise<{
             const itemType = getItemTypeFromUrl(item.URL);
             
             if (fileName && itemType !== 'unknown') {
-                const subDirectory = itemType === 'zone' ? 'zonebranch' : itemType;
+                const subDirectory = itemTypeToDir[itemType];
                 const relativePath = `${subDirectory}/${fileName}`;
                 item.URL = constructServiceUrl(protocol, host, port, rootDirName, relativePath);
             } else {
-                 console.warn(`[updateXmlUrlsAction] Could not process URL for item "${item.Name}" in file ${filePath}. URL: ${item.URL}`);
+                 console.warn(`[updateXmlUrlsAction] Could not process URL, root directory name "${rootDirName}" not found or is the last part of the path: ${item.URL}`);
             }
             return item;
         });
@@ -957,3 +964,5 @@ export async function searchAllDepartmentsAndExtensionsAction(query: string): Pr
   
   return Array.from(resultsMap.values());
 }
+
+    
