@@ -97,7 +97,7 @@ function extractIdFromUrl(url: string): string {
 function getItemTypeFromUrl(url: string): 'branch' | 'locality' | 'unknown' {
   const lowerUrl = url.toLowerCase();
   if (lowerUrl.includes('/branch/')) return 'branch';
-  if (lowerUrl.includes('/department/')) return 'locality';
+  if (lowerUrl.includes('/department/')) return 'locality'; // Correctly map /department/ to 'locality' type
   return 'unknown';
 }
 
@@ -309,5 +309,3 @@ export async function getLocalityWithExtensions(localityId: string): Promise<Loc
     extensions,
   };
 }
-
-    

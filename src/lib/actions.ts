@@ -111,7 +111,7 @@ function extractIdFromUrl(url: string): string {
 function getItemTypeFromUrl(url: string): 'branch' | 'locality' | 'zone' | 'unknown' {
     const lowerUrl = url.toLowerCase();
     if (lowerUrl.includes('/branch/')) return 'branch';
-    if (lowerUrl.includes('/department/')) return 'locality';
+    if (lowerUrl.includes('/department/')) return 'locality'; // Correctly map /department/ to 'locality' type
     if (lowerUrl.includes('/zonebranch/')) return 'zone';
     return 'unknown';
 }
@@ -119,7 +119,7 @@ function getItemTypeFromUrl(url: string): 'branch' | 'locality' | 'zone' | 'unkn
 const itemTypeToDir: Record<'zone' | 'branch' | 'locality', string> = {
     zone: 'zonebranch',
     branch: 'branch',
-    locality: 'department',
+    locality: 'department', // Correctly map 'locality' type to 'department' folder
 };
 
 
@@ -135,8 +135,7 @@ async function getServiceUrlComponents(): Promise<{ protocol: string, host: stri
 }
 
 function constructServiceUrl(protocol: string, host: string, port: string, rootDirName: string, pathSegment: string): string {
-  // Correctly constructs the URL to point to the actual file path.
-  // No longer includes a hardcoded '/directory/' part.
+  // Now correctly constructs the URL to point to the file path without the '/directory' prefix.
   return `${protocol}://${host}:${port}/${rootDirName}/${pathSegment}`;
 }
 
@@ -631,7 +630,7 @@ export async function updateXmlUrlsAction(host: string, port: string): Promise<{
                 const relativePath = `${subDirectory}/${fileName}`;
                 item.URL = constructServiceUrl(protocol, host, port, rootDirName, relativePath);
             } else {
-                 console.warn(`[updateXmlUrlsAction] Could not process URL, root directory name "${rootDirName}" not found or is the last part of the path: ${item.URL}`);
+                 console.warn(`[updateXmlUrlsAction] Could not process URL: ${item.URL}. It might be malformed or pointing to an unknown type.`);
             }
             return item;
         });
@@ -964,5 +963,3 @@ export async function searchAllDepartmentsAndExtensionsAction(query: string): Pr
   
   return Array.from(resultsMap.values());
 }
-
-    
