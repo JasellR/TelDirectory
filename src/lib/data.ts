@@ -69,9 +69,9 @@ async function getPaths() {
     IVOXS_DIR: ivoxsRoot,
     MAINMENU_FILENAME: mainMenuFilename,
     MAINMENU_PATH: mainMenuFilename ? path.join(ivoxsRoot, mainMenuFilename) : null,
-    ZONE_BRANCH_DIR: path.join(ivoxsRoot, 'ZoneBranch'),
-    BRANCH_DIR: path.join(ivoxsRoot, 'Branch'),
-    DEPARTMENT_DIR: path.join(ivoxsRoot, 'Department'),
+    ZONE_BRANCH_DIR: path.join(ivoxsRoot, 'zonebranch'),
+    BRANCH_DIR: path.join(ivoxsRoot, 'branch'),
+    DEPARTMENT_DIR: path.join(ivoxsRoot, 'department'),
   };
 }
 
@@ -137,9 +137,8 @@ export async function getZoneDetails(zoneId: string): Promise<Omit<Zone, 'items'
 }
 
 export async function getZoneItems(zoneId: string): Promise<ZoneItem[]> {
-  const { IVOXS_DIR } = await getPaths();
-  const zoneUrlPart = `ZoneBranch/${zoneId}.xml`; // Assuming this part is relatively stable or derived
-  const zoneFilePath = path.join(IVOXS_DIR, "ZoneBranch", `${zoneId}.xml`);
+  const { ZONE_BRANCH_DIR } = await getPaths();
+  const zoneFilePath = path.join(ZONE_BRANCH_DIR, `${zoneId}.xml`);
   const xmlContent = await readFileContent(zoneFilePath);
   if (!xmlContent) return [];
 
@@ -194,8 +193,8 @@ export async function getBranchDetails(zoneId: string, branchId: string): Promis
 }
 
 export async function getBranchItems(branchId: string): Promise<BranchItem[]> {
-  const { IVOXS_DIR } = await getPaths();
-  const branchFilePath = path.join(IVOXS_DIR, "Branch", `${branchId}.xml`);
+  const { BRANCH_DIR } = await getPaths();
+  const branchFilePath = path.join(BRANCH_DIR, `${branchId}.xml`);
   const xmlContent = await readFileContent(branchFilePath);
   if (!xmlContent) return [];
 

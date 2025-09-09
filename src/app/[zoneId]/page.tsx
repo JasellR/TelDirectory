@@ -88,7 +88,7 @@ export default async function ZonePage({ params }: ZonePageProps) {
                 <AlertCircle className="h-4 w-4" />
                 <AlertTitle>No Items Found</AlertTitle>
                 <AlertDescription>
-                    No localities or branches could be found for this zone. This may be because the corresponding ZoneBranch XML file (<code>{zoneId}.xml</code>) is empty, missing, or malformed.
+                    No localities or branches could be found for this zone. This may be because the corresponding zonebranch XML file (<code>{zoneId}.xml</code>) is empty, missing, or malformed.
                 </AlertDescription>
             </Alert>
         )}
@@ -100,7 +100,7 @@ export default async function ZonePage({ params }: ZonePageProps) {
       <div>
         <h2 className="text-2xl font-bold text-foreground mb-2">Data Management</h2>
         <p className="text-muted-foreground">
-          {itemTypeNamePlural} for the <strong>{zone.name}</strong> zone are managed by editing the XML file at <code>.../ZoneBranch/{zone.id}.xml</code> (path relative to your configured directory).
+          {itemTypeNamePlural} for the <strong>{zone.name}</strong> zone are managed by editing the XML file at <code>.../zonebranch/{zone.id}.xml</code> (path relative to your configured directory).
           Ensure this file contains <code>&lt;MenuItem&gt;</code> tags representing each {itemTypeName.toLowerCase()}. Deleting an item here will remove it from this list and attempt to delete its corresponding {itemTypeHelpText(isZonaMetropolitana)}.
         </p>
       </div>
@@ -110,7 +110,7 @@ export default async function ZonePage({ params }: ZonePageProps) {
 
 function itemTypeHelpText(isZonaMetropolitana: boolean) {
   if (isZonaMetropolitana) {
-    return "branch XML file (in a .../Branch/ directory) and recursively its contents";
+    return "branch XML file (in a .../branch/ directory) and recursively its contents";
   }
-  return "department XML file (in a .../Department/ directory)";
+  return "department XML file (in a .../department/ directory)";
 }
