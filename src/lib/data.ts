@@ -253,6 +253,7 @@ export async function getLocalityWithExtensions(localityId: string): Promise<Loc
   const { DEPARTMENT_DIR } = await getPaths();
   const departmentFilePath = path.join(DEPARTMENT_DIR, `${localityId}.xml`);
   const xmlContent = await readFileContent(departmentFilePath);
+
   if (!xmlContent || xmlContent.trim() === '') {
     console.warn(`[DataLib] Department file for locality ID "${localityId}" is empty or not found at ${departmentFilePath}. Returning locality with no extensions.`);
     return {
@@ -288,7 +289,7 @@ export async function getLocalityWithExtensions(localityId: string): Promise<Loc
 
   if (!validated.success) {
     console.error(`[DataLib] Failed to parse Department XML for ${localityId}. File: ${departmentFilePath}`);
-    console.error("Data passed to Zod:", JSON.stringify(parsedXml.CiscoIPPhoneDirectory, null, 2).substring(0, 500) + "..."); // Log more data
+    console.error("Data passed to Zod:", JSON.stringify(parsedXml.CiscoIPPhoneDirectory, null, 2).substring(0, 500) + "...");
     console.error("Zod Errors:", JSON.stringify(validated.error.flatten(), null, 2));
     return { 
         id: localityId,
@@ -312,5 +313,3 @@ export async function getLocalityWithExtensions(localityId: string): Promise<Loc
     extensions,
   };
 }
-
-    
