@@ -94,10 +94,13 @@ function extractIdFromUrl(url: string): string {
   return fileName.replace(/\.xml$/i, ''); // Case-insensitive .xml removal
 }
 
-function getItemTypeFromUrl(url: string): 'branch' | 'locality' | 'unknown' {
+function getItemTypeFromUrl(url: string): 'branch' | 'locality' | 'zone' | 'unknown' {
   const lowerUrl = url.toLowerCase();
   if (lowerUrl.includes('/branch/')) return 'branch';
   if (lowerUrl.includes('/department/')) return 'locality';
+  // Handle the incorrect "locality" folder name for backward compatibility during correction
+  if (lowerUrl.includes('/locality/')) return 'locality'; 
+  if (lowerUrl.includes('/zonebranch/')) return 'zone';
   return 'unknown';
 }
 
