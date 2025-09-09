@@ -109,13 +109,13 @@ function extractIdFromUrl(url: string): string {
 }
 
 function getItemTypeFromUrl(url: string): 'branch' | 'locality' | 'zone' | 'unknown' {
-    const lowerUrl = url.toLowerCase();
-    if (lowerUrl.includes('/branch/')) return 'branch';
-    if (lowerUrl.includes('/department/')) return 'locality';
-    if (lowerUrl.includes('/zonebranch/')) return 'zone';
-    // New fault-tolerant check: if it has /locality/ it's a misformed locality URL
-    if (lowerUrl.includes('/locality/')) return 'locality';
-    return 'unknown';
+  const lowerUrl = url.toLowerCase();
+  if (lowerUrl.includes('/branch/')) return 'branch';
+  if (lowerUrl.includes('/department/')) return 'locality';
+  // Handle the incorrect "locality" folder name for backward compatibility during correction
+  if (lowerUrl.includes('/locality/')) return 'locality'; 
+  if (lowerUrl.includes('/zonebranch/')) return 'zone';
+  return 'unknown';
 }
 
 const itemTypeToDir: Record<'zone' | 'branch' | 'locality', string> = {
@@ -137,7 +137,9 @@ async function getServiceUrlComponents(): Promise<{ protocol: string, host: stri
 }
 
 function constructServiceUrl(protocol: string, host: string, port: string, rootDirName: string, pathSegment: string): string {
-  return `${protocol}://${host}:${port}/${rootDirName}/${pathSegment}`;
+  // Ensure the root directory name is not duplicated
+  const fullPath = path.join(rootDirName, pathSegment).replace(/\\/g, '/');
+  return `${protocol}://${host}:${port}/${fullPath}`;
 }
 
 
@@ -172,7 +174,7 @@ export async function addZoneAction(zoneName: string): Promise<{ success: boolea
   const mainMenuPath = paths.MAINMENU_PATH;
   const newZoneBranchFilePath = path.join(paths.ZONE_BRANCH_DIR, `${newZoneId}.xml`);
   const { protocol, host, port, rootDirName } = await getServiceUrlComponents();
-  const newZoneURL = constructServiceUrl(protocol, host, port, rootDirName, `zonebranch/${newZoneId}.xml`);
+  const newZoneURL = constructServiceUrl(protocol, host, port, '', `zonebranch/${newZoneId}.xml`);
 
   try {
     // 1. Create the new zone branch file
@@ -302,7 +304,7 @@ export async function addLocalityOrBranchAction(params: {
         revalidationPath = branchId ? `/${zoneId}/branches/${branchId}` : `/${zoneId}`;
     }
     
-    const newUrl = constructServiceUrl(protocol, host, port, rootDirName, newUrlPath);
+    const newUrl = constructServiceUrl(protocol, host, port, '', newUrlPath);
 
     try {
         // 1. Create the new item's own XML file (empty but valid)
@@ -363,7 +365,7 @@ export async function editLocalityOrBranchAction(params: {
         revalidationPath = branchId ? `/${zoneId}/branches/${branchId}` : `/${zoneId}`;
     }
 
-    const newUrl = constructServiceUrl(protocol, host, port, rootDirName, newUrlPath);
+    const newUrl = constructServiceUrl(protocol, host, port, '', newUrlPath);
 
     try {
         // 1. Rename the item's XML file if ID changes
@@ -625,9 +627,10 @@ export async function updateXmlUrlsAction(host: string, port: string): Promise<{
         fileContent.CiscoIPPhoneMenu.MenuItem = ensureArray(fileContent.CiscoIPPhoneMenu.MenuItem).map((item: any) => {
             const fileName = (item.URL || '').split('/').pop();
             let itemType = getItemTypeFromUrl(item.URL);
-            
-            // Fault tolerance: If type is unknown, try to correct it.
+
             if (itemType === 'unknown' && fileName) {
+                // If type is unknown, it's likely a malformed URL we need to fix.
+                // We'll assume it's a locality as that's the most common case in deeper menus.
                 console.warn(`[updateXmlUrlsAction] URL type for ${item.URL} is unknown. Assuming 'locality'.`);
                 itemType = 'locality';
             }
@@ -635,9 +638,9 @@ export async function updateXmlUrlsAction(host: string, port: string): Promise<{
             if (fileName && itemType !== 'unknown') {
                 const subDirectory = itemTypeToDir[itemType];
                 const relativePath = `${subDirectory}/${fileName}`;
-                item.URL = constructServiceUrl(protocol, host, port, rootDirName, relativePath);
+                item.URL = constructServiceUrl(protocol, host, port, '', relativePath);
             } else {
-                 console.warn(`[updateXmlUrlsAction] Could not process URL: ${item.URL}. It remains un-typed and was not updated.`);
+                 console.warn(`[updateXmlUrlsAction] Could not process URL: ${item.URL}. It might be malformed or pointing to an unknown type.`);
             }
             return item;
         });
@@ -792,6 +795,40 @@ export async function syncNamesFromXmlFeedAction(feedUrlsString: string): Promis
       missingExtensions.push({ number, name: extensionsToUpdate[number], sourceFeed: allFeedExtensions[number][0].sourceFeed });
     }
   }
+  
+  if (missingExtensions.length > 0) {
+      const missingExtensionsZoneId = 'MissingExtensionsFromFeed';
+      const missingExtensionsZoneName = 'Missing Extensions from Feed';
+      const missingExtensionsLocalityPrompt = 'Extensions found in feeds but not locally';
+      
+      const missingDeptFilePath = path.join(paths.DEPARTMENT_DIR, `${missingExtensionsZoneId}.xml`);
+      const { protocol, host, port } = await getServiceUrlComponents();
+      const missingZoneURL = constructServiceUrl(protocol, host, port, '', `department/${missingExtensionsZoneId}.xml`);
+      
+      const missingDeptContent = {
+          CiscoIPPhoneDirectory: {
+              Title: missingExtensionsZoneName,
+              Prompt: missingExtensionsLocalityPrompt,
+              DirectoryEntry: missingExtensions.map(ext => ({ Name: ext.name, Telephone: ext.number }))
+          }
+      };
+      await buildAndWriteXML(missingDeptFilePath, missingDeptContent);
+
+      if (paths.MAINMENU_PATH) {
+        const mainMenu = await readAndParseXML(paths.MAINMENU_PATH) || { CiscoIPPhoneMenu: { MenuItem: [] } };
+        mainMenu.CiscoIPPhoneMenu.MenuItem = ensureArray(mainMenu.CiscoIPPhoneMenu.MenuItem);
+        
+        const existingMissingZone = mainMenu.CiscoIPPhoneMenu.MenuItem.find((item: any) => extractIdFromUrl(item.URL) === missingExtensionsZoneId);
+        if (!existingMissingZone) {
+            mainMenu.CiscoIPPhoneMenu.MenuItem.push({
+                Name: missingExtensionsZoneName,
+                URL: missingZoneURL
+            });
+        } // if it exists, the file is just overwritten, no need to change the menu
+        await buildAndWriteXML(paths.MAINMENU_PATH, mainMenu);
+      }
+  }
+
 
   revalidatePath('/', 'layout');
 
@@ -972,3 +1009,4 @@ export async function searchAllDepartmentsAndExtensionsAction(query: string): Pr
 }
 
     
+

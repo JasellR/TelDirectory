@@ -13,9 +13,14 @@ import { AlertCircle } from 'lucide-react';
 
 
 export default async function HomePage() {
-  const zones = await getZones();
+  const allZones = await getZones();
   const t = await getTranslations();
   const userIsAuthenticated = await isAuthenticated();
+
+  // Filter out the "Missing Extensions" zone if the user is not authenticated
+  const zones = userIsAuthenticated 
+    ? allZones 
+    : allZones.filter(zone => zone.id !== 'MissingExtensionsFromFeed');
 
   return (
     <div>
@@ -40,7 +45,7 @@ export default async function HomePage() {
                 title={zone.name}
                 href={`/${zone.id}`}
                 description={t('exploreZoneItems', { zoneName: zone.name })}
-                iconType="zone"
+                iconType={zone.id === 'MissingExtensionsFromFeed' ? 'missing' : 'zone'}
               />
               {userIsAuthenticated && (
                 <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
@@ -66,3 +71,4 @@ export default async function HomePage() {
     </div>
   );
 }
+
