@@ -108,12 +108,13 @@ function extractIdFromUrl(url: string): string {
   return fileName.replace(/\.xml$/i, '');
 }
 
-function getItemTypeFromUrl(url: string): 'branch' | 'locality' | 'unknown' {
-  const lowerUrl = url.toLowerCase();
-  if (lowerUrl.includes('/branch/')) return 'branch';
-  if (lowerUrl.includes('/department/')) return 'locality';
-  if (lowerUrl.includes('/zonebranch/')) return 'unknown'; // It's a zone, not a branch or locality.
-  return 'unknown';
+function getItemTypeFromUrl(url: string): 'branch' | 'locality' | 'zone' | 'unknown' {
+    const lowerUrl = url.toLowerCase();
+    const segments = lowerUrl.split('/').filter(p => p && p !== 'http:' && p !== 'https:');
+    if (segments.includes('branch')) return 'branch';
+    if (segments.includes('department')) return 'locality';
+    if (segments.includes('zonebranch')) return 'zone';
+    return 'unknown';
 }
 
 
@@ -129,7 +130,8 @@ async function getServiceUrlComponents(): Promise<{ protocol: string, host: stri
 }
 
 function constructServiceUrl(protocol: string, host: string, port: string, rootDirName: string, pathSegment: string): string {
-  // Correctly constructs the URL to point to the actual file path, not an API route.
+  // Correctly constructs the URL to point to the actual file path.
+  // No longer includes a hardcoded '/directory/' part.
   return `${protocol}://${host}:${port}/${rootDirName}/${pathSegment}`;
 }
 
@@ -614,26 +616,15 @@ export async function updateXmlUrlsAction(host: string, port: string): Promise<{
         if (!fileContent?.CiscoIPPhoneMenu?.MenuItem) return;
 
         fileContent.CiscoIPPhoneMenu.MenuItem = ensureArray(fileContent.CiscoIPPhoneMenu.MenuItem).map((item: any) => {
-            let url;
-            try {
-                // This handles potentially malformed URLs by trying to parse them first
-                url = new URL(item.URL);
-            } catch (e) {
-                // If the URL is invalid, log it and return the item without changing it.
-                console.warn(`[updateXmlUrlsAction] Skipping invalid URL "${item.URL}" in file ${filePath}. Error: ${(e as Error).message}`);
-                return item; 
-            }
+            const fileName = (item.URL || '').split('/').pop();
+            const itemType = getItemTypeFromUrl(item.URL);
             
-            const pathParts = url.pathname.split('/').filter(p => p);
-            
-            // Find the index of the root directory name to build the relative path from there
-            const rootDirIndex = pathParts.map(p => p.toLowerCase()).indexOf(rootDirName.toLowerCase());
-            if (rootDirIndex !== -1 && rootDirIndex < pathParts.length - 1) {
-                // The relative path is everything after the root directory name
-                const relativePath = pathParts.slice(rootDirIndex + 1).join('/');
+            if (fileName && itemType !== 'unknown') {
+                const subDirectory = itemType === 'zone' ? 'zonebranch' : itemType;
+                const relativePath = `${subDirectory}/${fileName}`;
                 item.URL = constructServiceUrl(protocol, host, port, rootDirName, relativePath);
             } else {
-                console.warn(`[updateXmlUrlsAction] Could not process URL, root directory name "${rootDirName}" not found or is the last part of the path: ${item.URL}`);
+                 console.warn(`[updateXmlUrlsAction] Could not process URL for item "${item.Name}" in file ${filePath}. URL: ${item.URL}`);
             }
             return item;
         });
@@ -966,5 +957,3 @@ export async function searchAllDepartmentsAndExtensionsAction(query: string): Pr
   
   return Array.from(resultsMap.values());
 }
-
-    
