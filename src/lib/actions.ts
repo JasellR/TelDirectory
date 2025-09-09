@@ -88,7 +88,7 @@ async function buildAndWriteXML(filePath: string, jsObject: any): Promise<void> 
   const builder = new Builder({
     headless: false,
     renderOpts: { pretty: true, indent: '  ', newline: '\n' },
-    xmldec: { version: '1.0', encoding: 'UTF-8', standalone: no }
+    xmldec: { version: '1.0', encoding: 'UTF-8', standalone: 'no' }
   });
 
   const xmlContentBuiltByBuilder = builder.buildObject(jsObject);
@@ -626,12 +626,9 @@ export async function updateXmlUrlsAction(host: string, port: string): Promise<{
             const fileName = (item.URL || '').split('/').pop();
             let itemType = getItemTypeFromUrl(item.URL);
             
-            // Fault tolerance: If type is unknown, try to infer it. This is a fallback.
+            // Fault tolerance: If type is unknown, try to correct it.
             if (itemType === 'unknown' && fileName) {
-                // A simple heuristic: if it's in a branch XML, it's likely a locality. Otherwise, can't be sure.
-                // A better approach is to not fail, but to reconstruct based on a best guess.
-                // We'll guess it's a locality as it's the most common destination.
-                console.warn(`[updateXmlUrlsAction] URL type for ${item.URL} is unknown. Attempting to correct it as a 'locality'.`);
+                console.warn(`[updateXmlUrlsAction] URL type for ${item.URL} is unknown. Assuming 'locality'.`);
                 itemType = 'locality';
             }
 
