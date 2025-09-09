@@ -18,9 +18,9 @@ import ldap from 'ldapjs';
 async function findFileCaseInsensitive(directory: string, filename: string): Promise<string | null> {
     try {
         const files = await fs.readdir(directory);
-        const lowerCaseFilename = filename.toLowerCase();
+        const lowerCaseName = filename.toLowerCase();
         for (const file of files) {
-            if (file.toLowerCase() === lowerCaseFilename) {
+            if (file.toLowerCase() === lowerCaseName) {
                 return file; // Return the actual filename with its original casing
             }
         }
@@ -109,33 +109,30 @@ function extractIdFromUrl(url: string): string {
 }
 
 function getItemTypeFromUrl(url: string): 'branch' | 'locality' | 'unknown' {
-  let urlPath;
-  try {
-      urlPath = new URL(url).pathname;
-  } catch {
-      urlPath = url;
-  }
-  const pathSegments = urlPath.split('/').map(s => s.toLowerCase());
-
-  if (pathSegments.includes('branch')) return 'branch';
-  if (pathSegments.includes('department')) return 'locality';
-  if (pathSegments.includes('zonebranch')) return 'unknown'; // It's a zone, not a branch or locality.
+  const lowerUrl = url.toLowerCase();
+  if (lowerUrl.includes('/branch/')) return 'branch';
+  if (lowerUrl.includes('/department/')) return 'locality';
+  if (lowerUrl.includes('/zonebranch/')) return 'unknown'; // It's a zone, not a branch or locality.
   return 'unknown';
 }
 
 
 // Helper to get configured service URL components
-async function getServiceUrlComponents(): Promise<{ protocol: string, host: string, port: string }> {
+async function getServiceUrlComponents(): Promise<{ protocol: string, host: string, port: string, rootDirName: string }> {
   let protocol = 'http';
   let host = '127.0.0.1';
   let port = '3000';
+  const ivoxsRoot = await getResolvedIvoxsRootPath();
+  const rootDirName = path.basename(ivoxsRoot);
   
-  return { protocol, host, port };
+  return { protocol, host, port, rootDirName };
 }
 
-function constructServiceUrl(protocol: string, host: string, port: string, pathSegment: string): string {
-  return `${protocol}://${host}:${port}/directory/${pathSegment}`;
+function constructServiceUrl(protocol: string, host: string, port: string, rootDirName: string, pathSegment: string): string {
+  // Correctly constructs the URL to point to the actual file path, not an API route.
+  return `${protocol}://${host}:${port}/${rootDirName}/${pathSegment}`;
 }
+
 
 async function readFileContent(filePath: string): Promise<string> {
   try {
@@ -167,8 +164,8 @@ export async function addZoneAction(zoneName: string): Promise<{ success: boolea
   }
   const mainMenuPath = paths.MAINMENU_PATH;
   const newZoneBranchFilePath = path.join(paths.ZONE_BRANCH_DIR, `${newZoneId}.xml`);
-  const { protocol, host, port } = await getServiceUrlComponents();
-  const newZoneURL = constructServiceUrl(protocol, host, port, `zonebranch/${newZoneId}.xml`);
+  const { protocol, host, port, rootDirName } = await getServiceUrlComponents();
+  const newZoneURL = constructServiceUrl(protocol, host, port, rootDirName, `zonebranch/${newZoneId}.xml`);
 
   try {
     // 1. Create the new zone branch file
@@ -279,7 +276,7 @@ export async function addLocalityOrBranchAction(params: {
     const { zoneId, branchId, itemName, itemType } = params;
     const newItemId = generateIdFromName(itemName);
     const paths = await getPaths();
-    const { protocol, host, port } = await getServiceUrlComponents();
+    const { protocol, host, port, rootDirName } = await getServiceUrlComponents();
     
     let parentMenuPath, newItemPath, newUrlPath, revalidationPath;
 
@@ -297,7 +294,7 @@ export async function addLocalityOrBranchAction(params: {
         revalidationPath = branchId ? `/${zoneId}/branches/${branchId}` : `/${zoneId}`;
     }
     
-    const newUrl = constructServiceUrl(protocol, host, port, newUrlPath);
+    const newUrl = constructServiceUrl(protocol, host, port, rootDirName, newUrlPath);
 
     try {
         // 1. Create the new item's own XML file (empty but valid)
@@ -337,7 +334,7 @@ export async function editLocalityOrBranchAction(params: {
     const { zoneId, branchId, oldItemId, newItemName, itemType } = params;
     const newItemId = generateIdFromName(newItemName);
     const paths = await getPaths();
-    const { protocol, host, port } = await getServiceUrlComponents();
+    const { protocol, host, port, rootDirName } = await getServiceUrlComponents();
 
     let parentMenuPath, oldItemPath, newItemPath, newUrlPath, revalidationPath;
 
@@ -357,7 +354,7 @@ export async function editLocalityOrBranchAction(params: {
         revalidationPath = branchId ? `/${zoneId}/branches/${branchId}` : `/${zoneId}`;
     }
 
-    const newUrl = constructServiceUrl(protocol, host, port, newUrlPath);
+    const newUrl = constructServiceUrl(protocol, host, port, rootDirName, newUrlPath);
 
     try {
         // 1. Rename the item's XML file if ID changes
@@ -606,7 +603,7 @@ export async function updateXmlUrlsAction(host: string, port: string): Promise<{
     }
 
     const paths = await getPaths();
-    const { protocol } = await getServiceUrlComponents();
+    const { protocol, rootDirName } = await getServiceUrlComponents();
     
     const updateUrlsInFile = async (filePath: string | null) => {
         if (!filePath) {
@@ -627,13 +624,16 @@ export async function updateXmlUrlsAction(host: string, port: string): Promise<{
                 return item; 
             }
             
-            const pathParts = url.pathname.split('/').filter(p => p && p !== 'directory');
+            const pathParts = url.pathname.split('/').filter(p => p);
             
-            if (pathParts.length > 0) {
-                const relativePath = pathParts.join('/');
-                item.URL = constructServiceUrl(protocol, host, port, relativePath);
+            // Find the index of the root directory name to build the relative path from there
+            const rootDirIndex = pathParts.map(p => p.toLowerCase()).indexOf(rootDirName.toLowerCase());
+            if (rootDirIndex !== -1 && rootDirIndex < pathParts.length - 1) {
+                // The relative path is everything after the root directory name
+                const relativePath = pathParts.slice(rootDirIndex + 1).join('/');
+                item.URL = constructServiceUrl(protocol, host, port, rootDirName, relativePath);
             } else {
-                 console.warn(`[updateXmlUrlsAction] Could not process URL, not enough path segments: ${item.URL}`);
+                console.warn(`[updateXmlUrlsAction] Could not process URL, root directory name "${rootDirName}" not found or is the last part of the path: ${item.URL}`);
             }
             return item;
         });
@@ -841,11 +841,19 @@ export async function searchAllDepartmentsAndExtensionsAction(query: string): Pr
             } catch {
               urlPath = item.URL;
             }
-
+            
+            const rootDirName = path.basename(IVOXS_DIR);
             const pathSegments = urlPath.split('/').map(s=>s.toLowerCase());
             let itemType: 'branch' | 'locality' | 'unknown' = 'unknown';
-            if (pathSegments.includes('branch')) itemType = 'branch';
-            else if (pathSegments.includes('department')) itemType = 'locality';
+
+            // Find index of rootDirName to reliably find the subdirectories
+            const rootDirIndex = pathSegments.indexOf(rootDirName.toLowerCase());
+
+            if (rootDirIndex !== -1 && rootDirIndex < pathSegments.length - 1) {
+                const typeSegment = pathSegments[rootDirIndex + 1];
+                if (typeSegment === 'branch') itemType = 'branch';
+                else if (typeSegment === 'department') itemType = 'locality';
+            }
             
             if (itemType === 'locality') {
                 if (!allLocalities.has(itemId)) {
@@ -853,8 +861,8 @@ export async function searchAllDepartmentsAndExtensionsAction(query: string): Pr
                 }
             } else if (itemType === 'branch') {
                 const newContext = { ...context, branchId: itemId, branchName: item.Name };
-                const nextFilePath = path.join(IVOXS_DIR, ...urlPath.split('/').slice(2));
-                
+                // Construct path to the branch file
+                const nextFilePath = path.join(IVOXS_DIR, 'branch', `${itemId}.xml`);
                 try {
                   await fs.access(nextFilePath);
                   await processMenu(nextFilePath, newContext);
@@ -884,15 +892,7 @@ export async function searchAllDepartmentsAndExtensionsAction(query: string): Pr
           const zoneId = extractIdFromUrl(zoneMenuItem.URL);
           const zoneContext = { zoneId: zoneId, zoneName: zoneMenuItem.Name };
           
-          let urlPath;
-          try {
-              urlPath = new URL(zoneMenuItem.URL).pathname;
-          } catch {
-              urlPath = zoneMenuItem.URL;
-          }
-
-          const zoneFilePath = path.join(IVOXS_DIR, ...urlPath.split('/').slice(2));
-          
+          const zoneFilePath = path.join(IVOXS_DIR, 'zonebranch', `${zoneId}.xml`);
           try {
             await fs.access(zoneFilePath);
             await processMenu(zoneFilePath, zoneContext);
@@ -966,3 +966,5 @@ export async function searchAllDepartmentsAndExtensionsAction(query: string): Pr
   
   return Array.from(resultsMap.values());
 }
+
+    
