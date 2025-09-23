@@ -1,0 +1,109 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<CiscoIPPhoneMenu>
+  <Title>Zona Metrop. (3/3)</Title>
+  <Prompt>Select a Locality</Prompt>
+  <MenuItem>
+    <Name>Anterior</Name>
+    <URL>http://127.0.0.1:3000/directory/zonebranch/ZonaMetropolitana_p2.xml</URL>
+  </MenuItem>
+  <MenuItem>
+    <Name>Palacio</Name>
+    <URL>http://127.0.0.1:3000/directory/department/Palacio.xml</URL>
+  </MenuItem>
+  <MenuItem>
+    <Name>PARQUE ENRIQUILLO</Name>
+    <URL>http://127.0.0.1:3000/directory/department/PARQUEENRIQUILLO.xml</URL>
+  </MenuItem>
+  <MenuItem>
+    <Name>Patio Colombia</Name>
+    <URL>http://127.0.0.1:3000/directory/department/PatioColombia.xml</URL>
+  </MenuItem>
+  <MenuItem>
+    <Name>Pedro Brand</Name>
+    <URL>http://127.0.0.1:3000/directory/department/PedroBrand.xml</URL>
+  </MenuItem>
+  <MenuItem>
+    <Name>Plaza Duarte</Name>
+    <URL>http://127.0.0.1:3000/directory/department/PlazaDuarte.xml</URL>
+  </MenuItem>
+  <MenuItem>
+    <Name>Pola Independencia</Name>
+    <URL>http://127.0.0.1:3000/directory/department/PolaIndependencia.xml</URL>
+  </MenuItem>
+  <MenuItem>
+    <Name>Pola Lope de Vega</Name>
+    <URL>http://127.0.0.1:3000/directory/department/PolaLopedeVega.xml</URL>
+  </MenuItem>
+  <MenuItem>
+    <Name>Pola Sarasota</Name>
+    <URL>http://127.0.0.1:3000/directory/department/PolaSarasota.xml</URL>
+  </MenuItem>
+  <MenuItem>
+    <Name>Republica de Colombia</Name>
+    <URL>http://127.0.0.1:3000/directory/department/RepublicadeColombia.xml</URL>
+  </MenuItem>
+  <MenuItem>
+    <Name>Romulo 341</Name>
+    <URL>http://127.0.0.1:3000/directory/department/Romulo341.xml</URL>
+  </MenuItem>
+  <MenuItem>
+    <Name>Romulo Betancourt</Name>
+    <URL>http://127.0.0.1:3000/directory/department/RomuloBetancourt.xml</URL>
+  </MenuItem>
+  <MenuItem>
+    <Name>San Carlos</Name>
+    <URL>http://127.0.0.1:3000/directory/department/SanCarlos.xml</URL>
+  </MenuItem>
+  <MenuItem>
+    <Name>San Isidro Labrador</Name>
+    <URL>http://127.0.0.1:3000/directory/department/SanIsidroLabrador.xml</URL>
+  </MenuItem>
+  <MenuItem>
+    <Name>San Miguel</Name>
+    <URL>http://127.0.0.1:3000/directory/department/SanMiguel.xml</URL>
+  </MenuItem>
+  <MenuItem>
+    <Name>San Vicente</Name>
+    <URL>http://127.0.0.1:3000/directory/department/SanVicente.xml</URL>
+  </MenuItem>
+  <MenuItem>
+    <Name>SN 27 de Febrero</Name>
+    <URL>http://127.0.0.1:3000/directory/department/SN27deFebrero.xml</URL>
+  </MenuItem>
+  <MenuItem>
+    <Name>SN Charles de Gaulle</Name>
+    <URL>http://127.0.0.1:3000/directory/department/SNCharlesdeGaulle.xml</URL>
+  </MenuItem>
+  <MenuItem>
+    <Name>SN Lope de Vega</Name>
+    <URL>http://127.0.0.1:3000/directory/department/SNLopedeVega.xml</URL>
+  </MenuItem>
+  <MenuItem>
+    <Name>Terranova</Name>
+    <URL>http://127.0.0.1:3000/directory/department/Terranova.xml</URL>
+  </MenuItem>
+  <MenuItem>
+    <Name>Tiradentes</Name>
+    <URL>http://127.0.0.1:3000/directory/department/Tiradentes.xml</URL>
+  </MenuItem>
+  <MenuItem>
+    <Name>UCE</Name>
+    <URL>http://127.0.0.1:3000/directory/department/UCE.xml</URL>
+  </MenuItem>
+  <MenuItem>
+    <Name>Unidos Sarasota</Name>
+    <URL>http://127.0.0.1:3000/directory/department/UnidosSarasota.xml</URL>
+  </MenuItem>
+  <MenuItem>
+    <Name>VILLA FRANCISCA</Name>
+    <URL>http://127.0.0.1:3000/directory/department/VILLAFRANCISCA.xml</URL>
+  </MenuItem>
+  <MenuItem>
+    <Name>Villa Mella</Name>
+    <URL>http://127.0.0.1:3000/directory/department/VillaMella.xml</URL>
+  </MenuItem>
+  <MenuItem>
+    <Name>Zona Colonial</Name>
+    <URL>http://127.0.0.1:3000/directory/department/ZonaColonial.xml</URL>
+  </MenuItem>
+</CiscoIPPhoneMenu>

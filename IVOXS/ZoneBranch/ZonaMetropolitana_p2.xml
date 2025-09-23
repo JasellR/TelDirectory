@@ -1,0 +1,125 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<CiscoIPPhoneMenu>
+  <Title>Zona Metrop. (2/3)</Title>
+  <Prompt>Select a Locality</Prompt>
+  <MenuItem>
+    <Name>Anterior</Name>
+    <URL>http://127.0.0.1:3000/directory/zonebranch/ZonaMetropolitana.xml</URL>
+  </MenuItem>
+  <MenuItem>
+    <Name>Independencia</Name>
+    <URL>http://127.0.0.1:3000/directory/department/Independencia.xml</URL>
+  </MenuItem>
+  <MenuItem>
+    <Name>Jumbo Luperon</Name>
+    <URL>http://127.0.0.1:3000/directory/department/JumboLuperon.xml</URL>
+  </MenuItem>
+  <MenuItem>
+    <Name>Jumbo Mella</Name>
+    <URL>http://127.0.0.1:3000/directory/department/JumboMella.xml</URL>
+  </MenuItem>
+  <MenuItem>
+    <Name>Jumbo San Isidro</Name>
+    <URL>http://127.0.0.1:3000/directory/department/JumboSanIsidro.xml</URL>
+  </MenuItem>
+  <MenuItem>
+    <Name>Las Flores</Name>
+    <URL>http://127.0.0.1:3000/directory/department/LasFlores.xml</URL>
+  </MenuItem>
+  <MenuItem>
+    <Name>Las Palmas</Name>
+    <URL>http://127.0.0.1:3000/directory/department/LasPalmas.xml</URL>
+  </MenuItem>
+  <MenuItem>
+    <Name>Las Praderas</Name>
+    <URL>http://127.0.0.1:3000/directory/department/LasPraderas.xml</URL>
+  </MenuItem>
+  <MenuItem>
+    <Name>Lope de Vega</Name>
+    <URL>http://127.0.0.1:3000/directory/department/LopedeVega.xml</URL>
+  </MenuItem>
+  <MenuItem>
+    <Name>Los Mina</Name>
+    <URL>http://127.0.0.1:3000/directory/department/LosMina.xml</URL>
+  </MenuItem>
+  <MenuItem>
+    <Name>Los Rios</Name>
+    <URL>http://127.0.0.1:3000/directory/department/LosRios.xml</URL>
+  </MenuItem>
+  <MenuItem>
+    <Name>LS Charles de Gaulle</Name>
+    <URL>http://127.0.0.1:3000/directory/department/LSCharlesdeGaulle.xml</URL>
+  </MenuItem>
+  <MenuItem>
+    <Name>LS Churchill</Name>
+    <URL>http://127.0.0.1:3000/directory/department/LSChurchill.xml</URL>
+  </MenuItem>
+  <MenuItem>
+    <Name>LS Jose Conteras</Name>
+    <URL>http://127.0.0.1:3000/directory/department/LSJoseConteras.xml</URL>
+  </MenuItem>
+  <MenuItem>
+    <Name>LS Luperon</Name>
+    <URL>http://127.0.0.1:3000/directory/department/LSLuperon.xml</URL>
+  </MenuItem>
+  <MenuItem>
+    <Name>Malecon Center</Name>
+    <URL>http://127.0.0.1:3000/directory/department/MaleconCenter.xml</URL>
+  </MenuItem>
+  <MenuItem>
+    <Name>Manoguayabo</Name>
+    <URL>http://127.0.0.1:3000/directory/department/Manoguayabo.xml</URL>
+  </MenuItem>
+  <MenuItem>
+    <Name>Marquesa</Name>
+    <URL>http://127.0.0.1:3000/directory/department/Marquesa.xml</URL>
+  </MenuItem>
+  <MenuItem>
+    <Name>Maximo Gomez</Name>
+    <URL>http://127.0.0.1:3000/directory/department/MaximoGomez.xml</URL>
+  </MenuItem>
+  <MenuItem>
+    <Name>Megacentro I</Name>
+    <URL>http://127.0.0.1:3000/directory/department/MegacentroI.xml</URL>
+  </MenuItem>
+  <MenuItem>
+    <Name>Megacentro II</Name>
+    <URL>http://127.0.0.1:3000/directory/department/MegacentroII.xml</URL>
+  </MenuItem>
+  <MenuItem>
+    <Name>Melgen</Name>
+    <URL>http://127.0.0.1:3000/directory/department/Melgen.xml</URL>
+  </MenuItem>
+  <MenuItem>
+    <Name>Mexico</Name>
+    <URL>http://127.0.0.1:3000/directory/department/Mexico.xml</URL>
+  </MenuItem>
+  <MenuItem>
+    <Name>Millon</Name>
+    <URL>http://127.0.0.1:3000/directory/department/Millon.xml</URL>
+  </MenuItem>
+  <MenuItem>
+    <Name>Mirador de Arroyo Hondo</Name>
+    <URL>http://127.0.0.1:3000/directory/department/MiradordeArroyoHondo.xml</URL>
+  </MenuItem>
+  <MenuItem>
+    <Name>Naco</Name>
+    <URL>http://127.0.0.1:3000/directory/department/Naco.xml</URL>
+  </MenuItem>
+  <MenuItem>
+    <Name>Novo Centro</Name>
+    <URL>http://127.0.0.1:3000/directory/department/NovoCentro.xml</URL>
+  </MenuItem>
+  <MenuItem>
+    <Name>Nunez de Caceres</Name>
+    <URL>http://127.0.0.1:3000/directory/department/NunezdeCaceres.xml</URL>
+  </MenuItem>
+  <MenuItem>
+    <Name>Occidental Mall</Name>
+    <URL>http://127.0.0.1:3000/directory/department/OccidentalMall.xml</URL>
+  </MenuItem>
+  <MenuItem>
+    <Name>Siguiente</Name>
+    <URL>http://127.0.0.1:3000/directory/zonebranch/ZonaMetropolitana_p3.xml</URL>
+  </MenuItem>
+</CiscoIPPhoneMenu>

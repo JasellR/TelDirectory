@@ -1,21 +1,125 @@
 <?xml version="1.0" encoding="UTF-8" standalone="no"?>
 <CiscoIPPhoneMenu>
-  <Title>Zona Metropolitana</Title>
-  <Prompt>Select a Branch or Group</Prompt>
+  <Title>Zona Metrop. (1/3)</Title>
+  <Prompt>Select a Locality</Prompt>
   <MenuItem>
-    <Name>Adm 27 Febrero</Name>
-    <URL>http://127.0.0.1:3000/directory/branch/EdificioAdm27Febrero.xml</URL>
+    <Name>27 de Febrero</Name>
+    <URL>http://127.0.0.1:3000/directory/department/27deFebrero.xml</URL>
   </MenuItem>
   <MenuItem>
-    <Name>Adm Corporativo</Name>
-    <URL>http://127.0.0.1:3000/directory/branch/EdificioAdmCorporativo.xml</URL>
+    <Name>Acropolis</Name>
+    <URL>http://127.0.0.1:3000/directory/department/Acropolis.xml</URL>
   </MenuItem>
   <MenuItem>
-    <Name>Adm Cendis</Name>
-    <URL>http://127.0.0.1:3000/directory/branch/Cendis.xml</URL>
+    <Name>Agora Mall</Name>
+    <URL>http://127.0.0.1:3000/directory/department/AgoraMall.xml</URL>
   </MenuItem>
   <MenuItem>
-    <Name>Localities List (Metropolitana)</Name>
-    <URL>http://127.0.0.1:3000/directory/branch/ZonaMetropolitana.xml</URL>
+    <Name>AILA</Name>
+    <URL>http://127.0.0.1:3000/directory/department/AILA.xml</URL>
+  </MenuItem>
+  <MenuItem>
+    <Name>Andalucia</Name>
+    <URL>http://127.0.0.1:3000/directory/department/Andalucia.xml</URL>
+  </MenuItem>
+  <MenuItem>
+    <Name>Arroyo Hondo</Name>
+    <URL>http://127.0.0.1:3000/directory/department/ArroyoHondo.xml</URL>
+  </MenuItem>
+  <MenuItem>
+    <Name>Bella Vista</Name>
+    <URL>http://127.0.0.1:3000/directory/department/BellaVista.xml</URL>
+  </MenuItem>
+  <MenuItem>
+    <Name>Bravo Proceres</Name>
+    <URL>http://127.0.0.1:3000/directory/department/BravoProceres.xml</URL>
+  </MenuItem>
+  <MenuItem>
+    <Name>Bravo Villa Mella</Name>
+    <URL>http://127.0.0.1:3000/directory/department/BravoVillaMella.xml</URL>
+  </MenuItem>
+  <MenuItem>
+    <Name>Bravo_Charles de Gaulle</Name>
+    <URL>http://127.0.0.1:3000/directory/department/Bravo_CharlesdeGaulle.xml</URL>
+  </MenuItem>
+  <MenuItem>
+    <Name>Camino Chiquito</Name>
+    <URL>http://127.0.0.1:3000/directory/department/CaminoChiquito.xml</URL>
+  </MenuItem>
+  <MenuItem>
+    <Name>Charles de Gaulle</Name>
+    <URL>http://127.0.0.1:3000/directory/department/CharlesdeGaulle.xml</URL>
+  </MenuItem>
+  <MenuItem>
+    <Name>Charles de Gaulle 2</Name>
+    <URL>http://127.0.0.1:3000/directory/department/CharlesdeGaulle2.xml</URL>
+  </MenuItem>
+  <MenuItem>
+    <Name>Charles Summer</Name>
+    <URL>http://127.0.0.1:3000/directory/department/CharlesSummer.xml</URL>
+  </MenuItem>
+  <MenuItem>
+    <Name>Churchill</Name>
+    <URL>http://127.0.0.1:3000/directory/department/Churchill.xml</URL>
+  </MenuItem>
+  <MenuItem>
+    <Name>Colina Centro</Name>
+    <URL>http://127.0.0.1:3000/directory/department/ColinaCentro.xml</URL>
+  </MenuItem>
+  <MenuItem>
+    <Name>Coral Mall</Name>
+    <URL>http://127.0.0.1:3000/directory/department/CoralMall.xml</URL>
+  </MenuItem>
+  <MenuItem>
+    <Name>Cuadra Alameda</Name>
+    <URL>http://127.0.0.1:3000/directory/department/CuadraAlameda.xml</URL>
+  </MenuItem>
+  <MenuItem>
+    <Name>Cuesta Hermosa</Name>
+    <URL>http://127.0.0.1:3000/directory/department/CuestaHermosa.xml</URL>
+  </MenuItem>
+  <MenuItem>
+    <Name>Downtown Center</Name>
+    <URL>http://127.0.0.1:3000/directory/department/DowntownCenter.xml</URL>
+  </MenuItem>
+  <MenuItem>
+    <Name>Dr. Delgado</Name>
+    <URL>http://127.0.0.1:3000/directory/department/Dr.Delgado.xml</URL>
+  </MenuItem>
+  <MenuItem>
+    <Name>Duarte</Name>
+    <URL>http://127.0.0.1:3000/directory/department/Duarte.xml</URL>
+  </MenuItem>
+  <MenuItem>
+    <Name>Enriquillo</Name>
+    <URL>http://127.0.0.1:3000/directory/department/Enriquillo.xml</URL>
+  </MenuItem>
+  <MenuItem>
+    <Name>Evaristo Morales</Name>
+    <URL>http://127.0.0.1:3000/directory/department/EvaristoMorales.xml</URL>
+  </MenuItem>
+  <MenuItem>
+    <Name>Galeria 360</Name>
+    <URL>http://127.0.0.1:3000/directory/department/Galeria360.xml</URL>
+  </MenuItem>
+  <MenuItem>
+    <Name>Galerias de Naco</Name>
+    <URL>http://127.0.0.1:3000/directory/department/GaleriasdeNaco.xml</URL>
+  </MenuItem>
+  <MenuItem>
+    <Name>Gazcue</Name>
+    <URL>http://127.0.0.1:3000/directory/department/Gazcue.xml</URL>
+  </MenuItem>
+  <MenuItem>
+    <Name>Hermanas Mirabal</Name>
+    <URL>http://127.0.0.1:3000/directory/department/HermanasMirabal.xml</URL>
+  </MenuItem>
+  <MenuItem>
+    <Name>Herrera</Name>
+    <URL>http://127.0.0.1:3000/directory/department/Herrera.xml</URL>
+  </MenuItem>
+  <MenuItem>
+    <Name>Siguiente</Name>
+    <URL>http://127.0.0.1:3000/directory/zonebranch/ZonaMetropolitana_p2.xml</URL>
   </MenuItem>
 </CiscoIPPhoneMenu>
