@@ -308,7 +308,7 @@
   </MenuItem>
   <MenuItem>
     <Name>Terranova</Name>
-    <URL>http://127.0.0.1:3000/directory/department/Terranova.xml</URL>
+    <URL>http://127.0_0.1:3000/directory/department/Terranova.xml</URL>
   </MenuItem>
   <MenuItem>
     <Name>Tiradentes</Name>
