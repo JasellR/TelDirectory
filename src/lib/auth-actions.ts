@@ -1,7 +1,7 @@
 
 'use server';
 
-import { cookies } from 'next/headers';
+import { cookies, headers } from 'next/headers';
 import { redirect } from 'next/navigation';
 import { getDb, bcrypt } from './db';
 import type { UserSession } from '@/types';
@@ -42,15 +42,23 @@ export async function loginAction(formData: FormData): Promise<{ error?: string;
 
     const sessionData: UserSession = { userId: userRecord.id, username: userRecord.username };
     const cookieStore = await cookies();
+    
+    // Determine if the connection is secure.
+    // In a real production environment behind a reverse proxy, 'x-forwarded-proto' would be 'https'.
+    // For local production testing via direct IP, we check the protocol.
+    // The most robust way is to avoid setting 'secure' in local environments.
+    const host = headers().get('host');
+    const isLocalHost = host?.startsWith('localhost') || host?.startsWith('127.0.0.1') || host?.startsWith('192.168.');
+    const isSecure = process.env.NODE_ENV === 'production' && !isLocalHost;
+
+
     cookieStore.set(AUTH_COOKIE_NAME, JSON.stringify(sessionData), {
       httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
+      secure: isSecure,
       path: '/',
       sameSite: 'lax',
       maxAge: 60 * 60 * 24 * 7, // 1 week
     });
-    
-    revalidatePath('/', 'layout');
     
     // We return the user and let the client handle the redirect.
     return { user: { userId: userRecord.id, username: userRecord.username } };
