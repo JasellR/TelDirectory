@@ -6,6 +6,8 @@ import { PageWrapper } from '@/components/layout/PageWrapper';
 import { Toaster } from "@/components/ui/toaster";
 import { ThemeInitializer } from '@/components/settings/ThemeInitializer';
 import { LanguageProvider } from '@/context/LanguageContext';
+import { AuthProvider } from '@/context/AuthContext';
+import { getCurrentUser } from '@/lib/auth-actions';
 
 export const metadata: Metadata = {
   title: 'TelDirectory - Corporate Phone Directory',
@@ -14,21 +16,25 @@ export const metadata: Metadata = {
 
 const bodyClassNames = `antialiased flex flex-col min-h-screen`;
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const user = await getCurrentUser();
+
   return (
     <html lang="en" suppressHydrationWarning>
       <body className={bodyClassNames}>
         <LanguageProvider>
-          <ThemeInitializer />
-          <AppHeader />
-          <PageWrapper>
-            {children}
-          </PageWrapper>
-          <Toaster />
+          <AuthProvider initialUser={user}>
+            <ThemeInitializer />
+            <AppHeader />
+            <PageWrapper>
+              {children}
+            </PageWrapper>
+            <Toaster />
+          </AuthProvider>
         </LanguageProvider>
       </body>
     </html>

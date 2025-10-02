@@ -2,10 +2,24 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import type { UserSession } from '@/types';
+import { getDb } from './lib/db';
 
 const AUTH_COOKIE_NAME = 'teldirectory-session';
 const PROTECTED_ROUTES = ['/import-xml'];
 const LOGIN_PATH = '/login';
+
+// Check if user exists in the DB for the given session's userId
+// This adds a layer of security ensuring the session belongs to a valid user
+async function isSessionUserValid(session: UserSession): Promise<boolean> {
+    try {
+        const db = await getDb();
+        const user = await db.get('SELECT id FROM users WHERE id = ?', session.userId);
+        return !!user;
+    } catch(dbError) {
+        console.error('[Middleware DB Check] Error connecting to or querying DB:', dbError);
+        return false; // Fail safely
+    }
+}
 
 async function checkAuth(request: NextRequest): Promise<boolean> {
     const cookie = request.cookies.get(AUTH_COOKIE_NAME);
@@ -14,10 +28,12 @@ async function checkAuth(request: NextRequest): Promise<boolean> {
     }
     try {
         const session = JSON.parse(cookie.value) as UserSession;
-        // A valid session must have a numeric userId
-        return typeof session.userId === 'number' && session.userId > 0;
+        if (typeof session.userId !== 'number' || session.userId <= 0) {
+            return false;
+        }
+        // Validate against the database
+        return await isSessionUserValid(session);
     } catch (e) {
-        // If parsing fails, the cookie is invalid
         return false;
     }
 }
@@ -35,20 +51,13 @@ export async function middleware(request: NextRequest) {
   }
 
   if (pathname === LOGIN_PATH && userIsAuthenticated) {
-    return NextResponse.redirect(new URL('/import-xml', request.url));
+    const redirectTo = request.nextUrl.searchParams.get('redirect_to');
+    return NextResponse.redirect(new URL(redirectTo || '/import-xml', request.url));
   }
 
   return NextResponse.next();
 }
 
 export const config = {
-  /*
-   * Match all request paths except for the ones starting with:
-   * - api (API routes)
-   * - _next/static (static files)
-   * - _next/image (image optimization files)
-   * - favicon.ico (favicon file)
-   * - ivoxsdir (our new public XML directory)
-   */
   matcher: ['/((?!api|_next/static|_next/image|favicon.ico|ivoxsdir).*)'],
 };

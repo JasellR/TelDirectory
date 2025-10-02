@@ -6,16 +6,13 @@ import { usePathname } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { UserMenu } from './UserMenu';
 import { LogIn, Settings as SettingsIcon } from 'lucide-react';
-import type { UserSession } from '@/types';
+import { useAuth } from '@/context/AuthContext';
 import { useTranslation } from '@/hooks/useTranslation';
 
-interface AuthNavProps {
-  user: UserSession | null;
-}
-
-export function AuthNav({ user }: AuthNavProps) {
+export function AuthNav() {
   const pathname = usePathname();
   const { t } = useTranslation();
+  const { user } = useAuth();
 
   if (user) {
     return (
@@ -25,16 +22,14 @@ export function AuthNav({ user }: AuthNavProps) {
             <SettingsIcon className="h-5 w-5" />
           </Link>
         </Button>
-        <UserMenu username={user.username} />
+        <UserMenu />
       </>
     );
   }
 
-  // To prevent flash of login button on protected pages before redirect, we can check pathname.
-  // This is a simple client-side check. Middleware handles the actual security.
   const isAuthPage = pathname.startsWith('/login');
   if (isAuthPage) {
-    return null; // Don't show login button on the login page itself
+    return null;
   }
 
   return (

@@ -2,13 +2,11 @@
 import Link from 'next/link';
 import { Phone } from 'lucide-react';
 import { LanguageToggleHeader } from '@/components/settings/LanguageToggleHeader';
-import { getCurrentUser } from '@/lib/auth-actions';
 import { AuthNav } from './AuthNav';
 import { ThemeToggleHeader } from '@/components/settings/ThemeToggleHeader';
 
 
-export async function AppHeader() {
-  const user = await getCurrentUser();
+export function AppHeader() {
 
   return (
     <header className="bg-card border-b border-border shadow-sm">
@@ -21,7 +19,7 @@ export async function AppHeader() {
         <nav className="flex items-center gap-2">
           <LanguageToggleHeader />
           <ThemeToggleHeader />
-          <AuthNav user={user} />
+          <AuthNav />
         </nav>
       </div>
     </header>

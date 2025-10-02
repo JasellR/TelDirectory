@@ -2,7 +2,7 @@
 'use client';
 
 import { useState, useTransition } from 'react';
-import { useSearchParams } from 'next/navigation';
+import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -12,13 +12,15 @@ import { useToast } from '@/hooks/use-toast';
 import { AlertCircle, LogIn } from 'lucide-react';
 import { useTranslation } from '@/hooks/useTranslation';
 import Link from 'next/link';
+import { useAuth } from '@/context/AuthContext';
 
 export default function LoginForm() {
-  const searchParams = useSearchParams();
   const { toast } = useToast();
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
   const { t } = useTranslation();
+  const { setUser } = useAuth();
+  const router = useRouter();
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -28,15 +30,22 @@ export default function LoginForm() {
     startTransition(async () => {
       const result = await loginAction(formData);
 
-      if (result?.error) {
+      if (result.error) {
         setError(result.error);
         toast({
           title: t('loginFailedTitle'),
           description: result.error,
           variant: 'destructive',
         });
+      } else if (result.user) {
+          setUser(result.user);
+          toast({
+              title: t('loginSucceededTitle'),
+              description: t('loginSucceededDescription'),
+          });
+          // The action now handles the redirect, but we can push if needed.
+          // router.push('/import-xml');
       }
-      // No 'success' case here, as the action now redirects on its own.
     });
   };
 
