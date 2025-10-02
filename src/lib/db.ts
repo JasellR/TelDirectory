@@ -7,7 +7,7 @@ import bcrypt from 'bcrypt';
 const DB_FILE = path.join(process.cwd(), 'teldirectory.db');
 const SALT_ROUNDS = 10;
 
-// Singleton promise to ensure DB is initialized only once.
+// Singleton promise to ensure DB is initialized only once across the entire application process.
 let dbPromise: Promise<Database> | null = null;
 
 async function initializeDb(): Promise<Database> {
@@ -49,11 +49,10 @@ async function initializeDb(): Promise<Database> {
   await db.exec(`CREATE INDEX IF NOT EXISTS idx_extension_details_number_locality ON extension_details (extension_number, locality_id);`);
   console.log('[DB] Index for "extension_details" ensured.');
 
-  // Seed initial admin user if no users exist
   const userCount = await db.get('SELECT COUNT(*) as count FROM users');
   if (userCount && userCount.count === 0) {
     const defaultAdminUsername = 'admin';
-    const defaultAdminPassword = 'admin123'; // THIS SHOULD BE CHANGED IN A REAL ENVIRONMENT
+    const defaultAdminPassword = 'admin123';
     try {
       const hashedPassword = await bcrypt.hash(defaultAdminPassword, SALT_ROUNDS);
       await db.run(
@@ -67,7 +66,7 @@ async function initializeDb(): Promise<Database> {
       console.error('[DB] Error hashing default admin password during seed:', hashError);
     }
   } else if (userCount) {
-    console.log(`[DB] Users table already has ${userCount.count} entries. No seeding needed.`);
+     console.log(`[DB] Users table already has ${userCount.count} entries. No seeding needed.`);
   } else {
      console.warn('[DB] Could not retrieve user count. Seeding check skipped.');
   }
@@ -76,9 +75,17 @@ async function initializeDb(): Promise<Database> {
   return db;
 }
 
+/**
+ * Gets a singleton instance of the database connection.
+ * This function ensures that the database is initialized only once per server process.
+ * @returns {Promise<Database>} A promise that resolves to the database instance.
+ */
 function getDb(): Promise<Database> {
   if (!dbPromise) {
+    console.log('[DB] No active DB promise. Initializing for the first time.');
     dbPromise = initializeDb();
+  } else {
+    console.log('[DB] Returning existing DB promise.');
   }
   return dbPromise;
 }
