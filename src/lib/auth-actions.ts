@@ -1,4 +1,3 @@
-
 'use server';
 
 import { cookies } from 'next/headers';
@@ -89,10 +88,16 @@ export async function getCurrentUser(): Promise<UserSession | null> {
     const validation = UserSessionSchema.safeParse(sessionData);
 
     if (validation.success) {
-      // Optional: Add DB check for extra security here if needed
-      // const db = await getDb();
-      // const user = await db.get('SELECT id FROM users WHERE id = ?', validation.data.userId);
-      // if (!user) return null;
+      // Database validation: Ensure the user from the cookie still exists.
+      const db = await getDb();
+      const user = await db.get('SELECT id FROM users WHERE id = ?', validation.data.userId);
+      
+      if (!user) {
+        // User does not exist, invalidate session by returning null.
+        // Optionally, delete the invalid cookie.
+        cookieStore.delete(AUTH_COOKIE_NAME);
+        return null;
+      }
       return validation.data;
     } else {
       console.warn('[Auth - getCurrentUser] Session data in cookie failed validation:', validation.error);
