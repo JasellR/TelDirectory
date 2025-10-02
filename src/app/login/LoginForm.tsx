@@ -43,8 +43,8 @@ export default function LoginForm() {
               title: t('loginSucceededTitle'),
               description: t('loginSucceededDescription'),
           });
-          // 2. Redirect after state is updated
-          router.push('/import-xml');
+          // 2. Refresh the page. The middleware will handle the redirect.
+          router.refresh();
       }
     });
   };
