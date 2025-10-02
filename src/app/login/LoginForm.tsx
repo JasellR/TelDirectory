@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useTransition } from 'react';
@@ -38,13 +37,14 @@ export default function LoginForm() {
           variant: 'destructive',
         });
       } else if (result.user) {
+          // 1. Update the client-side state
           setUser(result.user);
           toast({
               title: t('loginSucceededTitle'),
               description: t('loginSucceededDescription'),
           });
-          // The action now handles the redirect, but we can push if needed.
-          // router.push('/import-xml');
+          // 2. Redirect after state is updated
+          router.push('/import-xml');
       }
     });
   };

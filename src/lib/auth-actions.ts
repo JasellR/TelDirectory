@@ -49,18 +49,16 @@ export async function loginAction(formData: FormData): Promise<{ error?: string;
       maxAge: 60 * 60 * 24 * 7, // 1 week
     });
     
+    // Revalidate paths to ensure server components re-fetch user state
     revalidatePath('/', 'layout');
+    
+    // We return the user and let the client handle the redirect.
+    return { user: { userId: userRecord.id, username: userRecord.username } };
 
   } catch (error: any) {
     console.error('[Login Action] Error:', error);
     return { error: 'An unexpected server error occurred.' };
   }
-  
-  // Instead of redirecting from the action, we can return the user
-  // and let the client-side handle the redirect after state update.
-  // This helps with client state consistency.
-  redirect('/import-xml');
-  return { user: { userId: userRecord.id, username: userRecord.username } };
 }
 
 
