@@ -439,8 +439,15 @@ export async function deleteLocalityOrBranchAction(params: {
     }
 
     try {
-        // 1. Delete the item's own XML file
-        await fs.unlink(itemPathToDelete);
+        // 1. Attempt to delete the item's own XML file, but don't fail if it doesn't exist.
+        await fs.unlink(itemPathToDelete).catch(error => {
+            if (error.code !== 'ENOENT') {
+                // If it's an error other than "Not Found", re-throw it.
+                throw error;
+            }
+            // If the file doesn't exist, we just log it and continue.
+            console.warn(`[deleteLocalityOrBranchAction] File not found, skipping delete: ${itemPathToDelete}`);
+        });
 
         // 2. Remove the item from its parent menu
         const parentMenu = await readAndParseXML(parentMenuPath);
@@ -986,3 +993,5 @@ export async function searchAllDepartmentsAndExtensionsAction(query: string): Pr
   
   return Array.from(resultsMap.values());
 }
+
+    
