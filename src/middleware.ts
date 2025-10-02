@@ -8,19 +8,8 @@ const AUTH_COOKIE_NAME = 'teldirectory-session';
 const PROTECTED_ROUTES = ['/import-xml'];
 const LOGIN_PATH = '/login';
 
-// Check if user exists in the DB for the given session's userId
-// This adds a layer of security ensuring the session belongs to a valid user
-async function isSessionUserValid(session: UserSession): Promise<boolean> {
-    try {
-        const db = await getDb();
-        const user = await db.get('SELECT id FROM users WHERE id = ?', session.userId);
-        return !!user;
-    } catch(dbError) {
-        console.error('[Middleware DB Check] Error connecting to or querying DB:', dbError);
-        return false; // Fail safely
-    }
-}
-
+// This check now only validates the cookie's content, without a DB call.
+// This is safe to run in the middleware's lightweight environment.
 async function checkAuth(request: NextRequest): Promise<boolean> {
     const cookie = request.cookies.get(AUTH_COOKIE_NAME);
     if (!cookie?.value) {
@@ -28,12 +17,13 @@ async function checkAuth(request: NextRequest): Promise<boolean> {
     }
     try {
         const session = JSON.parse(cookie.value) as UserSession;
-        if (typeof session.userId !== 'number' || session.userId <= 0) {
+        // Simple structural validation
+        if (typeof session.userId !== 'number' || session.userId <= 0 || !session.username) {
             return false;
         }
-        // Validate against the database
-        return await isSessionUserValid(session);
+        return true;
     } catch (e) {
+        console.error('[Middleware Auth Check] Error parsing cookie:', e);
         return false;
     }
 }
@@ -59,5 +49,7 @@ export async function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ['/((?!api|_next/static|_next/image|favicon.ico|ivoxsdir).*)'],
+  // The matcher is updated to correctly exclude static files and API routes
+  // while covering all other pages.
+  matcher: ['/((?!api|_next/static|_next/image|favicon.ico|.*\\.xml$).*)'],
 };
