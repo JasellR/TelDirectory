@@ -62,7 +62,9 @@ const sanitizeFilenamePart = (filenamePart: string): string => {
 
 
 function generateIdFromName(name: string): string {
-  const cleanedName = name.replace(/[^a-zA-Z0-9\s_.-]/g, ''); // Allow specific characters, remove others
+  const cleanedName = name
+    .normalize("NFD").replace(/[\u0300-\u036f]/g, "") // Transliterate accented characters
+    .replace(/[^a-zA-Z0-9\s_.-]/g, ''); // Allow specific characters, remove others
   if (!cleanedName.trim()) return `UnnamedItem${Date.now()}`; // Fallback for empty/invalid names
   return cleanedName
     .replace(/\s+/g, '') // Remove all spaces
@@ -127,17 +129,18 @@ const itemTypeToDir: Record<'zone' | 'branch' | 'locality', string> = {
 
 // Helper to get configured service URL components
 async function getServiceUrlComponents(): Promise<{ protocol: string, host: string, port: string, rootDirName: string }> {
+  // This is now simplified as the root directory is always 'ivoxsdir' inside 'public'
+  const rootDirName = 'ivoxsdir';
+  // These can be configured via environment variables in a real production setup
   let protocol = 'http';
   let host = '127.0.0.1';
   let port = '3000';
-  const ivoxsRoot = await getResolvedIvoxsRootPath();
-  const rootDirName = path.basename(ivoxsRoot);
   
   return { protocol, host, port, rootDirName };
 }
 
 function constructServiceUrl(protocol: string, host: string, port: string, rootDirName: string, pathSegment: string): string {
-  // Ensure the root directory name is not duplicated
+  // URLs should be relative to the domain root, pointing into the public directory
   const fullPath = path.join(rootDirName, pathSegment).replace(/\\/g, '/');
   return `${protocol}://${host}:${port}/${fullPath}`;
 }
@@ -174,7 +177,7 @@ export async function addZoneAction(zoneName: string): Promise<{ success: boolea
   const mainMenuPath = paths.MAINMENU_PATH;
   const newZoneBranchFilePath = path.join(paths.ZONE_BRANCH_DIR, `${newZoneId}.xml`);
   const { protocol, host, port, rootDirName } = await getServiceUrlComponents();
-  const newZoneURL = constructServiceUrl(protocol, host, port, '', `zonebranch/${newZoneId}.xml`);
+  const newZoneURL = constructServiceUrl(protocol, host, port, rootDirName, `zonebranch/${newZoneId}.xml`);
 
   try {
     // 1. Create the new zone branch file
@@ -293,18 +296,18 @@ export async function addLocalityOrBranchAction(params: {
     if (itemType === 'branch') {
         parentMenuPath = path.join(paths.ZONE_BRANCH_DIR, `${zoneId}.xml`);
         newItemPath = path.join(paths.BRANCH_DIR, `${newItemId}.xml`);
-        newUrlPath = `${subDir}/${newItemId}.xml`;
+        newUrlPath = `branch/${newItemId}.xml`;
         revalidationPath = `/${zoneId}`;
     } else { // It's a locality
         parentMenuPath = branchId 
             ? path.join(paths.BRANCH_DIR, `${branchId}.xml`)
             : path.join(paths.ZONE_BRANCH_DIR, `${zoneId}.xml`);
         newItemPath = path.join(paths.DEPARTMENT_DIR, `${newItemId}.xml`);
-        newUrlPath = `${subDir}/${newItemId}.xml`;
+        newUrlPath = `department/${newItemId}.xml`;
         revalidationPath = branchId ? `/${zoneId}/branches/${branchId}` : `/${zoneId}`;
     }
     
-    const newUrl = constructServiceUrl(protocol, host, port, '', newUrlPath);
+    const newUrl = constructServiceUrl(protocol, host, port, rootDirName, newUrlPath);
 
     try {
         // 1. Create the new item's own XML file (empty but valid)
@@ -353,7 +356,7 @@ export async function editLocalityOrBranchAction(params: {
         parentMenuPath = path.join(paths.ZONE_BRANCH_DIR, `${zoneId}.xml`);
         oldItemPath = path.join(paths.BRANCH_DIR, `${oldItemId}.xml`);
         newItemPath = path.join(paths.BRANCH_DIR, `${newItemId}.xml`);
-        newUrlPath = `${subDir}/${newItemId}.xml`;
+        newUrlPath = `branch/${newItemId}.xml`;
         revalidationPath = `/${zoneId}`;
     } else { // It's a locality
         parentMenuPath = branchId
@@ -361,11 +364,11 @@ export async function editLocalityOrBranchAction(params: {
             : path.join(paths.ZONE_BRANCH_DIR, `${zoneId}.xml`);
         oldItemPath = path.join(paths.DEPARTMENT_DIR, `${oldItemId}.xml`);
         newItemPath = path.join(paths.DEPARTMENT_DIR, `${newItemId}.xml`);
-        newUrlPath = `${subDir}/${newItemId}.xml`;
+        newUrlPath = `department/${newItemId}.xml`;
         revalidationPath = branchId ? `/${zoneId}/branches/${branchId}` : `/${zoneId}`;
     }
 
-    const newUrl = constructServiceUrl(protocol, host, port, '', newUrlPath);
+    const newUrl = constructServiceUrl(protocol, host, port, rootDirName, newUrlPath);
 
     try {
         // 1. Rename the item's XML file if ID changes
@@ -586,25 +589,9 @@ export async function deleteExtensionAction(localityId: string, extensionName: s
 export async function updateDirectoryRootPathAction(newPath: string): Promise<{ success: boolean, message: string, error?: string }> {
     const authenticated = await isAuthenticated();
     if (!authenticated) return { success: false, message: "Authentication required." };
-
-    if (!path.isAbsolute(newPath)) {
-        return { success: false, message: "Path must be absolute." };
-    }
-
-    try {
-        const stats = await fs.stat(newPath);
-        if (!stats.isDirectory()) {
-            return { success: false, message: "The specified path is not a directory." };
-        }
-        await saveDirConfig({ ivoxsRootPath: newPath });
-        revalidatePath('/', 'layout');
-        return { success: true, message: "Directory root path updated successfully." };
-    } catch (e: any) {
-        if (e.code === 'ENOENT') {
-            return { success: false, message: "The specified path does not exist." };
-        }
-        return { success: false, message: "Failed to update directory path.", error: e.message };
-    }
+    
+    // This action is now deprecated as the path is fixed to `public/ivoxsdir`
+    return { success: false, message: "This functionality is deprecated. The directory path is fixed to 'public/ivoxsdir' for stability."}
 }
 
 export async function updateXmlUrlsAction(host: string, port: string): Promise<{ success: boolean, message: string, error?: string }> {
@@ -626,19 +613,13 @@ export async function updateXmlUrlsAction(host: string, port: string): Promise<{
 
         fileContent.CiscoIPPhoneMenu.MenuItem = ensureArray(fileContent.CiscoIPPhoneMenu.MenuItem).map((item: any) => {
             const fileName = (item.URL || '').split('/').pop();
-            let itemType = getItemTypeFromUrl(item.URL);
-
-            if (itemType === 'unknown' && fileName) {
-                // If type is unknown, it's likely a malformed URL we need to fix.
-                // We'll assume it's a locality as that's the most common case in deeper menus.
-                console.warn(`[updateXmlUrlsAction] URL type for ${item.URL} is unknown. Assuming 'locality'.`);
-                itemType = 'locality';
-            }
+            const itemType = getItemTypeFromUrl(item.URL);
 
             if (fileName && itemType !== 'unknown') {
                 const subDirectory = itemTypeToDir[itemType];
                 const relativePath = `${subDirectory}/${fileName}`;
-                item.URL = constructServiceUrl(protocol, host, port, '', relativePath);
+                // Use the rootDirName from getServiceUrlComponents, which is now hardcoded to 'ivoxsdir'
+                item.URL = constructServiceUrl(protocol, host, port, rootDirName, relativePath);
             } else {
                  console.warn(`[updateXmlUrlsAction] Could not process URL: ${item.URL}. It might be malformed or pointing to an unknown type.`);
             }
@@ -802,8 +783,8 @@ export async function syncNamesFromXmlFeedAction(feedUrlsString: string): Promis
       const missingExtensionsLocalityPrompt = 'Extensions found in feeds but not locally';
       
       const missingDeptFilePath = path.join(paths.DEPARTMENT_DIR, `${missingExtensionsZoneId}.xml`);
-      const { protocol, host, port } = await getServiceUrlComponents();
-      const missingZoneURL = constructServiceUrl(protocol, host, port, '', `department/${missingExtensionsZoneId}.xml`);
+      const { protocol, host, port, rootDirName } = await getServiceUrlComponents();
+      const missingZoneURL = constructServiceUrl(protocol, host, port, rootDirName, `department/${missingExtensionsZoneId}.xml`);
       
       const missingDeptContent = {
           CiscoIPPhoneDirectory: {
@@ -883,15 +864,14 @@ export async function searchAllDepartmentsAndExtensionsAction(query: string): Pr
               urlPath = item.URL;
             }
             
-            const rootDirName = path.basename(IVOXS_DIR);
-            const pathSegments = urlPath.split('/').map(s=>s.toLowerCase());
+            // With files in /public, the URL path will be like /ivoxsdir/branch/file.xml
+            const pathSegments = urlPath.split('/').filter(Boolean); // remove empty segments
+            
             let itemType: 'branch' | 'locality' | 'unknown' = 'unknown';
 
-            // Find index of rootDirName to reliably find the subdirectories
-            const rootDirIndex = pathSegments.indexOf(rootDirName.toLowerCase());
-
-            if (rootDirIndex !== -1 && rootDirIndex < pathSegments.length - 1) {
-                const typeSegment = pathSegments[rootDirIndex + 1];
+            if (pathSegments.length > 1) {
+                // The directory right before the filename determines the type
+                const typeSegment = pathSegments[pathSegments.length - 2];
                 if (typeSegment === 'branch') itemType = 'branch';
                 else if (typeSegment === 'department') itemType = 'locality';
             }
@@ -902,7 +882,6 @@ export async function searchAllDepartmentsAndExtensionsAction(query: string): Pr
                 }
             } else if (itemType === 'branch') {
                 const newContext = { ...context, branchId: itemId, branchName: item.Name };
-                // Construct path to the branch file
                 const nextFilePath = path.join(IVOXS_DIR, 'branch', `${itemId}.xml`);
                 try {
                   await fs.access(nextFilePath);
@@ -1007,6 +986,3 @@ export async function searchAllDepartmentsAndExtensionsAction(query: string): Pr
   
   return Array.from(resultsMap.values());
 }
-
-    
-

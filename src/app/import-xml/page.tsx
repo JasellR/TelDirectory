@@ -53,24 +53,11 @@ export default function SettingsPage() {
   useEffect(() => {
     let isMounted = true;
     
-    const fetchConfig = async () => {
-      setIsLoadingPath(true);
-      try {
-        const config = await getDirectoryConfig();
-        if (isMounted) {
-          const savedPath = config.ivoxsRootPath || '';
-          setDirectoryRootPath(savedPath); 
-          setCurrentConfigDisplayPath(savedPath); 
-        }
-      } catch (e) {
-        if (isMounted) {
-          console.error("Failed to fetch directory config:", e);
-          setCurrentConfigDisplayPath(null); // Indicates an error
-        }
-      } finally {
-        if (isMounted) setIsLoadingPath(false);
-      }
-    };
+    // The path is now fixed, so we don't need to fetch it.
+    // We can just display the static path for user information.
+    setIsLoadingPath(false);
+    setCurrentConfigDisplayPath('public/ivoxsdir');
+    setDirectoryRootPath('public/ivoxsdir');
     
     const fetchUser = async () => {
         try {
@@ -83,7 +70,6 @@ export default function SettingsPage() {
         }
     };
 
-    fetchConfig();
     fetchUser();
 
     return () => { isMounted = false; };
@@ -91,21 +77,15 @@ export default function SettingsPage() {
 
 
   const handleSaveDirectoryPath = async () => {
-    if (!directoryRootPath.trim()) {
-        toast({ title: t('errorTitle'), description: t('directoryPathCannotBeEmpty'), variant: 'destructive' });
-        setPathStatus({type: 'error', message: t('directoryPathCannotBeEmpty')});
-        return;
-    }
-    
+    // This functionality is now deprecated, but we keep the handler to inform the user.
     startPathTransition(async () => {
         const result = await updateDirectoryRootPathAction(directoryRootPath.trim());
         if (result.success) {
             toast({ title: t('successTitle'), description: result.message });
-            setCurrentConfigDisplayPath(directoryRootPath.trim());
             setPathStatus({type: 'success', message: result.message});
         } else {
-            toast({ title: t('errorTitle'), description: result.message + (result.error ? ` ${t('detailsLabel')}: ${result.error}` : ''), variant: 'destructive' });
-            setPathStatus({type: 'error', message: result.message + (result.error ? ` Details: ${result.error}` : '')});
+            toast({ title: t('errorTitle'), description: result.message, variant: 'destructive' });
+            setPathStatus({type: 'error', message: result.message});
         }
     });
   };
@@ -230,7 +210,7 @@ export default function SettingsPage() {
               <CardTitle className="text-2xl">{t('directoryConfigurationTitle')}</CardTitle>
             </div>
             <CardDescription>
-              {t('directoryConfigurationDescription', { dirPath: 'ivoxsdir' })}
+              {t('directoryConfigurationDescription', { dirPath: 'public/ivoxsdir' })}
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
@@ -240,27 +220,23 @@ export default function SettingsPage() {
                 id="directoryRootPath"
                 value={directoryRootPath}
                 onChange={(e) => setDirectoryRootPath(e.target.value)}
-                placeholder={t('directoryRootPathPlaceholder', { dirPath: 'ivoxsdir' })}
-                disabled={isPathPending || isLoadingPath}
+                placeholder={t('directoryRootPathPlaceholder', { dirPath: 'public/ivoxsdir' })}
+                disabled={true} // Path is no longer configurable
               />
                <p className="text-sm text-muted-foreground">
                 {t('currentPathLabel')}:{' '}
                 {isLoadingPath
                   ? t('loadingPathLabel')
-                  : currentConfigDisplayPath === null
-                    ? t('errorFetchingPathLabel')
-                    : currentConfigDisplayPath
-                      ? <strong>{currentConfigDisplayPath}</strong>
-                      : t('defaultPathLabel', { path: 'ivoxsdir (project root)' })}
+                  : <strong>{currentConfigDisplayPath}</strong>
+                }
               </p>
             </div>
             <div className="flex items-center justify-between">
                 <p className="text-xs text-muted-foreground flex items-center gap-1">
                     <Info className="h-3 w-3" />
-                    {t('directoryPathInfo')}
+                    Path is now fixed to 'public/ivoxsdir' for static serving.
                 </p>
-                <Button onClick={handleSaveDirectoryPath} disabled={isPathPending || isLoadingPath}>
-                    {isPathPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                <Button onClick={handleSaveDirectoryPath} disabled={true}>
                     {t('saveDirectoryPathButton')}
                 </Button>
             </div>
@@ -281,7 +257,7 @@ export default function SettingsPage() {
                     <Tv className="h-6 w-6 text-primary" />
                     <CardTitle className="text-2xl">{t('networkConfigurationTitle')}</CardTitle>
                 </div>
-                <CardDescription>{t('networkConfigurationDescription', { dirPath: currentConfigDisplayPath || 'ivoxsdir' })}</CardDescription>
+                <CardDescription>{t('networkConfigurationDescription', { dirPath: 'public/ivoxsdir' })}</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 items-end">
@@ -364,7 +340,7 @@ export default function SettingsPage() {
                     <FileCode className="h-6 w-6 text-primary" />
                     <CardTitle className="text-2xl">{t('syncNamesFromXmlFeedTitle')}</CardTitle>
                 </div>
-                <CardDescription>{t('syncNamesFromXmlFeedDescription', { dirPath: currentConfigDisplayPath || 'ivoxsdir' })}</CardDescription>
+                <CardDescription>{t('syncNamesFromXmlFeedDescription', { dirPath: 'public/ivoxsdir' })}</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
                 <div className="space-y-2">

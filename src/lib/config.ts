@@ -36,25 +36,13 @@ export async function saveDirectoryConfig(config: DirectoryConfig): Promise<void
 
 /**
  * Resolves the root path for the ivoxsdir directory.
- * It will prioritize the custom path from the config file.
- * If no custom path is set, it defaults to 'ivoxsdir' in the project root.
- * This is the single source of truth for the data path.
+ * This version is updated to ALWAYS point to the `public/ivoxsdir` directory,
+ * as serving XMLs statically is the correct architectural approach for this app.
+ * The ability to configure a custom path is removed to simplify logic and prevent errors.
  */
 export async function getResolvedIvoxsRootPath(): Promise<string> {
-  try {
-    const config = await getDirectoryConfig();
-    
-    // If a custom path is set in the config, it is the source of truth.
-    if (config.ivoxsRootPath) {
-      // It's the user's responsibility to ensure this path is absolute and correct.
-      // The application will use it as is.
-      return config.ivoxsRootPath;
-    }
-  } catch (e) {
-      // This catch block is for potential errors in getDirectoryConfig itself, though it's designed to be resilient.
-      console.error("[Config] Error retrieving directory configuration. Falling back to default path.", e);
-  }
-
-  // If no custom path is configured or an error occurred, fall back to the default path.
-  return path.join(process.cwd(), 'ivoxsdir');
+  // This function now returns a static, reliable path.
+  // All file operations (read, write, delete) for the directory
+  // will correctly target the publicly served directory.
+  return path.join(process.cwd(), 'public', 'ivoxsdir');
 }

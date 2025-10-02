@@ -50,6 +50,7 @@ export async function loginAction(formData: FormData): Promise<{ error?: string 
       maxAge: 60 * 60 * 24 * 7, // 1 week
     });
     
+    // Explicitly revalidate the root layout to ensure all pages get the new auth state
     revalidatePath('/', 'layout');
 
   } catch (error: any) {
@@ -64,6 +65,7 @@ export async function loginAction(formData: FormData): Promise<{ error?: string 
 export async function logoutAction(): Promise<void> {
   const cookieStore = await cookies();
   cookieStore.delete(AUTH_COOKIE_NAME);
+  // Explicitly revalidate the root layout to ensure all pages reflect the logged-out state
   revalidatePath('/', 'layout');
 }
 
