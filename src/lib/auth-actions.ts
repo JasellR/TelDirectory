@@ -1,3 +1,4 @@
+
 'use server';
 
 import { cookies } from 'next/headers';
@@ -49,7 +50,6 @@ export async function loginAction(formData: FormData): Promise<{ error?: string;
       maxAge: 60 * 60 * 24 * 7, // 1 week
     });
     
-    // Revalidate paths to ensure server components re-fetch user state
     revalidatePath('/', 'layout');
     
     // We return the user and let the client handle the redirect.
