@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useTransition } from 'react';
-import { useSearchParams } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -11,12 +11,15 @@ import { useToast } from '@/hooks/use-toast';
 import { AlertCircle, LogIn } from 'lucide-react';
 import { useTranslation } from '@/hooks/useTranslation';
 import Link from 'next/link';
+import { useAuth } from '@/context/AuthContext';
 
 export default function LoginForm() {
   const { toast } = useToast();
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
   const { t } = useTranslation();
+  const { setUser } = useAuth();
+  const router = useRouter();
   const searchParams = useSearchParams();
   const redirectTo = searchParams.get('redirect_to');
 
@@ -26,20 +29,25 @@ export default function LoginForm() {
     const formData = new FormData(event.currentTarget);
     
     startTransition(async () => {
-      // The server action now handles the redirect.
-      // We only expect a return value if there's an error.
-      const result = await loginAction(formData, redirectTo);
+      const result = await loginAction(formData);
 
-      if (result?.error) {
+      if ('error' in result && result.error) {
         setError(result.error);
         toast({
           title: t('loginFailedTitle'),
           description: result.error,
           variant: 'destructive',
         });
+      } else if ('user' in result && result.user) {
+          // 1. Update the client-side state
+          setUser(result.user);
+          toast({
+              title: t('loginSucceededTitle'),
+              description: t('loginSucceededDescription'),
+          });
+          // 2. Perform client-side redirect after state update
+          router.push(redirectTo || '/import-xml');
       }
-      // No success case needed here, as a successful login will trigger
-      // a server-side redirect and this component will unmount.
     });
   };
 
