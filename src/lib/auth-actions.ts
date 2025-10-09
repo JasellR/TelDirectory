@@ -1,4 +1,3 @@
-
 'use server';
 
 import { cookies, headers } from 'next/headers';
@@ -45,8 +44,6 @@ export async function loginAction(formData: FormData): Promise<{ error?: string;
     
     // Determine if the connection is secure.
     // In a real production environment behind a reverse proxy, 'x-forwarded-proto' would be 'https'.
-    // For local production testing via direct IP, we check the protocol.
-    // The most robust way is to avoid setting 'secure' in local environments.
     const host = headers().get('host');
     const isLocalHost = host?.startsWith('localhost') || host?.startsWith('127.0.0.1') || host?.startsWith('192.168.');
     const isSecure = process.env.NODE_ENV === 'production' && !isLocalHost;
@@ -60,7 +57,7 @@ export async function loginAction(formData: FormData): Promise<{ error?: string;
       maxAge: 60 * 60 * 24 * 7, // 1 week
     });
     
-    // We return the user and let the client handle the redirect.
+    // Return the user object on success. The client will handle the next steps.
     return { user: { userId: userRecord.id, username: userRecord.username } };
 
   } catch (error: any) {

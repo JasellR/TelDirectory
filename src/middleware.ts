@@ -1,46 +1,25 @@
-
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
-import type { UserSession } from '@/types';
-import { getDb } from './lib/db';
 
 const AUTH_COOKIE_NAME = 'teldirectory-session';
 const PROTECTED_ROUTES = ['/import-xml'];
 const LOGIN_PATH = '/login';
 
-// This check now only validates the cookie's content, without a DB call.
-// This is safe to run in the middleware's lightweight environment.
-async function checkAuth(request: NextRequest): Promise<boolean> {
-    const cookie = request.cookies.get(AUTH_COOKIE_NAME);
-    if (!cookie?.value) {
-        return false;
-    }
-    try {
-        const session = JSON.parse(cookie.value) as UserSession;
-        // Simple structural validation
-        if (typeof session.userId !== 'number' || session.userId <= 0 || !session.username) {
-            return false;
-        }
-        return true;
-    } catch (e) {
-        console.error('[Middleware Auth Check] Error parsing cookie:', e);
-        return false;
-    }
-}
-
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
-  const userIsAuthenticated = await checkAuth(request);
+  const isAuthenticated = request.cookies.has(AUTH_COOKIE_NAME);
 
+  // If user is trying to access a protected route and is not authenticated, redirect to login
   if (PROTECTED_ROUTES.some(route => pathname.startsWith(route))) {
-    if (!userIsAuthenticated) {
+    if (!isAuthenticated) {
       const loginUrl = new URL(LOGIN_PATH, request.url);
       loginUrl.searchParams.set('redirect_to', pathname);
       return NextResponse.redirect(loginUrl);
     }
   }
 
-  if (pathname === LOGIN_PATH && userIsAuthenticated) {
+  // If user is authenticated and tries to access the login page, redirect them to the admin dashboard
+  if (pathname === LOGIN_PATH && isAuthenticated) {
     const redirectTo = request.nextUrl.searchParams.get('redirect_to');
     return NextResponse.redirect(new URL(redirectTo || '/import-xml', request.url));
   }

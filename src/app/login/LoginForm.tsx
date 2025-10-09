@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useTransition } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -43,7 +43,8 @@ export default function LoginForm() {
               title: t('loginSucceededTitle'),
               description: t('loginSucceededDescription'),
           });
-          // 2. Refresh the page. The middleware will handle the redirect.
+          // 2. Refresh the page. This allows the middleware to handle the final redirect,
+          // ensuring the server and client are in sync.
           router.refresh();
       }
     });
