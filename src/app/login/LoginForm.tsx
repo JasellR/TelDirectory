@@ -19,7 +19,8 @@ export default function LoginForm() {
   const [error, setError] = useState<string | null>(null);
   const { t } = useTranslation();
   const { setUser } = useAuth();
-  const router = useRouter();
+  const searchParams = useSearchParams();
+  const redirectTo = searchParams.get('redirect_to');
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -29,23 +30,23 @@ export default function LoginForm() {
     startTransition(async () => {
       const result = await loginAction(formData);
 
-      if (result.error) {
+      if ('error' in result && result.error) {
         setError(result.error);
         toast({
           title: t('loginFailedTitle'),
           description: result.error,
           variant: 'destructive',
         });
-      } else if (result.user) {
+      } else if ('user' in result && result.user) {
           // 1. Update the client-side state
           setUser(result.user);
           toast({
               title: t('loginSucceededTitle'),
               description: t('loginSucceededDescription'),
           });
-          // 2. Refresh the page. This allows the middleware to handle the final redirect,
-          // ensuring the server and client are in sync.
-          router.refresh();
+          // 2. Perform a full browser redirect. This forces a full page reload from the server,
+          // ensuring the RootLayout re-fetches the user and syncs server/client state.
+          window.location.href = redirectTo || '/import-xml';
       }
     });
   };
