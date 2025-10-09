@@ -19,6 +19,7 @@ export default function LoginForm() {
   const [error, setError] = useState<string | null>(null);
   const { t } = useTranslation();
   const { setUser } = useAuth();
+  const router = useRouter();
   const searchParams = useSearchParams();
   const redirectTo = searchParams.get('redirect_to');
 
@@ -40,13 +41,20 @@ export default function LoginForm() {
       } else if ('user' in result && result.user) {
           // 1. Update the client-side state
           setUser(result.user);
+          
           toast({
               title: t('loginSucceededTitle'),
               description: t('loginSucceededDescription'),
           });
-          // 2. Perform a full browser redirect. This forces a full page reload from the server,
-          // ensuring the RootLayout re-fetches the user and syncs server/client state.
-          window.location.href = redirectTo || '/import-xml';
+
+          // 2. IMPORTANT: Instead of a full-page reload, we use router.refresh().
+          // This tells Next.js to re-run server components and the middleware.
+          // The middleware will then handle the redirect correctly.
+          router.refresh();
+
+          // As a fallback for the refresh, we can also push to the destination.
+          // The middleware should catch the user and redirect if they are on /login.
+          router.push(redirectTo || '/import-xml');
       }
     });
   };

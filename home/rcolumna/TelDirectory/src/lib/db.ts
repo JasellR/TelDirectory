@@ -4,7 +4,7 @@
 import sqlite3 from 'sqlite3';
 import { open, type Database } from 'sqlite';
 import path from 'path';
-import { bcrypt, SALT_ROUNDS } from './auth-helpers';
+import { bcrypt, SALT_ROUNDS } from '@/lib/auth-helpers';
 
 const DB_FILE = path.join(process.cwd(), 'teldirectory.db');
 

@@ -1,13 +1,12 @@
-
 'use server';
 
 import { cookies, headers } from 'next/headers';
 import { redirect } from 'next/navigation';
-import { getDb, bcrypt } from './db';
+import { getDb } from './db';
+import { bcrypt } from './auth-helpers';
 import type { UserSession } from '@/types';
 import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
-
 
 const AUTH_COOKIE_NAME = 'teldirectory-session';
 
@@ -16,8 +15,9 @@ const UserSessionSchema = z.object({
   username: z.string().min(1),
 });
 
-
-export async function loginAction(formData: FormData, redirectToPath?: string | null): Promise<{ error: string }> {
+// The server action now returns either an error or the user session object.
+// It no longer handles redirection itself.
+export async function loginAction(formData: FormData): Promise<{ error: string } | { user: UserSession }> {
   const username = formData.get('username') as string;
   const password = formData.get('password') as string;
 
@@ -26,6 +26,7 @@ export async function loginAction(formData: FormData, redirectToPath?: string | 
   }
 
   let userRecord;
+  let sessionData: UserSession;
   try {
     const db = await getDb();
     userRecord = await db.get('SELECT * FROM users WHERE username = ?', username);
@@ -40,12 +41,13 @@ export async function loginAction(formData: FormData, redirectToPath?: string | 
       return { error: 'Invalid username or password.' };
     }
 
-    const sessionData: UserSession = { userId: userRecord.id, username: userRecord.username };
-    const cookieStore = await cookies();
+    sessionData = { userId: userRecord.id, username: userRecord.username };
+    const cookieStore = cookies();
     
-    const requestHeaders = headers();
-    const host = requestHeaders.get('host');
-    const protocol = requestHeaders.get('x-forwarded-proto') || (host?.startsWith('localhost') ? 'http' : 'https');
+    const requestHeaders = await headers(); // Await headers() call
+    const host = requestHeaders.get('host') || '';
+    const isLocalhost = host.startsWith('localhost') || host.startsWith('192.168.') || host.startsWith('172.');
+    const protocol = requestHeaders.get('x-forwarded-proto') || (isLocalhost ? 'http' : 'https');
     const isSecure = protocol === 'https';
 
     cookieStore.set(AUTH_COOKIE_NAME, JSON.stringify(sessionData), {
@@ -61,17 +63,18 @@ export async function loginAction(formData: FormData, redirectToPath?: string | 
     return { error: 'An unexpected server error occurred.' };
   }
 
-  // Server-side redirect is the most robust way to handle post-login flow.
-  // This avoids client-side race conditions.
-  revalidatePath('/', 'layout'); // Ensure the whole layout is re-validated to reflect the new auth state.
-  redirect(redirectToPath || '/import-xml'); // Redirect to the intended page or default admin page.
+  // Revalidate the layout to ensure subsequent server components get the new auth state
+  revalidatePath('/', 'layout'); 
+  // Return the user data on success
+  return { user: sessionData };
 }
-
 
 export async function logoutAction(): Promise<void> {
   const cookieStore = await cookies();
   cookieStore.delete(AUTH_COOKIE_NAME);
   revalidatePath('/', 'layout');
+  // After logout, redirect to home. This is a safe redirect.
+  redirect('/');
 }
 
 export async function isAuthenticated(): Promise<boolean> {
@@ -80,7 +83,7 @@ export async function isAuthenticated(): Promise<boolean> {
 }
 
 export async function getCurrentUser(): Promise<UserSession | null> {
-  const cookieStore = await cookies();
+  const cookieStore = cookies();
   const cookieValue = cookieStore.get(AUTH_COOKIE_NAME)?.value;
   
   if (!cookieValue) {

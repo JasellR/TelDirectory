@@ -1,4 +1,3 @@
-
 'use client';
 
 import {
@@ -10,26 +9,23 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Button } from '@/components/ui/button';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { LogOut, UserCircle } from 'lucide-react';
+import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { LogOut } from 'lucide-react';
 import { logoutAction } from '@/lib/auth-actions';
 import { useTransition } from 'react';
 import { useTranslation } from '@/hooks/useTranslation';
-import { useRouter } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
 
 export function UserMenu() {
   const [isPending, startTransition] = useTransition();
   const { t } = useTranslation();
   const { user, setUser } = useAuth();
-  const router = useRouter();
 
   const handleLogout = () => {
     startTransition(async () => {
       await logoutAction();
-      setUser(null); // Update context on client
-      router.push('/');
-      router.refresh(); 
+      // Client-side state is cleared, and logoutAction handles the redirect.
+      setUser(null);
     });
   };
   
@@ -55,7 +51,6 @@ export function UserMenu() {
             </p>
           </div>
         </DropdownMenuLabel>
-        <DropdownMenuSeparator />
         <DropdownMenuSeparator />
         <DropdownMenuItem onClick={handleLogout} disabled={isPending} className="cursor-pointer">
           <LogOut className="mr-2 h-4 w-4" />
