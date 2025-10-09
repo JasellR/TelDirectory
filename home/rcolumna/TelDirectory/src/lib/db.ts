@@ -4,11 +4,11 @@
 import sqlite3 from 'sqlite3';
 import { open, type Database } from 'sqlite';
 import path from 'path';
-import bcrypt from 'bcrypt';
+import { bcrypt, SALT_ROUNDS } from './auth-helpers'; // Updated import
 
 const DB_FILE = path.join(process.cwd(), 'teldirectory.db');
-const SALT_ROUNDS = 10;
 
+// Singleton promise to ensure DB is initialized only once across the entire application process.
 let dbPromise: Promise<Database> | null = null;
 
 async function initializeDb(): Promise<Database> {
@@ -34,16 +34,16 @@ async function initializeDb(): Promise<Database> {
     CREATE TABLE IF NOT EXISTS extension_details (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       extension_number TEXT NOT NULL,
-      locality_id TEXT NOT NULL,
-      user_name TEXT,
+      locality_id TEXT NOT NULL, -- The department/locality XML filename ID
+      user_name TEXT, -- DisplayName from AD / Name from XML
       organization TEXT,
-      ad_department TEXT,
+      ad_department TEXT, -- Department name as it comes from AD
       job_title TEXT,
       email TEXT,
       main_phone_number TEXT,
-      source TEXT DEFAULT 'xml',
+      source TEXT DEFAULT 'xml', -- 'xml', 'ad', 'csv'
       last_synced DATETIME DEFAULT CURRENT_TIMESTAMP,
-      UNIQUE(extension_number, locality_id, source)
+      UNIQUE(extension_number, locality_id, source) 
     );
   `);
   console.log('[DB] "extension_details" table ensured.');
@@ -62,23 +62,31 @@ async function initializeDb(): Promise<Database> {
         hashedPassword
       );
       console.log(`[DB] Seeded default admin user: ${defaultAdminUsername}`);
-      console.warn(`[DB_SECURITY] Default admin password is set and should be changed in a real environment.`);
+      console.warn(`[DB_SECURITY] The default admin password '${defaultAdminPassword}' is insecure and should be changed immediately if this were a production environment.`);
     } catch (hashError) {
       console.error('[DB] Error hashing default admin password during seed:', hashError);
     }
+  } else if (userCount) {
+     console.log(`[DB] Users table already has ${userCount.count} entries. No seeding needed.`);
   } else {
-    console.log(`[DB] Users table already populated. Seeding not required.`);
+     console.warn('[DB] Could not retrieve user count. Seeding check skipped.');
   }
-
+  
   console.log('[DB] Database schema initialization complete.');
   return db;
 }
 
-function getDb(): Promise<Database> {
+/**
+ * Gets a singleton instance of the database connection.
+ * This function ensures that the database is initialized only once per server process.
+ * @returns {Promise<Database>} A promise that resolves to the database instance.
+ */
+export function getDb(): Promise<Database> {
   if (!dbPromise) {
+    console.log('[DB] No active DB promise. Initializing for the first time.');
     dbPromise = initializeDb();
+  } else {
+    console.log('[DB] Returning existing DB promise.');
   }
   return dbPromise;
 }
-
-export { getDb, bcrypt, SALT_ROUNDS };

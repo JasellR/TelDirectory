@@ -1,8 +1,10 @@
+
 'use server';
 
 import { cookies, headers } from 'next/headers';
 import { redirect } from 'next/navigation';
-import { getDb, bcrypt } from './db';
+import { getDb } from './db';
+import { bcrypt } from './auth-helpers'; // Updated import
 import type { UserSession } from '@/types';
 import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
