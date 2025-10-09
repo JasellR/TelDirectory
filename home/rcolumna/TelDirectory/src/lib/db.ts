@@ -4,7 +4,7 @@
 import sqlite3 from 'sqlite3';
 import { open, type Database } from 'sqlite';
 import path from 'path';
-import { bcrypt, SALT_ROUNDS } from './auth-helpers'; // Updated import
+import { bcrypt, SALT_ROUNDS } from './auth-helpers';
 
 const DB_FILE = path.join(process.cwd(), 'teldirectory.db');
 
@@ -81,7 +81,7 @@ async function initializeDb(): Promise<Database> {
  * This function ensures that the database is initialized only once per server process.
  * @returns {Promise<Database>} A promise that resolves to the database instance.
  */
-export function getDb(): Promise<Database> {
+export async function getDb(): Promise<Database> {
   if (!dbPromise) {
     console.log('[DB] No active DB promise. Initializing for the first time.');
     dbPromise = initializeDb();
