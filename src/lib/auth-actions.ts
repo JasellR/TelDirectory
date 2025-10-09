@@ -1,3 +1,4 @@
+
 'use server';
 
 import { cookies, headers } from 'next/headers';
@@ -16,7 +17,7 @@ const UserSessionSchema = z.object({
 });
 
 
-export async function loginAction(formData: FormData): Promise<{ error?: string; user?: UserSession }> {
+export async function loginAction(formData: FormData, redirectToPath?: string | null): Promise<{ error: string }> {
   const username = formData.get('username') as string;
   const password = formData.get('password') as string;
 
@@ -42,12 +43,10 @@ export async function loginAction(formData: FormData): Promise<{ error?: string;
     const sessionData: UserSession = { userId: userRecord.id, username: userRecord.username };
     const cookieStore = await cookies();
     
-    // Determine if the connection is secure.
-    // In a real production environment behind a reverse proxy, 'x-forwarded-proto' would be 'https'.
-    const host = headers().get('host');
-    const isLocalHost = host?.startsWith('localhost') || host?.startsWith('127.0.0.1') || host?.startsWith('192.168.');
-    const isSecure = process.env.NODE_ENV === 'production' && !isLocalHost;
-
+    const requestHeaders = headers();
+    const host = requestHeaders.get('host');
+    const protocol = requestHeaders.get('x-forwarded-proto') || (host?.startsWith('localhost') ? 'http' : 'https');
+    const isSecure = protocol === 'https';
 
     cookieStore.set(AUTH_COOKIE_NAME, JSON.stringify(sessionData), {
       httpOnly: true,
@@ -57,13 +56,15 @@ export async function loginAction(formData: FormData): Promise<{ error?: string;
       maxAge: 60 * 60 * 24 * 7, // 1 week
     });
     
-    // Return the user object on success. The client will handle the next steps.
-    return { user: { userId: userRecord.id, username: userRecord.username } };
-
   } catch (error: any) {
     console.error('[Login Action] Error:', error);
     return { error: 'An unexpected server error occurred.' };
   }
+
+  // Server-side redirect is the most robust way to handle post-login flow.
+  // This avoids client-side race conditions.
+  revalidatePath('/', 'layout'); // Ensure the whole layout is re-validated to reflect the new auth state.
+  redirect(redirectToPath || '/import-xml'); // Redirect to the intended page or default admin page.
 }
 
 
