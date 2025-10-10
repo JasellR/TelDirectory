@@ -1,3 +1,4 @@
+
 'use server';
 
 import { cookies } from 'next/headers';
@@ -20,7 +21,13 @@ export async function loginAction(formData: FormData): Promise<{ error?: string;
   const username = formData.get('username') as string;
   const password = formData.get('password') as string;
 
+  console.log(`[Login ENV] Running in environment: ${process.env.NODE_ENV}`);
   console.log(`[Login Attempt] Received login request for username: "${username}"`);
+
+  if (typeof bcrypt?.compare !== 'function') {
+      console.error('[Login Critical] bcrypt module or compare function is not available!');
+      return { error: 'Server authentication module not loaded.' };
+  }
 
   if (!username || !password) {
     console.error('[Login Error] Username or password not provided.');
@@ -39,7 +46,7 @@ export async function loginAction(formData: FormData): Promise<{ error?: string;
       return { error: 'Invalid username or password.' };
     }
     
-    console.log(`[Login Auth] User record found for username: "${username}". ID: ${userRecord.id}`);
+    console.log(`[Login Auth] User record found for username: "${username}". ID: ${userRecord.id}, Hashed Pwd: ${userRecord.hashedPassword.substring(0, 10)}...`);
 
     const passwordMatch = await bcrypt.compare(password, userRecord.hashedPassword);
 
@@ -52,15 +59,19 @@ export async function loginAction(formData: FormData): Promise<{ error?: string;
 
     const sessionData: UserSession = { userId: userRecord.id, username: userRecord.username };
     const cookieStore = await cookies();
-    cookieStore.set(AUTH_COOKIE_NAME, JSON.stringify(sessionData), {
+    
+    const cookieOptions = {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
       path: '/',
-      sameSite: 'lax',
+      sameSite: 'lax' as const,
       maxAge: 60 * 60 * 24 * 7, // 1 week
-    });
+    };
+
+    console.log('[Login Session] Setting session cookie with options:', cookieOptions);
+    cookieStore.set(AUTH_COOKIE_NAME, JSON.stringify(sessionData), cookieOptions);
     
-    console.log(`[Login Success] Session cookie set for user: "${username}".`);
+    console.log(`[Login Success] Session cookie queued for user: "${username}".`);
     
     revalidatePath('/', 'layout');
 
@@ -69,9 +80,7 @@ export async function loginAction(formData: FormData): Promise<{ error?: string;
     return { error: 'An unexpected server error occurred.' };
   }
   
-  // Instead of redirecting from the action, we can return the user
-  // and let the client-side handle the redirect after state update.
-  // This helps with client state consistency.
+  console.log('[Login Redirect] Attempting to redirect to /import-xml...');
   redirect('/import-xml');
   return { user: { userId: userRecord.id, username: userRecord.username } };
 }
