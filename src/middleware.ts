@@ -49,7 +49,7 @@ export async function middleware(request: NextRequest) {
 }
 
 export const config = {
-  // The matcher is updated to correctly exclude static files and API routes
-  // while covering all other pages.
-  matcher: ['/((?!api|_next/static|_next/image|favicon.ico|.*\\.xml$).*)'],
+  // The matcher is updated to correctly exclude static files, API routes,
+  // and now also the ivoxsdir path to allow public access for IP phones.
+  matcher: ['/((?!api|_next/static|_next/image|favicon.ico|ivoxsdir).*)'],
 };
