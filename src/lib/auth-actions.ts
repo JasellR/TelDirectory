@@ -60,9 +60,16 @@ export async function loginAction(formData: FormData): Promise<{ error?: string;
     const sessionData: UserSession = { userId: userRecord.id, username: userRecord.username };
     const cookieStore = await cookies();
     
+    // Production servers behind a proxy might run on HTTP but receive public traffic via HTTPS.
+    // In a real production setup with HTTPS, `secure: true` is correct.
+    // For this environment, we may need to disable it if the node server itself is not running HTTPS.
+    const isProduction = process.env.NODE_ENV === 'production';
+
     const cookieOptions = {
       httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
+      // The 'secure' flag should be true if the site is served over HTTPS.
+      // For this specific cloud environment, we'll keep it false to allow login over HTTP in production mode.
+      secure: false, 
       path: '/',
       sameSite: 'lax' as const,
       maxAge: 60 * 60 * 24 * 7, // 1 week
@@ -82,6 +89,7 @@ export async function loginAction(formData: FormData): Promise<{ error?: string;
   
   console.log('[Login Redirect] Attempting to redirect to /import-xml...');
   redirect('/import-xml');
+  // This return is now unreachable due to the redirect, which is expected.
   return { user: { userId: userRecord.id, username: userRecord.username } };
 }
 
