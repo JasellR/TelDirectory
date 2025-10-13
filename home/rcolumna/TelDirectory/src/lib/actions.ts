@@ -308,58 +308,73 @@ export async function deleteZoneAction(zoneId: string): Promise<{ success: boole
     return { success: false, message: "Main menu file (e.g., MainMenu.xml) not found. Cannot delete zone." };
   }
   const mainMenuPath = paths.MAINMENU_PATH;
-  const zoneBranchFilePath = path.join(paths.ZONE_BRANCH_DIR, `${zoneId}.xml`);
-
-  try {
-    // 1. Read the zone branch file to find all associated branch/department files
-    const zoneBranchContent = await readAndParseXML(zoneBranchFilePath);
-    if (zoneBranchContent?.CiscoIPPhoneMenu?.MenuItem) {
-        const menuItems = ensureArray(zoneBranchContent.CiscoIPPhoneMenu.MenuItem);
-        for (const item of menuItems) {
-            const itemId = extractIdFromUrl(item.URL);
-            const itemType = getItemTypeFromUrl(item.URL);
-            let itemPathToDelete = '';
-
-            if (itemType === 'branch') {
-                const branchFilePath = path.join(paths.BRANCH_DIR, `${itemId}.xml`);
-                // Optionally, delete sub-localities of the branch as well
-                const branchContent = await readAndParseXML(branchFilePath);
-                if(branchContent?.CiscoIPPhoneMenu?.MenuItem) {
-                    const branchItems = ensureArray(branchContent.CiscoIPPhoneMenu.MenuItem);
-                    for (const subItem of branchItems) {
-                        const subItemId = extractIdFromUrl(subItem.URL);
-                        const subItemPath = path.join(paths.DEPARTMENT_DIR, `${subItemId}.xml`);
-                        await fs.unlink(subItemPath).catch(err => console.warn(`Could not delete department file ${subItemPath}: ${err.message}`));
-                    }
-                }
-                itemPathToDelete = branchFilePath;
-
-            } else if (itemType === 'locality') {
-                itemPathToDelete = path.join(paths.DEPARTMENT_DIR, `${itemId}.xml`);
-            }
-
-            if(itemPathToDelete) {
-                await fs.unlink(itemPathToDelete).catch(err => console.warn(`Could not delete file ${itemPathToDelete}: ${err.message}`));
-            }
+  
+  // Special handling for "MissingExtensionsFromFeed"
+  if (zoneId === 'MissingExtensionsFromFeed') {
+    const filePathToDelete = path.join(paths.DEPARTMENT_DIR, `${zoneId}.xml`);
+    try {
+        await fs.unlink(filePathToDelete);
+    } catch(err: any) {
+        if (err.code !== 'ENOENT') { // Only ignore "file not found" errors
+          console.error(`Could not delete special zone file ${filePathToDelete}:`, err);
+          return { success: false, message: `Failed to delete zone file for "${zoneId}".`, error: err.message };
         }
     }
+  } else {
+    // Regular zone deletion logic
+    const zoneBranchFilePath = path.join(paths.ZONE_BRANCH_DIR, `${zoneId}.xml`);
+    try {
+        const zoneBranchContent = await readAndParseXML(zoneBranchFilePath);
+        if (zoneBranchContent?.CiscoIPPhoneMenu?.MenuItem) {
+            const menuItems = ensureArray(zoneBranchContent.CiscoIPPhoneMenu.MenuItem);
+            for (const item of menuItems) {
+                const itemId = extractIdFromUrl(item.URL);
+                const itemType = getItemTypeFromUrl(item.URL);
+                let itemPathToDelete = '';
 
-    // 2. Delete the zone branch file itself
-    await fs.unlink(zoneBranchFilePath).catch(err => console.warn(`Could not delete zone branch file ${zoneBranchFilePath}: ${err.message}`));
+                if (itemType === 'branch') {
+                    const branchFilePath = path.join(paths.BRANCH_DIR, `${itemId}.xml`);
+                    const branchContent = await readAndParseXML(branchFilePath);
+                    if(branchContent?.CiscoIPPhoneMenu?.MenuItem) {
+                        const branchItems = ensureArray(branchContent.CiscoIPPhoneMenu.MenuItem);
+                        for (const subItem of branchItems) {
+                            const subItemId = extractIdFromUrl(subItem.URL);
+                            const subItemPath = path.join(paths.DEPARTMENT_DIR, `${subItemId}.xml`);
+                            await fs.unlink(subItemPath).catch(err => console.warn(`Could not delete department file ${subItemPath}: ${err.message}`));
+                        }
+                    }
+                    itemPathToDelete = branchFilePath;
+                } else if (itemType === 'locality') {
+                    itemPathToDelete = path.join(paths.DEPARTMENT_DIR, `${itemId}.xml`);
+                }
 
-    // 3. Remove the zone from MAINMENU.xml
+                if(itemPathToDelete) {
+                    await fs.unlink(itemPathToDelete).catch(err => console.warn(`Could not delete file ${itemPathToDelete}: ${err.message}`));
+                }
+            }
+        }
+        await fs.unlink(zoneBranchFilePath);
+    } catch (err: any) {
+        if (err.code !== 'ENOENT') {
+          console.error(`Could not delete zone branch file ${zoneBranchFilePath}:`, err);
+          return { success: false, message: `Failed to delete zone "${zoneId}".`, error: err.message };
+        }
+    }
+  }
+
+  // Common logic: Remove the zone from MAINMENU.xml for all cases
+  try {
     const mainMenu = await readAndParseXML(mainMenuPath);
     if (mainMenu?.CiscoIPPhoneMenu?.MenuItem) {
       const menuItems = ensureArray(mainMenu.CiscoIPPhoneMenu.MenuItem);
       mainMenu.CiscoIPPhoneMenu.MenuItem = menuItems.filter(item => extractIdFromUrl(item.URL) !== zoneId);
       await buildAndWriteXML(mainMenuPath, mainMenu);
     }
-
     revalidatePath('/');
     return { success: true, message: `Zone "${zoneId}" and its contents deleted successfully.` };
-  } catch (e: any) {
-    console.error(`[deleteZoneAction] Error:`, e);
-    return { success: false, message: `Failed to delete zone "${zoneId}".`, error: e.message };
+  } catch(e: any) {
+     console.error(`[deleteZoneAction] Error removing from MainMenu:`, e);
+     return { success: false, message: `Failed to remove zone "${zoneId}" from Main Menu.`, error: e.message };
   }
 }
 
