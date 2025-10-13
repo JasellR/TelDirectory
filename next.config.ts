@@ -9,13 +9,11 @@ const nextConfig: NextConfig = {
   eslint: {
     ignoreDuringBuilds: true,
   },
-  experimental: {
-    // This is the new property to allow cross-origin requests in development.
-    allowedDevOrigins: [
-        "https://*.cloudworkstations.dev",
-        "https://*.firebase.studio"
-    ]
-  },
+  // This is the new property to allow cross-origin requests in development.
+  allowedDevOrigins: [
+      "https://*.cloudworkstations.dev",
+      "https://*.firebase.studio"
+  ],
   images: {
     remotePatterns: [
       {

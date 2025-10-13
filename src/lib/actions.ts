@@ -6,7 +6,7 @@ import path from 'path';
 import { parseStringPromise, Builder } from 'xml2js';
 import { revalidatePath } from 'next/cache';
 import type { GlobalSearchResult, MatchedExtension, Extension, CsvImportResult, CsvImportDetails, CsvImportError, SyncResult, ConflictedExtensionInfo, MissingExtensionInfo } from '@/types';
-import { CiscoIPPhoneMenuSchema, CiscoIPPhoneDirectorySchema } from '@/lib/data';
+import { getCiscoIPPhoneMenuSchema, getCiscoIPPhoneDirectorySchema } from '@/lib/server-data';
 import { getResolvedIvoxsRootPath, saveDirectoryConfig as saveDirConfig } from '@/lib/config';
 import { isAuthenticated, getCurrentUser } from '@/lib/auth-actions';
 import { redirect } from 'next/navigation';
@@ -769,6 +769,7 @@ export async function syncNamesFromXmlFeedAction(feedUrlsString: string): Promis
 
   const paths = await getPaths();
   const allFeedExtensions: Record<string, { name: string, sourceFeed: string }[]> = {};
+  const CiscoIPPhoneDirectorySchema = getCiscoIPPhoneDirectorySchema();
 
   for (const url of urls) {
     try {

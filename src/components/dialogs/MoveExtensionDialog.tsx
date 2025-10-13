@@ -16,10 +16,10 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { moveExtensionAction } from '@/lib/actions';
-import { getZones, getZoneItems } from '@/lib/data';
+import { getZonesForClient, getZoneItemsForClient } from '@/lib/client-data';
 import type { Extension, Zone, ZoneItem } from '@/types';
 import { useRouter } from 'next/navigation';
-import { Loader2, PlusCircle, ChevronsRight } from 'lucide-react';
+import { Loader2, PlusCircle, ChevronsRight, Move } from 'lucide-react';
 import { useTranslation } from '@/hooks/useTranslation';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
@@ -48,7 +48,7 @@ export function MoveExtensionDialog({ isOpen, onClose, extension }: MoveExtensio
   useEffect(() => {
     if (isOpen) {
       const fetchInitialData = async () => {
-        const fetchedZones = await getZones();
+        const fetchedZones = await getZonesForClient();
         // Filter out the 'Missing Extensions' zone as a destination
         setZones(fetchedZones.filter(z => z.id !== 'MissingExtensionsFromFeed'));
       };
@@ -61,7 +61,7 @@ export function MoveExtensionDialog({ isOpen, onClose, extension }: MoveExtensio
       const fetchLocalities = async () => {
         setLocalities([]);
         setSelectedLocality('');
-        const items = await getZoneItems(selectedZone);
+        const items = await getZoneItemsForClient(selectedZone);
         // We only want to move to localities, not branches, in this simplified flow.
         setLocalities(items.filter(item => item.type === 'locality'));
       };
