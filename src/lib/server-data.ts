@@ -147,13 +147,19 @@ export async function getZoneDetails(zoneId: string): Promise<Omit<Zone, 'items'
 
 export async function getZoneItems(zoneId: string): Promise<ZoneItem[]> {
   const { ZONE_BRANCH_DIR } = await getPaths();
-  const zoneFilePath = path.join(ZONE_BRANCH_DIR, `${zoneId}.xml`);
+  // Strip pagination part for base file name
+  const baseFileId = zoneId.replace(/(\d+)$/, '');
+  const pageNumberMatch = zoneId.match(/(\d+)$/);
+  const pageNumber = pageNumberMatch ? parseInt(pageNumberMatch[1], 10) : 1;
+  const fileName = pageNumber === 1 ? `${baseFileId}.xml` : `${zoneId}.xml`;
+
+  const zoneFilePath = path.join(ZONE_BRANCH_DIR, fileName);
   const xmlContent = await readFileContent(zoneFilePath);
   if (!xmlContent) return [];
 
   const parsedXml = await parseStringPromise(xmlContent, { explicitArray: false, trim: true });
    if (!parsedXml || !parsedXml.CiscoIPPhoneMenu) {
-    console.error(`Zone file ${zoneId}.xml is malformed. Missing CiscoIPPhoneMenu root element.`);
+    console.error(`Zone file ${fileName} is malformed. Missing CiscoIPPhoneMenu root element.`);
     return [];
   }
   const validated = CiscoIPPhoneMenuSchema.safeParse(parsedXml.CiscoIPPhoneMenu);
@@ -167,6 +173,14 @@ export async function getZoneItems(zoneId: string): Promise<ZoneItem[]> {
   return menuItems.map(item => {
     const itemType = getItemTypeFromUrl(item.URL);
 
+    if (item.Name === '<< Anterior' || item.Name === 'Siguiente >>') {
+        return {
+            id: extractIdFromUrl(item.URL),
+            name: item.Name,
+            type: 'pagination' as any // Using 'any' to extend the type for internal use
+        };
+    }
+
     if (itemType === 'unknown') {
         console.warn(`Unknown URL type in ${zoneId}.xml for item ${item.Name}: ${item.URL}`);
     }
@@ -175,7 +189,7 @@ export async function getZoneItems(zoneId: string): Promise<ZoneItem[]> {
         name: item.Name,
         type: itemType as 'branch' | 'locality',
     };
-  }).filter(item => item.type === 'branch' || item.type === 'locality');
+  }).filter(item => item.type === 'branch' || item.type === 'locality' || item.type === 'pagination');
 }
 
 

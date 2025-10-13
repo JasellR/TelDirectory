@@ -6,10 +6,11 @@ import Link from 'next/link';
 import type { ZoneItem } from '@/types';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent } from '@/components/ui/card';
-import { GitBranch, Building, Search as SearchIcon, Inbox, SearchX } from 'lucide-react';
+import { GitBranch, Building, Search as SearchIcon, Inbox, SearchX, ArrowLeft, ArrowRight } from 'lucide-react';
 import { EditLocalityButton } from '@/components/actions/EditLocalityButton';
 import { DeleteLocalityButton } from '@/components/actions/DeleteLocalityButton';
 import { useTranslation } from '@/hooks/useTranslation';
+import { Button } from '../ui/button';
 
 interface LocalityBranchSearchProps {
   items: ZoneItem[];
@@ -36,6 +37,66 @@ export function LocalityBranchSearch({ items, zoneId, itemType, itemTypePlural, 
 
   const searchPlaceholder = t('searchPlaceholder', { itemType: itemTypePlural.toLowerCase() });
 
+  const renderItem = (item: ZoneItem) => {
+    if (item.type === 'pagination') {
+      const isNext = item.name.includes('Siguiente');
+      const Icon = isNext ? ArrowRight : ArrowLeft;
+      return (
+        <Button asChild variant="outline" className="w-full justify-center">
+            <Link href={`/${item.id}`} className="flex items-center gap-2">
+                {!isNext && <Icon className="h-4 w-4" />}
+                <span>{item.name}</span>
+                {isNext && <Icon className="h-4 w-4" />}
+            </Link>
+        </Button>
+      )
+    }
+
+    const Icon = item.type === 'branch' ? GitBranch : Building;
+    const href = item.type === 'branch'
+      ? `/${zoneId}/branches/${item.id}`
+      : `/${zoneId}/localities/${item.id}`;
+    const description = item.type === 'branch'
+      ? t('viewLocalitiesInBranch', { branchName: item.name })
+      : t('viewExtensionsAndDetails', { localityName: item.name });
+
+    return (
+        <Card key={item.id} className="shadow-sm hover:shadow-md transition-shadow duration-200">
+            <CardContent className="p-4 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+              <div className="flex-grow">
+                <div className="flex items-center gap-3 mb-1">
+                  <Icon className="h-5 w-5 text-primary" />
+                  <h3 className="text-lg font-semibold text-foreground">
+                    <Link href={href} className="hover:underline hover:text-primary transition-colors">
+                      {item.name}
+                    </Link>
+                  </h3>
+                </div>
+                <p className="text-sm text-muted-foreground ml-8 sm:ml-0">
+                  {description} (ID: {item.id})
+                </p>
+              </div>
+              {isAuthenticated && (
+                <div className="flex-shrink-0 flex items-center space-x-1">
+                  <EditLocalityButton
+                    zoneId={zoneId}
+                    item={item}
+                    itemType={item.type}
+                  />
+                  <DeleteLocalityButton
+                    zoneId={zoneId}
+                    itemId={item.id}
+                    itemName={item.name}
+                    itemType={item.type}
+                  />
+                </div>
+              )}
+            </CardContent>
+          </Card>
+    );
+  };
+
+
   return (
     <div className="space-y-6">
       <div className="relative">
@@ -52,50 +113,7 @@ export function LocalityBranchSearch({ items, zoneId, itemType, itemTypePlural, 
 
       {filteredItems.length > 0 ? (
         <div className="space-y-4">
-          {filteredItems.map((item) => {
-            const Icon = item.type === 'branch' ? GitBranch : Building;
-            const href = item.type === 'branch'
-              ? `/${zoneId}/branches/${item.id}`
-              : `/${zoneId}/localities/${item.id}`;
-            const description = item.type === 'branch'
-              ? t('viewLocalitiesInBranch', { branchName: item.name })
-              : t('viewExtensionsAndDetails', { localityName: item.name });
-            
-            return (
-              <Card key={item.id} className="shadow-sm hover:shadow-md transition-shadow duration-200">
-                <CardContent className="p-4 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-                  <div className="flex-grow">
-                    <div className="flex items-center gap-3 mb-1">
-                      <Icon className="h-5 w-5 text-primary" />
-                      <h3 className="text-lg font-semibold text-foreground">
-                        <Link href={href} className="hover:underline hover:text-primary transition-colors">
-                          {item.name}
-                        </Link>
-                      </h3>
-                    </div>
-                    <p className="text-sm text-muted-foreground ml-8 sm:ml-0">
-                      {description} (ID: {item.id})
-                    </p>
-                  </div>
-                  {isAuthenticated && (
-                    <div className="flex-shrink-0 flex items-center space-x-1">
-                      <EditLocalityButton
-                        zoneId={zoneId}
-                        item={item}
-                        itemType={item.type}
-                      />
-                      <DeleteLocalityButton
-                        zoneId={zoneId}
-                        itemId={item.id}
-                        itemName={item.name}
-                        itemType={item.type}
-                      />
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-            );
-          })}
+          {filteredItems.map(renderItem)}
         </div>
       ) : (
         <div className="text-center py-10">
