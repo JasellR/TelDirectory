@@ -161,53 +161,53 @@ async function readFileContent(filePath: string): Promise<string> {
 
 /**
  * Repaginates a menu XML file if its item count exceeds a threshold.
+ * This function will now read all pages of a paginated menu, consolidate them,
+ * and then re-write the paginated files correctly.
  */
-async function repaginateMenuItems(parentMenuPath: string, menuTitle: string, menuPrompt: string) {
+async function repaginateMenuItems(initialMenuPath: string, menuTitle: string, menuPrompt: string) {
     const { protocol, host, port, rootDirName } = await getServiceUrlComponents();
-    const parentDir = path.dirname(parentMenuPath);
-    const baseName = path.basename(parentMenuPath, '.xml').replace(/(\d+)$/, '');
+    const parentDir = path.dirname(initialMenuPath);
+    const baseName = path.basename(initialMenuPath, '.xml').replace(/(\d+)$/, '');
     const parentSubDir = parentDir.split(path.sep).pop() || '';
 
-    // First, gather all items from all related paginated files
-    let allItems: any[] = [];
-    let page = 1;
-    let fileFound = true;
-    while(fileFound) {
-        const pageFileName = page === 1 ? `${baseName}.xml` : `${baseName}${page}.xml`;
-        const pageFilePath = path.join(parentDir, pageFileName);
+    // 1. Gather all items from all related paginated files
+    const allItems: any[] = [];
+    const processedFiles: string[] = []; // Keep track of files to delete later
+    let currentPath = initialMenuPath;
+
+    while (currentPath) {
+        const content = await readAndParseXML(currentPath);
+        processedFiles.push(currentPath);
+
+        const menuItems = ensureArray(content?.CiscoIPPhoneMenu?.MenuItem);
+        let nextPageUrl: string | null = null;
+        
+        for (const item of menuItems) {
+            if (item.Name === 'Siguiente >>') {
+                nextPageUrl = item.URL;
+            } else if (item.Name !== '<< Anterior') {
+                allItems.push(item);
+            }
+        }
+        
+        // Determine the path of the next file from its URL
+        currentPath = nextPageUrl ? path.join(parentDir, path.basename(new URL(nextPageUrl).pathname)) : null;
+    }
+    
+    // 2. Clean up old paginated files before writing new ones
+    for (const filePath of processedFiles) {
         try {
-            const content = await readAndParseXML(pageFilePath);
-            if (content?.CiscoIPPhoneMenu?.MenuItem) {
-                const items = ensureArray(content.CiscoIPPhoneMenu.MenuItem);
-                // Filter out pagination controls for the master list
-                allItems.push(...items.filter(item => item.Name !== 'Siguiente >>' && item.Name !== '<< Anterior'));
-            }
-            page++;
+            await fs.unlink(filePath);
         } catch (e: any) {
-            if (e.code === 'ENOENT') {
-                fileFound = false; // Stop when a page file is not found
-            } else {
-                throw e; // Re-throw other errors
-            }
+            if (e.code !== 'ENOENT') console.warn(`Could not delete old paginated file: ${filePath}`);
         }
     }
 
-    // Clean up old paginated files before writing new ones
-    for (let i = 1; i < page; i++) {
-        const oldPageFileName = i === 1 ? `${baseName}.xml` : `${baseName}${i}.xml`;
-        const oldPageFilePath = path.join(parentDir, oldPageFileName);
-        try {
-            await fs.unlink(oldPageFilePath);
-        } catch (e: any) {
-            if (e.code !== 'ENOENT') console.warn(`Could not delete old paginated file: ${oldPageFilePath}`);
-        }
-    }
-
-
+    // 3. Re-write the files
     if (allItems.length <= PAGINATION_THRESHOLD) {
-        // No need for pagination, write everything to a single file
+        // No pagination needed, write everything to a single file
         const menuContent = {
-            CiscoIPPhoneMenu: { Title: menuTitle, Prompt: menuPrompt, MenuItem: allItems }
+            CiscoIPPhoneMenu: { Title: menuTitle, Prompt: menuPrompt, MenuItem: allItems.length > 0 ? allItems : undefined }
         };
         await buildAndWriteXML(path.join(parentDir, `${baseName}.xml`), menuContent);
         return;
@@ -221,6 +221,7 @@ async function repaginateMenuItems(parentMenuPath: string, menuTitle: string, me
         
         const pageFileName = currentPage === 1 ? `${baseName}.xml` : `${baseName}${currentPage}.xml`;
         const pageFilePath = path.join(parentDir, pageFileName);
+        
         const menuContent: any = {
             CiscoIPPhoneMenu: { Title: `${menuTitle} (P ${currentPage})`, Prompt: menuPrompt, MenuItem: [] }
         };
@@ -375,7 +376,7 @@ export async function addLocalityOrBranchAction(params: {
     const paths = await getPaths();
     const { protocol, host, port, rootDirName } = await getServiceUrlComponents();
     
-    let parentMenuPath, newItemPath, newUrlPath, revalidationPath, parentMenuTitle, parentMenuPrompt;
+    let parentMenuPath, newItemPath, newUrlPath, revalidationPath;
     const subDir = itemTypeToDir[itemType];
 
     if (itemType === 'branch') {
@@ -404,8 +405,8 @@ export async function addLocalityOrBranchAction(params: {
         // 2. Add the new item to its parent menu file
         const parentMenu = await readAndParseXML(parentMenuPath);
         if (!parentMenu.CiscoIPPhoneMenu) parentMenu.CiscoIPPhoneMenu = {};
-        parentMenuTitle = parentMenu.CiscoIPPhoneMenu.Title || zoneId;
-        parentMenuPrompt = parentMenu.CiscoIPPhoneMenu.Prompt || 'Select an item';
+        const parentMenuTitle = parentMenu.CiscoIPPhoneMenu.Title || zoneId;
+        const parentMenuPrompt = parentMenu.CiscoIPPhoneMenu.Prompt || 'Select an item';
 
         parentMenu.CiscoIPPhoneMenu.MenuItem = ensureArray(parentMenu.CiscoIPPhoneMenu.MenuItem);
         parentMenu.CiscoIPPhoneMenu.MenuItem.push({ Name: itemName, URL: newUrl });
@@ -516,7 +517,7 @@ export async function deleteLocalityOrBranchAction(params: {
     const { zoneId, branchId, itemId, itemType } = params;
     const paths = await getPaths();
     
-    let parentMenuPath, itemPathToDelete, revalidationPath, parentMenuTitle, parentMenuPrompt;
+    let parentMenuPath, itemPathToDelete, revalidationPath;
 
     if (itemType === 'branch') {
         parentMenuPath = path.join(paths.ZONE_BRANCH_DIR, `${zoneId}.xml`);
@@ -546,8 +547,8 @@ export async function deleteLocalityOrBranchAction(params: {
         if (!parentMenu?.CiscoIPPhoneMenu) { // If parent menu doesn't exist or is malformed
             return { success: true, message: `${itemType.charAt(0).toUpperCase() + itemType.slice(1)} "${itemId}" deleted, but parent menu was not found or was invalid.` };
         }
-        parentMenuTitle = parentMenu.CiscoIPPhoneMenu.Title || zoneId;
-        parentMenuPrompt = parentMenu.CiscoIPPhoneMenu.Prompt || 'Select an item';
+        const parentMenuTitle = parentMenu.CiscoIPPhoneMenu.Title || zoneId;
+        const parentMenuPrompt = parentMenu.CiscoIPPhoneMenu.Prompt || 'Select an item';
 
         let itemRemoved = false;
         const originalLength = ensureArray(parentMenu.CiscoIPPhoneMenu.MenuItem).length;
@@ -1176,3 +1177,5 @@ export async function searchAllDepartmentsAndExtensionsAction(query: string): Pr
   
   return Array.from(resultsMap.values());
 }
+
+    
