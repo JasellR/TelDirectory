@@ -87,13 +87,15 @@ async function readAndParseXML(filePath: string): Promise<any> {
 }
 
 async function buildAndWriteXML(filePath: string, jsObject: any): Promise<void> {
-  const builder = new Builder({
-    headless: true, // No <?xml ...?> declaration
-    renderOpts: { pretty: false },
+   const builder = new Builder({
+    headless: true,
+    renderOpts: { pretty: false }, // Set pretty to false
   });
 
   const xmlString = builder.buildObject(jsObject);
+  // Ensure the declaration is on the same line
   const finalXmlString = '<?xml version="1.0" encoding="UTF-8" standalone="no"?>' + xmlString;
+
 
   await fs.mkdir(path.dirname(filePath), { recursive: true });
   await fs.writeFile(filePath, finalXmlString, 'utf-8');
@@ -150,9 +152,10 @@ function constructServiceUrl(protocol: string, host: string, port: string, rootD
         pathSegment = pathSegment.substring(1);
     }
     
-    const isPaginationPath = pathSegment.toLowerCase().startsWith('zonametropolitana') && pathSegment.toLowerCase() !== 'zonametropolitana.xml';
+    const isPaginationPath = pathSegment.toLowerCase().startsWith('zonametropolitana') && !pathSegment.toLowerCase().endsWith('.xml');
     if (isPaginationPath) {
-        return `/${pathSegment.replace(/\.xml$/i, '')}`;
+        // Return a clean path for the web app's router
+        return `/${pathSegment}`;
     }
 
   return `${protocol}://${host}:${port}/${path.join(rootDirName, pathSegment).replace(/\\/g, '/')}`;
@@ -183,9 +186,11 @@ async function repaginateMenuItems(parentFilePath: string, menuName: string) {
     let currentPage = 1;
     let fileToRead: string | null = parentFilePath;
     const baseDir = path.dirname(parentFilePath);
+    let visitedFiles = new Set<string>();
 
     // 1. Consolidate all items from all pages
-    while (fileToRead) {
+    while (fileToRead && !visitedFiles.has(fileToRead)) {
+        visitedFiles.add(fileToRead);
         if (currentPage > 1) filesToDelete.push(fileToRead);
 
         const content = await readAndParseXML(fileToRead);
@@ -210,6 +215,7 @@ async function repaginateMenuItems(parentFilePath: string, menuName: string) {
     }
     
     // 3. Repaginate if necessary
+    const { protocol, host, port, rootDirName } = await getServiceUrlComponents();
     if (allItems.length > PAGINATION_LIMIT) {
         const totalPages = Math.ceil(allItems.length / PAGINATION_LIMIT);
         for (let i = 0; i < totalPages; i++) {
@@ -220,11 +226,13 @@ async function repaginateMenuItems(parentFilePath: string, menuName: string) {
 
             if (i > 0) { // Add "<< Anterior" button
                 const prevPageName = `${menuName}${pageNum - 1 > 1 ? pageNum - 1 : ''}`;
-                pageItems.unshift({ Name: '<< Anterior', URL: `/zonebranch/${prevPageName}.xml` });
+                const prevUrl = constructServiceUrl(protocol, host, port, rootDirName, `zonebranch/${prevPageName}.xml`);
+                pageItems.unshift({ Name: '<< Anterior', URL: prevUrl });
             }
             if (i < totalPages - 1) { // Add "Siguiente >>" button
                 const nextPageName = `${menuName}${pageNum + 1}`;
-                pageItems.push({ Name: 'Siguiente >>', URL: `/zonebranch/${nextPageName}.xml` });
+                const nextUrl = constructServiceUrl(protocol, host, port, rootDirName, `zonebranch/${nextPageName}.xml`);
+                pageItems.push({ Name: 'Siguiente >>', URL: nextUrl });
             }
 
             const pageContent = {
@@ -311,15 +319,15 @@ export async function deleteZoneAction(zoneId: string): Promise<{ success: boole
   
   // Special handling for "MissingExtensionsFromFeed"
   if (zoneId === 'MissingExtensionsFromFeed') {
-    const filePathToDelete = path.join(paths.DEPARTMENT_DIR, `${zoneId}.xml`);
-    try {
-        await fs.unlink(filePathToDelete);
-    } catch(err: any) {
-        if (err.code !== 'ENOENT') { // Only ignore "file not found" errors
-          console.error(`Could not delete special zone file ${filePathToDelete}:`, err);
-          return { success: false, message: `Failed to delete zone file for "${zoneId}".`, error: err.message };
-        }
-    }
+      const zoneBranchFileToDelete = path.join(paths.ZONE_BRANCH_DIR, `MissingExtensionsFromFeed.xml`);
+      const departmentFileToDelete = path.join(paths.DEPARTMENT_DIR, `MissingExtensionsDepartment.xml`);
+      try {
+          await fs.unlink(zoneBranchFileToDelete).catch(err => { if(err.code !== 'ENOENT') throw err; });
+          await fs.unlink(departmentFileToDelete).catch(err => { if(err.code !== 'ENOENT') throw err; });
+      } catch(err: any) {
+          console.error(`Could not delete special zone files:`, err);
+          return { success: false, message: `Failed to delete files for zone "${zoneId}".`, error: err.message };
+      }
   } else {
     // Regular zone deletion logic
     const zoneBranchFilePath = path.join(paths.ZONE_BRANCH_DIR, `${zoneId}.xml`);
@@ -741,12 +749,14 @@ export async function updateXmlUrlsAction(host: string, port: string): Promise<{
                 const subDirectory = itemTypeToDir[itemType as 'zone' | 'branch' | 'locality'] || itemTypeToDir['zone'];
                 
                 let relativePath = `${subDirectory}/${itemId}.xml`;
+                
                 if(itemType === 'pagination') {
-                    const zoneFileName = path.basename(filePath, '.xml').replace(/\d+$/, '');
-                    relativePath = `${itemTypeToDir['zone']}/${itemId}.xml`;
+                    // For web pagination, we generate a clean URL
+                    const webPath = `${path.basename(filePath, '.xml').replace(/\d+$/, '')}/${itemId}`;
+                     item.URL = constructServiceUrl(protocol, host, port, rootDirName, webPath);
+                } else {
+                     item.URL = constructServiceUrl(protocol, host, port, rootDirName, relativePath);
                 }
-
-                item.URL = constructServiceUrl(protocol, host, port, rootDirName, relativePath);
 
             } else {
                  console.warn(`[updateXmlUrlsAction] Could not process URL: ${item.URL}. It might be malformed or pointing to an unknown type.`);
@@ -906,34 +916,51 @@ export async function syncNamesFromXmlFeedAction(feedUrlsString: string): Promis
   }
   
   if (missingExtensions.length > 0) {
-      const missingExtensionsZoneId = 'MissingExtensionsFromFeed';
-      const missingExtensionsZoneName = 'Missing Extensions from Feed';
-      const missingExtensionsLocalityPrompt = 'Extensions found in feeds but not locally';
-      
-      const missingDeptFilePath = path.join(paths.DEPARTMENT_DIR, `${missingExtensionsZoneId}.xml`);
+      const zoneId = 'MissingExtensionsFromFeed';
+      const zoneName = 'Missing Extensions from Feed';
+      const departmentId = 'MissingExtensionsDepartment';
+      const departmentName = 'Missing Extensions';
       const { protocol, host, port, rootDirName } = await getServiceUrlComponents();
-      const missingZoneURL = constructServiceUrl(protocol, host, port, rootDirName, `department/${missingExtensionsZoneId}.xml`);
       
-      const missingDeptContent = {
+      // 1. Create Department file with extensions
+      const deptFilePath = path.join(paths.DEPARTMENT_DIR, `${departmentId}.xml`);
+      const deptContent = {
           CiscoIPPhoneDirectory: {
-              Title: missingExtensionsZoneName,
-              Prompt: missingExtensionsLocalityPrompt,
+              Title: departmentName,
+              Prompt: 'Extensions found in feeds but not locally',
               DirectoryEntry: missingExtensions.map(ext => ({ Name: ext.name, Telephone: ext.number }))
           }
       };
-      await buildAndWriteXML(missingDeptFilePath, missingDeptContent);
+      await buildAndWriteXML(deptFilePath, deptContent);
 
+      // 2. Create ZoneBranch file linking to department
+      const zoneFilePath = path.join(paths.ZONE_BRANCH_DIR, `${zoneId}.xml`);
+      const zoneUrl = constructServiceUrl(protocol, host, port, rootDirName, `department/${departmentId}.xml`);
+      const zoneContent = {
+          CiscoIPPhoneMenu: {
+              Title: zoneName,
+              Prompt: `Select a department`,
+              MenuItem: {
+                  Name: departmentName,
+                  URL: zoneUrl
+              }
+          }
+      };
+      await buildAndWriteXML(zoneFilePath, zoneContent);
+
+      // 3. Link Zone in MainMenu.xml
       if (paths.MAINMENU_PATH) {
         const mainMenu = await readAndParseXML(paths.MAINMENU_PATH) || { CiscoIPPhoneMenu: { MenuItem: [] } };
         mainMenu.CiscoIPPhoneMenu.MenuItem = ensureArray(mainMenu.CiscoIPPhoneMenu.MenuItem);
         
-        const existingMissingZone = mainMenu.CiscoIPPhoneMenu.MenuItem.find((item: any) => extractIdFromUrl(item.URL) === missingExtensionsZoneId);
-        if (!existingMissingZone) {
+        const existingZone = mainMenu.CiscoIPPhoneMenu.MenuItem.find((item: any) => extractIdFromUrl(item.URL) === zoneId);
+        if (!existingZone) {
+            const mainMenuZoneUrl = constructServiceUrl(protocol, host, port, rootDirName, `zonebranch/${zoneId}.xml`);
             mainMenu.CiscoIPPhoneMenu.MenuItem.push({
-                Name: missingExtensionsZoneName,
-                URL: missingZoneURL
+                Name: zoneName,
+                URL: mainMenuZoneUrl
             });
-        } // if it exists, the file is just overwritten, no need to change the menu
+        }
         await buildAndWriteXML(paths.MAINMENU_PATH, mainMenu);
       }
   }
@@ -978,42 +1005,25 @@ export async function searchAllDepartmentsAndExtensionsAction(query: string): Pr
     
     const collectedItems: any[] = [];
     let fileToRead: string | null = filePath;
-    let isPaginatedMenu = false;
-    
-    // --- Start Pagination-Aware Collector ---
-    if (path.basename(filePath).toLowerCase().startsWith('zonametropolitana')) {
-        isPaginatedMenu = true;
-        let visitedFiles = new Set<string>();
+    const isPaginatedMenu = path.basename(filePath, '.xml').toLowerCase().startsWith('zonametropolitana');
+    let visitedFiles = new Set<string>();
 
-        while(fileToRead && !visitedFiles.has(fileToRead)) {
-            visitedFiles.add(fileToRead);
-            const content = await readAndParseXML(fileToRead);
-            let nextFileId: string | null = null;
-            if(content?.CiscoIPPhoneMenu?.MenuItem) {
-                const items = ensureArray(content.CiscoIPPhoneMenu.MenuItem);
-                for(const item of items) {
-                    if (item.Name === 'Siguiente >>') {
-                        nextFileId = extractIdFromUrl(item.URL);
-                    } else if (item.Name !== '<< Anterior') {
-                        collectedItems.push(item);
-                    }
+    while(fileToRead && !visitedFiles.has(fileToRead)) {
+        visitedFiles.add(fileToRead);
+        const content = await readAndParseXML(fileToRead);
+        let nextFileId: string | null = null;
+        if(content?.CiscoIPPhoneMenu?.MenuItem) {
+            const items = ensureArray(content.CiscoIPPhoneMenu.MenuItem);
+            for(const item of items) {
+                if (isPaginatedMenu && item.Name === 'Siguiente >>') {
+                    nextFileId = extractIdFromUrl(item.URL);
+                } else if (item.Name !== '<< Anterior') {
+                    collectedItems.push(item);
                 }
             }
-            fileToRead = nextFileId ? path.join(path.dirname(filePath), `${nextFileId}.xml`) : null;
         }
-    } else {
-        // --- Regular (non-paginated) file reading ---
-        const menuContent = await readFileContent(filePath);
-        if (menuContent) {
-            try {
-                const parsedMenu = await parseStringPromise(menuContent, { explicitArray: false, trim: true });
-                collectedItems.push(...ensureArray(parsedMenu?.CiscoIPPhoneMenu?.MenuItem));
-            } catch(e) {
-                console.warn(`[Search] Could not process menu file ${filePath}:`, e);
-            }
-        }
+        fileToRead = (isPaginatedMenu && nextFileId) ? path.join(path.dirname(filePath), `${nextFileId}.xml`) : null;
     }
-    // --- End Collector ---
 
 
     for (const item of collectedItems) {
