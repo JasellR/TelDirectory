@@ -89,18 +89,14 @@ async function readAndParseXML(filePath: string): Promise<any> {
 async function buildAndWriteXML(filePath: string, jsObject: any): Promise<void> {
   const builder = new Builder({
     headless: false,
-    renderOpts: { pretty: true, indent: '  ', newline: '\n' },
+    renderOpts: { pretty: false }, // Set pretty to false for compact XML
     xmldec: { version: '1.0', encoding: 'UTF-8', standalone: 'no' }
   });
 
-  const xmlContentBuiltByBuilder = builder.buildObject(jsObject);
-  const xmlDeclaration = '<?xml version="1.0" encoding="UTF-8" standalone="no"?>\n';
-  const contentWithoutBuilderDecl = xmlContentBuiltByBuilder.replace(/^<\?xml.+?\?>\s*/, '');
-  const finalXmlString = xmlDeclaration + contentWithoutBuilderDecl.trim();
-
+  const xmlString = builder.buildObject(jsObject);
 
   await fs.mkdir(path.dirname(filePath), { recursive: true });
-  await fs.writeFile(filePath, finalXmlString, 'utf-8');
+  await fs.writeFile(filePath, xmlString, 'utf-8');
 }
 
 
@@ -112,13 +108,16 @@ function extractIdFromUrl(url: string): string {
 
 function getItemTypeFromUrl(url: string): 'branch' | 'locality' | 'zone' | 'unknown' | 'pagination' {
     const lowerUrl = url.toLowerCase();
+    
+    // Check for explicit directory paths first, which are used for Cisco phones
     if (lowerUrl.includes('/branch/')) return 'branch';
     if (lowerUrl.includes('/department/')) return 'locality';
     if (lowerUrl.includes('/zonebranch/')) return 'zone';
 
-    // Check if it's a paginated URL (e.g., /ZoneId/ZoneId2)
+    // Then, check for the "clean" URL pattern used by the web app for pagination
+    // e.g., /ZonaMetropolitana/ZonaMetropolitana2
     const urlParts = url.split('/').filter(p => p && !p.startsWith('http'));
-    if(urlParts.length === 2 && urlParts[1].startsWith(urlParts[0]) && urlParts[1] !== urlParts[0]) {
+    if(urlParts.length === 2 && urlParts[0].toLowerCase() === 'zonametropolitana' && urlParts[1].toLowerCase().startsWith(urlParts[0].toLowerCase()) && urlParts[1] !== urlParts[0]) {
         return 'pagination';
     }
 
@@ -145,9 +144,14 @@ async function getServiceUrlComponents(): Promise<{ protocol: string, host: stri
 }
 
 function constructServiceUrl(protocol: string, host: string, port: string, rootDirName: string, pathSegment: string): string {
-  // URLs should be relative to the domain root, pointing into the public directory
-  const fullPath = path.join(rootDirName, pathSegment).replace(/\\/g, '/');
-  return `${protocol}://${host}:${port}/${fullPath}`;
+    if (pathSegment.startsWith('/')) {
+        pathSegment = pathSegment.substring(1);
+    }
+    // For pagination, the URL should not point to the filesystem
+    if(pathSegment.startsWith('ZonaMetropolitana')) {
+        return `/${pathSegment}`;
+    }
+  return `${protocol}://${host}:${port}/${path.join(rootDirName, pathSegment).replace(/\\/g, '/')}`;
 }
 
 
@@ -163,6 +167,83 @@ async function readFileContent(filePath: string): Promise<string> {
     throw error;
   }
 }
+
+// ===================
+// Pagination Logic
+// ===================
+const PAGINATION_LIMIT = 50;
+
+async function repaginateMenuItems(parentFilePath: string, menuName: string) {
+    const allItems: any[] = [];
+    const filesToDelete: string[] = [];
+    let currentPage = 1;
+    let fileToRead = parentFilePath;
+
+    // 1. Consolidate all items from all pages
+    while (fileToRead) {
+        if (currentPage > 1) filesToDelete.push(fileToRead);
+
+        const content = await readAndParseXML(fileToRead);
+        let nextUrl: string | null = null;
+        if (content?.CiscoIPPhoneMenu?.MenuItem) {
+            const items = ensureArray(content.CiscoIPPhoneMenu.MenuItem);
+            for (const item of items) {
+                if (item.Name === 'Siguiente >>') {
+                    const nextItemId = extractIdFromUrl(item.URL);
+                    nextUrl = path.join(path.dirname(parentFilePath), `${nextItemId}.xml`);
+                } else if (item.Name !== '<< Anterior') {
+                    allItems.push(item);
+                }
+            }
+        }
+        fileToRead = nextUrl!;
+        currentPage++;
+    }
+
+    // 2. Delete old pagination files
+    for (const file of filesToDelete) {
+        await fs.unlink(file).catch(e => console.warn(`Could not delete old pagination file ${file}: ${e.message}`));
+    }
+    
+    // 3. Repaginate if necessary
+    if (allItems.length > PAGINATION_LIMIT) {
+        const totalPages = Math.ceil(allItems.length / PAGINATION_LIMIT);
+        for (let i = 0; i < totalPages; i++) {
+            const pageItems = allItems.slice(i * PAGINATION_LIMIT, (i + 1) * PAGINATION_LIMIT);
+            const pageNum = i + 1;
+            const pageName = `${menuName}${pageNum > 1 ? pageNum : ''}`;
+            const pagePath = path.join(path.dirname(parentFilePath), `${pageName}.xml`);
+
+            if (i > 0) { // Add "<< Anterior" button
+                const prevPageName = `${menuName}${pageNum - 1 > 1 ? pageNum - 1 : ''}`;
+                pageItems.unshift({ Name: '<< Anterior', URL: path.join('..', 'zonebranch', `${prevPageName}.xml`) });
+            }
+            if (i < totalPages - 1) { // Add "Siguiente >>" button
+                const nextPageName = `${menuName}${pageNum + 1}`;
+                pageItems.push({ Name: 'Siguiente >>', URL: path.join('..', 'zonebranch', `${nextPageName}.xml`) });
+            }
+
+            const pageContent = {
+                CiscoIPPhoneMenu: {
+                    Title: menuName,
+                    Prompt: 'Select a Locality',
+                    MenuItem: pageItems
+                }
+            };
+            await buildAndWriteXML(pagePath, pageContent);
+        }
+    } else { // No pagination needed, create a single file
+        const content = {
+            CiscoIPPhoneMenu: {
+                Title: menuName,
+                Prompt: 'Select a Locality',
+                MenuItem: allItems.length > 0 ? allItems : undefined
+            }
+        };
+        await buildAndWriteXML(parentFilePath, content);
+    }
+}
+
 
 // ===================
 // CRUD Actions
@@ -318,7 +399,7 @@ export async function addLocalityOrBranchAction(params: {
         // 1. Create the new item's own XML file (empty but valid)
         const newItemContent = itemType === 'branch' 
             ? { CiscoIPPhoneMenu: { Title: itemName, Prompt: 'Select a Locality' } }
-            : { CiscoIPPhoneDirectory: { Title: itemName, Prompt: 'Select an extension' } };
+            : { CiscoIPPhoneDirectory: {} }; // No Title or Prompt for department files
         await buildAndWriteXML(newItemPath, newItemContent);
         
         // 2. Add the new item to its parent menu file
@@ -327,6 +408,11 @@ export async function addLocalityOrBranchAction(params: {
         parentMenu.CiscoIPPhoneMenu.MenuItem = ensureArray(parentMenu.CiscoIPPhoneMenu.MenuItem);
         parentMenu.CiscoIPPhoneMenu.MenuItem.push({ Name: itemName, URL: newUrl });
         await buildAndWriteXML(parentMenuPath, parentMenu);
+
+        // 3. Repaginate if the parent is ZonaMetropolitana
+        if(zoneId.toLowerCase() === 'zonametropolitana') {
+            await repaginateMenuItems(parentMenuPath, "ZonaMetropolitana");
+        }
 
         revalidatePath(revalidationPath);
         return { success: true, message: `${itemType.charAt(0).toUpperCase() + itemType.slice(1)} "${itemName}" added successfully.` };
@@ -381,13 +467,12 @@ export async function editLocalityOrBranchAction(params: {
             await fs.rename(oldItemPath, newItemPath);
         }
 
-        // 2. Update the item's own title
+        // 2. Update the item's own title (if it's not a department file)
         const itemContent = await readAndParseXML(newItemPath);
         if (itemType === 'branch' && itemContent?.CiscoIPPhoneMenu) {
             itemContent.CiscoIPPhoneMenu.Title = newItemName;
-        } else if (itemType === 'locality' && itemContent?.CiscoIPPhoneDirectory) {
-            itemContent.CiscoIPPhoneDirectory.Title = newItemName;
-        }
+        } 
+        // Department files don't have a title, so no 'else if' needed
         await buildAndWriteXML(newItemPath, itemContent);
 
         // 3. Update the item in its parent menu
@@ -468,6 +553,11 @@ export async function deleteLocalityOrBranchAction(params: {
 
         if(itemRemoved) {
             await buildAndWriteXML(parentMenuPath, parentMenu);
+        }
+
+        // 3. Repaginate if the parent is ZonaMetropolitana
+        if (zoneId.toLowerCase() === 'zonametropolitana') {
+            await repaginateMenuItems(parentMenuPath, 'ZonaMetropolitana');
         }
 
         revalidatePath(revalidationPath);
@@ -624,14 +714,19 @@ export async function updateXmlUrlsAction(host: string, port: string): Promise<{
         if (!fileContent?.CiscoIPPhoneMenu?.MenuItem) return;
 
         fileContent.CiscoIPPhoneMenu.MenuItem = ensureArray(fileContent.CiscoIPPhoneMenu.MenuItem).map((item: any) => {
-            const fileName = (item.URL || '').split('/').pop();
-            const itemType = getItemTypeFromUrl(item.URL);
+            const urlString = item.URL || '';
+            const itemType = getItemTypeFromUrl(urlString);
+            const itemId = extractIdFromUrl(urlString);
 
-            if (fileName && (itemType === 'zone' || itemType === 'branch' || itemType === 'locality')) {
+            if (itemType === 'zone' || itemType === 'branch' || itemType === 'locality') {
                 const subDirectory = itemTypeToDir[itemType];
-                const relativePath = `${subDirectory}/${fileName}`;
+                const relativePath = `${subDirectory}/${itemId}.xml`;
                 item.URL = constructServiceUrl(protocol, host, port, rootDirName, relativePath);
-            } else if (itemType !== 'pagination') { // Do not touch pagination URLs
+            } else if (itemType === 'pagination') {
+                 // For pagination, the URL is a relative path for the web app, not a service URL for the phone
+                item.URL = `/${itemId}`;
+            }
+             else {
                  console.warn(`[updateXmlUrlsAction] Could not process URL: ${item.URL}. It might be malformed or pointing to an unknown type.`);
             }
             return item;
