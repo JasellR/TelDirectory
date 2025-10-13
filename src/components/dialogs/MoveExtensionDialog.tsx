@@ -19,7 +19,7 @@ import { moveExtensionAction } from '@/lib/actions';
 import { getZonesForClient, getZoneItemsForClient } from '@/lib/client-data';
 import type { Extension, Zone, ZoneItem } from '@/types';
 import { useRouter } from 'next/navigation';
-import { Loader2, PlusCircle, ChevronsRight, Move } from 'lucide-react';
+import { Loader2, ChevronsRight, Move } from 'lucide-react';
 import { useTranslation } from '@/hooks/useTranslation';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
@@ -27,12 +27,13 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 interface MoveExtensionDialogProps {
   isOpen: boolean;
   onClose: () => void;
-  extension: Extension;
+  onSuccess: () => void;
+  extensions: Extension[];
 }
 
 type MoveMode = 'existing' | 'new';
 
-export function MoveExtensionDialog({ isOpen, onClose, extension }: MoveExtensionDialogProps) {
+export function MoveExtensionDialog({ isOpen, onClose, onSuccess, extensions }: MoveExtensionDialogProps) {
   const { toast } = useToast();
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
@@ -44,6 +45,12 @@ export function MoveExtensionDialog({ isOpen, onClose, extension }: MoveExtensio
   const [selectedLocality, setSelectedLocality] = useState<string>('');
   const [newLocalityName, setNewLocalityName] = useState('');
   const [moveMode, setMoveMode] = useState<MoveMode>('existing');
+
+  const dialogTitle = t('moveExtensionsDialogTitle', { count: extensions.length });
+  const dialogDescription = extensions.length === 1 
+    ? t('moveSingleExtensionDialogDescription', { extName: extensions[0].name, extNum: extensions[0].number })
+    : t('moveMultipleExtensionsDialogDescription', { count: extensions.length });
+
 
   useEffect(() => {
     if (isOpen) {
@@ -102,11 +109,12 @@ export function MoveExtensionDialog({ isOpen, onClose, extension }: MoveExtensio
     }
     
     startTransition(async () => {
-        const result = await moveExtensionAction(extension, destination);
+        const result = await moveExtensionAction(extensions, destination);
         if (result.success) {
             toast({ title: t('successTitle'), description: result.message });
             router.refresh();
-            handleClose();
+            onSuccess(); // Use the success callback
+            resetForm();
         } else {
             toast({ title: t('errorTitle'), description: result.message + (result.error ? ` ${t('detailsLabel')}: ${result.error}`: ''), variant: 'destructive'});
         }
@@ -119,9 +127,9 @@ export function MoveExtensionDialog({ isOpen, onClose, extension }: MoveExtensio
     <Dialog open={isOpen} onOpenChange={(open) => !open && handleClose()}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>{t('moveExtensionDialogTitle', { extensionName: extension.name, extensionNumber: extension.number })}</DialogTitle>
+          <DialogTitle>{dialogTitle}</DialogTitle>
           <DialogDescription>
-            {t('moveExtensionDialogDescription')}
+            {dialogDescription}
           </DialogDescription>
         </DialogHeader>
         <form onSubmit={handleSubmit}>

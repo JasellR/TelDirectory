@@ -10,28 +10,39 @@ import { MoveExtensionDialog } from '../dialogs/MoveExtensionDialog';
 
 
 interface MoveExtensionButtonProps {
-  extension: Extension;
+  extensions: Extension[];
+  onMoveComplete: () => void; // Callback to reset selection in the parent
 }
 
-export function MoveExtensionButton({ extension }: MoveExtensionButtonProps) {
+export function MoveExtensionButton({ extensions, onMoveComplete }: MoveExtensionButtonProps) {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const { t } = useTranslation();
+
+  const handleDialogClose = () => {
+    setIsDialogOpen(false);
+  };
+  
+  const handleDialogSuccess = () => {
+    setIsDialogOpen(false);
+    onMoveComplete();
+  };
 
   return (
     <>
       <Button
-        variant="outline"
-        size="sm"
         onClick={() => setIsDialogOpen(true)}
+        disabled={extensions.length === 0}
       >
         <Move className="mr-2 h-4 w-4" />
-        {t('moveExtensionButton')}
+        {t('moveSelectedButton', { count: extensions.length })}
       </Button>
       <MoveExtensionDialog
         isOpen={isDialogOpen}
-        onClose={() => setIsDialogOpen(false)}
-        extension={extension}
+        onClose={handleDialogClose}
+        onSuccess={handleDialogSuccess}
+        extensions={extensions}
       />
     </>
   );
 }
+

@@ -592,7 +592,7 @@ export async function deleteExtensionAction(localityId: string, extensionName: s
 // ===================
 
 export async function moveExtensionAction(
-  extensionToMove: Extension,
+  extensionsToMove: Extension[],
   destination: {
     mode: 'existing' | 'new';
     zoneId: string;
@@ -604,9 +604,12 @@ export async function moveExtensionAction(
   if (!authenticated) {
     return { success: false, message: 'Authentication required.' };
   }
+  if (!extensionsToMove || extensionsToMove.length === 0) {
+      return { success: false, message: 'No extensions selected to move.' };
+  }
+
 
   const { mode, zoneId, localityId, newLocalityName } = destination;
-  const { name: extName, number: extNumber } = extensionToMove;
   const paths = await getPaths();
   const sourceFile = path.join(paths.DEPARTMENT_DIR, 'MissingExtensionsFromFeed.xml');
   let destinationFile: string;
@@ -636,28 +639,36 @@ export async function moveExtensionAction(
       destinationFile = path.join(paths.DEPARTMENT_DIR, `${destinationLocalityId}.xml`);
     }
 
-    // Add extension to destination file
+    // Add extensions to destination file
     const destContent = await readAndParseXML(destinationFile) || { CiscoIPPhoneDirectory: { DirectoryEntry: [] } };
     if (!destContent.CiscoIPPhoneDirectory) destContent.CiscoIPPhoneDirectory = {};
     destContent.CiscoIPPhoneDirectory.DirectoryEntry = ensureArray(destContent.CiscoIPPhoneDirectory.DirectoryEntry);
-    destContent.CiscoIPPhoneDirectory.DirectoryEntry.push({ Name: extName, Telephone: extNumber });
+    
+    for (const ext of extensionsToMove) {
+        destContent.CiscoIPPhoneDirectory.DirectoryEntry.push({ Name: ext.name, Telephone: ext.number });
+    }
     await buildAndWriteXML(destinationFile, destContent);
 
-    // Remove extension from source file (MissingExtensionsFromFeed.xml)
+    // Remove extensions from source file (MissingExtensionsFromFeed.xml)
     const sourceContent = await readAndParseXML(sourceFile);
     if (sourceContent?.CiscoIPPhoneDirectory?.DirectoryEntry) {
-      sourceContent.CiscoIPPhoneDirectory.DirectoryEntry = ensureArray(sourceContent.CiscoIPPhoneDirectory.DirectoryEntry).filter(
-        (entry: any) => entry.Telephone !== extNumber
-      );
-      await buildAndWriteXML(sourceFile, sourceContent);
+        const numbersToMove = new Set(extensionsToMove.map(ext => ext.number));
+        sourceContent.CiscoIPPhoneDirectory.DirectoryEntry = ensureArray(sourceContent.CiscoIPPhoneDirectory.DirectoryEntry).filter(
+            (entry: any) => !numbersToMove.has(entry.Telephone)
+        );
+        await buildAndWriteXML(sourceFile, sourceContent);
     }
     
     revalidatePath('/', 'layout');
-    return { success: true, message: `Extension ${extNumber} moved successfully.` };
+    const message = extensionsToMove.length === 1
+        ? `Extension ${extensionsToMove[0].number} moved successfully.`
+        : `${extensionsToMove.length} extensions moved successfully.`;
+
+    return { success: true, message: message };
 
   } catch (e: any) {
     console.error('[moveExtensionAction] Error:', e);
-    return { success: false, message: 'Failed to move extension.', error: e.message };
+    return { success: false, message: 'Failed to move extensions.', error: e.message };
   }
 }
 
@@ -861,10 +872,6 @@ export async function syncNamesFromXmlFeedAction(feedUrlsString: string): Promis
   if (missingExtensions.length > 0) {
     const missingExtensionsZoneId = 'MissingExtensionsFromFeed';
     const missingExtensionsZoneName = 'Missing Extensions from Feed';
-    
-    // This URL needs to point to a page that can display a list of extensions,
-    // which is a locality page. The URL format is /[zoneId]/localities/[localityId].
-    // Here, the zone acts as a virtual container and its ID is the same as the locality ID.
     const missingItemsUrl = `/${missingExtensionsZoneId}/localities/${missingExtensionsZoneId}`;
     
     const missingDeptFilePath = path.join(paths.DEPARTMENT_DIR, `${missingExtensionsZoneId}.xml`);
@@ -882,8 +889,8 @@ export async function syncNamesFromXmlFeedAction(feedUrlsString: string): Promis
       const mainMenu = await readAndParseXML(paths.MAINMENU_PATH) || { CiscoIPPhoneMenu: { MenuItem: [] } };
       mainMenu.CiscoIPPhoneMenu.MenuItem = ensureArray(mainMenu.CiscoIPPhoneMenu.MenuItem);
       
-      const existingMissingZoneIndex = mainMenu.CiscoIPPhoneMenu.MenuItem.findIndex((item: any) => item.Name === missingExtensionsZoneName);
-      
+      const existingMissingZoneIndex = mainMenu.CiscoIPPhoneMenu.MenuItem.findIndex((item: any) => item.URL.includes(missingExtensionsZoneId));
+
       const menuItem = {
           Name: missingExtensionsZoneName,
           URL: missingItemsUrl

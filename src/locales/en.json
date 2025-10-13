@@ -182,8 +182,6 @@
   "syncConflictedExtensionsDescription": "These extensions were not updated due to name conflicts across different feeds. Please resolve these conflicts manually in your source data or local files.",
   "syncMissingExtensionsTitle": "Missing Local Extensions (Found in Feeds)",
   "syncMissingExtensionsDescription": "These extensions were found in your feeds but do not exist in any local department XML files. A 'Missing Extensions from Feed' item may have been created on the homepage if any were found.",
-  "syncNoConflicts": "No name conflicts found across feeds for the same extension number.",
-  "syncNoMissing": "All non-conflicted extensions from feeds were found locally or have been updated.",
   "extensionLabel": "Ext.",
   "conflictsLabel": "Conflicts:",
   "sourceFeedLabel": "Source:",
@@ -208,9 +206,11 @@
   "specificErrorsLabel": "Specific Errors:",
   "rowLabel": "Row {row}",
   "unknownError": "Unknown error",
-  "moveExtensionButton": "Move",
-  "moveExtensionDialogTitle": "Move Extension: {extensionName} ({extensionNumber})",
-  "moveExtensionDialogDescription": "Choose a destination to move this extension to. You can select an existing locality or create a new one within a zone.",
+  "moveExtensionButton": "Move Extension",
+  "moveSelectedButton": "Move Selected ({count})",
+  "moveExtensionsDialogTitle": "Move {count} Extensions",
+  "moveSingleExtensionDialogDescription": "Move extension {extName} ({extNum}) to a new or existing locality.",
+  "moveMultipleExtensionsDialogDescription": "Choose a destination to move the {count} selected extensions to.",
   "destinationZoneLabel": "Destination Zone",
   "selectZonePlaceholder": "Select a zone",
   "destinationLocalityLabel": "Destination Locality",
@@ -218,5 +218,8 @@
   "moveToExistingLocality": "Move to Existing Locality",
   "createNewLocality": "Create New Locality",
   "zoneAndLocalityRequiredError": "A destination zone and locality are required.",
-  "zoneAndNewLocalityNameRequiredError": "A destination zone and a name for the new locality are required."
+  "zoneAndNewLocalityNameRequiredError": "A destination zone and a name for the new locality are required.",
+  "selectAllRowsAriaLabel": "Select all rows",
+  "selectRowAriaLabel": "Select row for {rowName}",
+  "selectedExtensionsCount": "{count} extensions selected"
 }

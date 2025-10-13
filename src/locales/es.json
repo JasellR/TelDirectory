@@ -182,8 +182,6 @@
   "syncConflictedExtensionsDescription": "Estas extensiones no se actualizaron debido a conflictos de nombres entre diferentes feeds. Por favor, resuelva estos conflictos manualmente en sus datos de origen o archivos locales.",
   "syncMissingExtensionsTitle": "Extensiones Locales Ausentes (Encontradas en Feeds)",
   "syncMissingExtensionsDescription": "Estas extensiones se encontraron en sus feeds pero no existen en ningún archivo XML de departamento local. Es posible que se haya creado un elemento 'Extensiones Ausentes del Feed' en la página de inicio si se encontraron algunas.",
-  "syncNoConflicts": "No se encontraron conflictos de nombres entre feeds para el mismo número de extensión.",
-  "syncNoMissing": "Todas las extensiones no conflictivas de los feeds se encontraron localmente o han sido actualizadas.",
   "extensionLabel": "Ext.",
   "conflictsLabel": "Conflictos:",
   "sourceFeedLabel": "Fuente:",
@@ -208,9 +206,11 @@
   "specificErrorsLabel": "Errores Específicos:",
   "rowLabel": "Fila {row}",
   "unknownError": "Error desconocido",
-  "moveExtensionButton": "Mover",
-  "moveExtensionDialogTitle": "Mover Extensión: {extensionName} ({extensionNumber})",
-  "moveExtensionDialogDescription": "Elija un destino para mover esta extensión. Puede seleccionar una localidad existente o crear una nueva dentro de una zona.",
+  "moveExtensionButton": "Mover Extensión",
+  "moveSelectedButton": "Mover Seleccionados ({count})",
+  "moveExtensionsDialogTitle": "Mover {count} Extensiones",
+  "moveSingleExtensionDialogDescription": "Mover la extensión {extName} ({extNum}) a una localidad nueva o existente.",
+  "moveMultipleExtensionsDialogDescription": "Elija un destino para mover las {count} extensiones seleccionadas.",
   "destinationZoneLabel": "Zona de Destino",
   "selectZonePlaceholder": "Seleccione una zona",
   "destinationLocalityLabel": "Localidad de Destino",
@@ -218,5 +218,8 @@
   "moveToExistingLocality": "Mover a Localidad Existente",
   "createNewLocality": "Crear Nueva Localidad",
   "zoneAndLocalityRequiredError": "Se requieren una zona y localidad de destino.",
-  "zoneAndNewLocalityNameRequiredError": "Se requieren una zona de destino y un nombre para la nueva localidad."
+  "zoneAndNewLocalityNameRequiredError": "Se requieren una zona de destino y un nombre para la nueva localidad.",
+  "selectAllRowsAriaLabel": "Seleccionar todas las filas",
+  "selectRowAriaLabel": "Seleccionar fila para {rowName}",
+  "selectedExtensionsCount": "{count} extensiones seleccionadas"
 }
