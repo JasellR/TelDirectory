@@ -859,36 +859,43 @@ export async function syncNamesFromXmlFeedAction(feedUrlsString: string): Promis
   }
   
   if (missingExtensions.length > 0) {
-      const missingExtensionsZoneId = 'MissingExtensionsFromFeed';
-      const missingExtensionsZoneName = 'Missing Extensions from Feed';
-      const missingExtensionsLocalityPrompt = 'Extensions found in feeds but not locally';
-      
-      const missingDeptFilePath = path.join(paths.DEPARTMENT_DIR, `${missingExtensionsZoneId}.xml`);
-      const { protocol, host, port, rootDirName } = await getServiceUrlComponents();
-      const missingZoneURL = constructServiceUrl(protocol, host, port, rootDirName, `department/${missingExtensionsZoneId}.xml`);
-      
-      const missingDeptContent = {
-          CiscoIPPhoneDirectory: {
-              Title: missingExtensionsZoneName,
-              Prompt: missingExtensionsLocalityPrompt,
-              DirectoryEntry: missingExtensions.map(ext => ({ Name: ext.name, Telephone: ext.number }))
-          }
-      };
-      await buildAndWriteXML(missingDeptFilePath, missingDeptContent);
+    const missingExtensionsZoneId = 'MissingExtensionsFromFeed';
+    const missingExtensionsZoneName = 'Missing Extensions from Feed';
+    
+    // This URL needs to point to a page that can display a list of extensions,
+    // which is a locality page. The URL format is /[zoneId]/localities/[localityId].
+    // Here, the zone acts as a virtual container and its ID is the same as the locality ID.
+    const missingItemsUrl = `/${missingExtensionsZoneId}/localities/${missingExtensionsZoneId}`;
+    
+    const missingDeptFilePath = path.join(paths.DEPARTMENT_DIR, `${missingExtensionsZoneId}.xml`);
+    
+    const missingDeptContent = {
+        CiscoIPPhoneDirectory: {
+            Title: missingExtensionsZoneName,
+            Prompt: 'Extensions found in feeds but not in local files',
+            DirectoryEntry: missingExtensions.map(ext => ({ Name: ext.name, Telephone: ext.number }))
+        }
+    };
+    await buildAndWriteXML(missingDeptFilePath, missingDeptContent);
 
-      if (paths.MAINMENU_PATH) {
-        const mainMenu = await readAndParseXML(paths.MAINMENU_PATH) || { CiscoIPPhoneMenu: { MenuItem: [] } };
-        mainMenu.CiscoIPPhoneMenu.MenuItem = ensureArray(mainMenu.CiscoIPPhoneMenu.MenuItem);
-        
-        const existingMissingZone = mainMenu.CiscoIPPhoneMenu.MenuItem.find((item: any) => extractIdFromUrl(item.URL) === missingExtensionsZoneId);
-        if (!existingMissingZone) {
-            mainMenu.CiscoIPPhoneMenu.MenuItem.push({
-                Name: missingExtensionsZoneName,
-                URL: missingZoneURL
-            });
-        } // if it exists, the file is just overwritten, no need to change the menu
-        await buildAndWriteXML(paths.MAINMENU_PATH, mainMenu);
+    if (paths.MAINMENU_PATH) {
+      const mainMenu = await readAndParseXML(paths.MAINMENU_PATH) || { CiscoIPPhoneMenu: { MenuItem: [] } };
+      mainMenu.CiscoIPPhoneMenu.MenuItem = ensureArray(mainMenu.CiscoIPPhoneMenu.MenuItem);
+      
+      const existingMissingZoneIndex = mainMenu.CiscoIPPhoneMenu.MenuItem.findIndex((item: any) => item.Name === missingExtensionsZoneName);
+      
+      const menuItem = {
+          Name: missingExtensionsZoneName,
+          URL: missingItemsUrl
+      };
+
+      if (existingMissingZoneIndex > -1) {
+          mainMenu.CiscoIPPhoneMenu.MenuItem[existingMissingZoneIndex] = menuItem;
+      } else {
+          mainMenu.CiscoIPPhoneMenu.MenuItem.push(menuItem);
       }
+      await buildAndWriteXML(paths.MAINMENU_PATH, mainMenu);
+    }
   }
 
 
