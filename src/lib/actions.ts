@@ -229,7 +229,6 @@ async function repaginateMenuItems(initialMenuPath: string, menuTitle: string, m
         const pageItems = allItems.slice(i * PAGINATION_THRESHOLD, (i + 1) * PAGINATION_THRESHOLD);
         
         const pageFileName = currentPage === 1 ? `${baseName}.xml` : `${baseName}${currentPage}.xml`;
-        const pageId = currentPage === 1 ? baseName : `${baseName}${currentPage}`;
         const pageFilePath = path.join(parentDir, pageFileName);
         
         const menuContent: any = {
@@ -237,18 +236,17 @@ async function repaginateMenuItems(initialMenuPath: string, menuTitle: string, m
         };
 
         if (currentPage > 1) {
-            const prevPageId = currentPage === 2 ? baseName : `${baseName}${currentPage - 1}`;
-            // The URL for the web app is the "clean" route, not the file path
-            const prevUrl = constructServiceUrl(protocol, host, port, prevPageId, '');
-            menuContent.CiscoIPPhoneMenu.MenuItem.push({ Name: "<< Anterior", URL: prevUrl.slice(0, -1) }); // remove trailing slash
+            const prevPageFileName = currentPage === 2 ? `${baseName}.xml` : `${baseName}${currentPage - 1}.xml`;
+            const prevUrl = constructServiceUrl(protocol, host, port, rootDirName, `${parentSubDir}/${prevPageFileName}`);
+            menuContent.CiscoIPPhoneMenu.MenuItem.push({ Name: "<< Anterior", URL: prevUrl });
         }
 
         menuContent.CiscoIPPhoneMenu.MenuItem.push(...pageItems);
 
         if (currentPage < totalPages) {
-            const nextPageId = `${baseName}${currentPage + 1}`;
-            const nextUrl = constructServiceUrl(protocol, host, port, nextPageId, '');
-            menuContent.CiscoIPPhoneMenu.MenuItem.push({ Name: "Siguiente >>", URL: nextUrl.slice(0, -1) });
+            const nextPageFileName = `${baseName}${currentPage + 1}.xml`;
+            const nextUrl = constructServiceUrl(protocol, host, port, rootDirName, `${parentSubDir}/${nextPageFileName}`);
+            menuContent.CiscoIPPhoneMenu.MenuItem.push({ Name: "Siguiente >>", URL: nextUrl });
         }
         
         await buildAndWriteXML(pageFilePath, menuContent);
@@ -1201,6 +1199,8 @@ export async function searchAllDepartmentsAndExtensionsAction(query: string): Pr
   
   return Array.from(resultsMap.values());
 }
+
+    
 
     
 
