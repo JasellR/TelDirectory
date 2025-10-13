@@ -139,9 +139,8 @@ async function getServiceUrlComponents(): Promise<{ protocol: string, host: stri
   return { protocol, host, port, rootDirName };
 }
 
-function constructServiceUrl(protocol: string, host: string, port: string, rootDirName: string, pathSegment: string): string {
-  // URLs should be relative to the domain root, pointing into the public directory
-  const fullPath = path.join(rootDirName, pathSegment).replace(/\\/g, '/');
+function constructServiceUrl(protocol: string, host: string, port: string, directory: string, pathSegment: string): string {
+  const fullPath = path.join(directory, pathSegment).replace(/\\/g, '/');
   return `${protocol}://${host}:${port}/${fullPath}`;
 }
 
@@ -172,30 +171,42 @@ async function repaginateMenuItems(initialMenuPath: string, menuTitle: string, m
 
     // 1. Gather all items from all related paginated files
     const allItems: any[] = [];
-    const processedFiles: string[] = []; // Keep track of files to delete later
     let currentPath = initialMenuPath;
+    let nextPathBasedOnName = initialMenuPath;
+    let pageCounter = 1;
 
-    while (currentPath) {
-        const content = await readAndParseXML(currentPath);
-        processedFiles.push(currentPath);
+    // We'll keep track of files to delete at the end
+    const discoveredFiles: Set<string> = new Set();
 
-        const menuItems = ensureArray(content?.CiscoIPPhoneMenu?.MenuItem);
+    while (nextPathBasedOnName) {
+        discoveredFiles.add(nextPathBasedOnName);
+        const content = await readAndParseXML(nextPathBasedOnName);
         let nextPageUrl: string | null = null;
-        
-        for (const item of menuItems) {
-            if (item.Name === 'Siguiente >>') {
-                nextPageUrl = item.URL;
-            } else if (item.Name !== '<< Anterior') {
-                allItems.push(item);
+
+        if (content?.CiscoIPPhoneMenu?.MenuItem) {
+            const menuItems = ensureArray(content.CiscoIPPhoneMenu.MenuItem);
+            for (const item of menuItems) {
+                if (item.Name === 'Siguiente >>') {
+                    nextPageUrl = item.URL;
+                } else if (item.Name !== '<< Anterior') {
+                    allItems.push(item);
+                }
             }
         }
         
-        // Determine the path of the next file from its URL
-        currentPath = nextPageUrl ? path.join(parentDir, path.basename(new URL(nextPageUrl).pathname)) : null;
+        // Determine the path of the next file more reliably
+        pageCounter++;
+        const potentialNextFile = path.join(parentDir, `${baseName}${pageCounter}.xml`);
+        try {
+            await fs.access(potentialNextFile);
+            nextPathBasedOnName = potentialNextFile;
+        } catch {
+            nextPathBasedOnName = null;
+        }
     }
     
     // 2. Clean up old paginated files before writing new ones
-    for (const filePath of processedFiles) {
+    for (const filePath of discoveredFiles) {
         try {
             await fs.unlink(filePath);
         } catch (e: any) {
@@ -399,7 +410,7 @@ export async function addLocalityOrBranchAction(params: {
         // 1. Create the new item's own XML file (empty but valid)
         const newItemContent = itemType === 'branch' 
             ? { CiscoIPPhoneMenu: { Title: itemName, Prompt: 'Select a Locality' } }
-            : { CiscoIPPhoneDirectory: {} }; // Correctly empty for departments
+            : { CiscoIPPhoneDirectory: {} };
         await buildAndWriteXML(newItemPath, newItemContent);
         
         // 2. Add the new item to its parent menu file
@@ -809,11 +820,16 @@ export async function updateXmlUrlsAction(host: string, port: string): Promise<{
             const fileName = (item.URL || '').split('/').pop();
             const itemType = getItemTypeFromUrl(item.URL);
 
-            if (fileName && itemType !== 'unknown') {
+            if (fileName && (itemType === 'zone' || itemType === 'branch' || itemType === 'locality')) {
                 const subDirectory = itemTypeToDir[itemType];
-                const relativePath = `${subDirectory}/${fileName}`;
-                // Use the rootDirName from getServiceUrlComponents, which is now hardcoded to 'ivoxsdir'
-                item.URL = constructServiceUrl(protocol, host, port, rootDirName, relativePath);
+                const newServiceUrl = constructServiceUrl(protocol, host, port, rootDirName, `${subDirectory}/${fileName}`);
+                item.URL = newServiceUrl;
+            } else if (fileName && (item.Name.includes("Siguiente") || item.Name.includes("Anterior"))) {
+                // This is a pagination button. The URL needs to point to the service, not the web app's clean URL
+                const baseName = fileName.replace(/\.xml$/i, '');
+                const parentDirName = path.basename(path.dirname(filePath)); // this should be 'zonebranch' or 'branch'
+                const newServiceUrl = constructServiceUrl(protocol, host, port, rootDirName, `${parentDirName}/${fileName}`);
+                item.URL = newServiceUrl;
             } else {
                  console.warn(`[updateXmlUrlsAction] Could not process URL: ${item.URL}. It might be malformed or pointing to an unknown type.`);
             }
@@ -975,8 +991,9 @@ export async function syncNamesFromXmlFeedAction(feedUrlsString: string): Promis
   if (missingExtensions.length > 0) {
     const missingExtensionsZoneId = 'MissingExtensionsFromFeed';
     const missingExtensionsZoneName = 'Missing Extensions from Feed';
-    // This URL points directly to the details page, not a zone page.
-    const missingItemsUrl = `/${missingExtensionsZoneId}/localities/${missingExtensionsZoneId}`;
+    
+    // The link in MainMenu should point to the WEB path for the locality details page.
+    const webPathForMissingItems = `/${missingExtensionsZoneId}/localities/${missingExtensionsZoneId}`;
     
     const missingDeptFilePath = path.join(paths.DEPARTMENT_DIR, `${missingExtensionsZoneId}.xml`);
     
@@ -997,7 +1014,7 @@ export async function syncNamesFromXmlFeedAction(feedUrlsString: string): Promis
 
       const menuItem = {
           Name: missingExtensionsZoneName,
-          URL: missingItemsUrl
+          URL: webPathForMissingItems // Use the web-friendly path here for consistency in MainMenu
       };
 
       if (existingMissingZoneIndex > -1) {
@@ -1177,5 +1194,7 @@ export async function searchAllDepartmentsAndExtensionsAction(query: string): Pr
   
   return Array.from(resultsMap.values());
 }
+
+    
 
     
