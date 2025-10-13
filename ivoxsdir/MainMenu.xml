@@ -1,9 +1,0 @@
-<?xml version="1.0" encoding="UTF-8" standalone="no"?>
-<CiscoIPPhoneMenu>
-  <Title>Main Directory</Title>
-  <Prompt>Select an option</Prompt>
-  <MenuItem>
-    <Name>Zona Norte</Name>
-    <URL>http://127.0.0.1:3000/ivoxsdir/zonebranch/ZonaNorte.xml</URL>
-  </MenuItem>
-</CiscoIPPhoneMenu>

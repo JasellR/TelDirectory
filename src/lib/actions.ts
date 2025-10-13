@@ -110,14 +110,19 @@ function extractIdFromUrl(url: string): string {
   return fileName.replace(/\.xml$/i, '');
 }
 
-function getItemTypeFromUrl(url: string): 'branch' | 'locality' | 'zone' | 'unknown' {
-  const lowerUrl = url.toLowerCase();
-  if (lowerUrl.includes('/branch/')) return 'branch';
-  if (lowerUrl.includes('/department/')) return 'locality';
-  // Handle the incorrect "locality" folder name for backward compatibility during correction
-  if (lowerUrl.includes('/locality/')) return 'locality'; 
-  if (lowerUrl.includes('/zonebranch/')) return 'zone';
-  return 'unknown';
+function getItemTypeFromUrl(url: string): 'branch' | 'locality' | 'zone' | 'unknown' | 'pagination' {
+    const lowerUrl = url.toLowerCase();
+    if (lowerUrl.includes('/branch/')) return 'branch';
+    if (lowerUrl.includes('/department/')) return 'locality';
+    if (lowerUrl.includes('/zonebranch/')) return 'zone';
+
+    // Check if it's a paginated URL (e.g., /ZoneId/ZoneId2)
+    const urlParts = url.split('/').filter(p => p && !p.startsWith('http'));
+    if(urlParts.length === 2 && urlParts[1].startsWith(urlParts[0]) && urlParts[1] !== urlParts[0]) {
+        return 'pagination';
+    }
+
+    return 'unknown';
 }
 
 const itemTypeToDir: Record<'zone' | 'branch' | 'locality', string> = {
@@ -622,12 +627,11 @@ export async function updateXmlUrlsAction(host: string, port: string): Promise<{
             const fileName = (item.URL || '').split('/').pop();
             const itemType = getItemTypeFromUrl(item.URL);
 
-            if (fileName && itemType !== 'unknown') {
+            if (fileName && (itemType === 'zone' || itemType === 'branch' || itemType === 'locality')) {
                 const subDirectory = itemTypeToDir[itemType];
                 const relativePath = `${subDirectory}/${fileName}`;
-                // Use the rootDirName from getServiceUrlComponents, which is now hardcoded to 'ivoxsdir'
                 item.URL = constructServiceUrl(protocol, host, port, rootDirName, relativePath);
-            } else {
+            } else if (itemType !== 'pagination') { // Do not touch pagination URLs
                  console.warn(`[updateXmlUrlsAction] Could not process URL: ${item.URL}. It might be malformed or pointing to an unknown type.`);
             }
             return item;

@@ -21,7 +21,8 @@ export interface Locality {
 export interface ZoneItem {
   id: string;
   name: string;
-  type: 'branch' | 'locality';
+  type: 'branch' | 'locality' | 'pagination';
+  url?: string;
 }
 
 export interface BranchItem {

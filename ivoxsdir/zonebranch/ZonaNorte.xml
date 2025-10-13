@@ -1,9 +1,0 @@
-<?xml version="1.0" encoding="UTF-8" standalone="no"?>
-<CiscoIPPhoneMenu>
-  <Title>Zona Norte</Title>
-  <Prompt>Select an item</Prompt>
-  <MenuItem>
-    <Name>Puerto Plata</Name>
-    <URL>http://127.0.0.1:3000/ivoxsdir/department/PuertoPlata.xml</URL>
-  </MenuItem>
-</CiscoIPPhoneMenu>

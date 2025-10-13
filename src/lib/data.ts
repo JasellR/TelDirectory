@@ -94,14 +94,22 @@ function extractIdFromUrl(url: string): string {
   return fileName.replace(/\.xml$/i, ''); // Case-insensitive .xml removal
 }
 
-function getItemTypeFromUrl(url: string): 'branch' | 'locality' | 'zone' | 'unknown' {
-  const lowerUrl = url.toLowerCase();
-  if (lowerUrl.includes('/branch/')) return 'branch';
-  if (lowerUrl.includes('/department/')) return 'locality';
-  // Handle the incorrect "locality" folder name for backward compatibility during correction
-  if (lowerUrl.includes('/locality/')) return 'locality'; 
-  if (lowerUrl.includes('/zonebranch/')) return 'zone';
-  return 'unknown';
+function getItemTypeFromUrl(url: string): 'branch' | 'locality' | 'zone' | 'unknown' | 'pagination' {
+    const lowerUrl = url.toLowerCase();
+    
+    // Check for explicit directory paths first, which are used for Cisco phones
+    if (lowerUrl.includes('/branch/')) return 'branch';
+    if (lowerUrl.includes('/department/')) return 'locality';
+    if (lowerUrl.includes('/zonebranch/')) return 'zone';
+
+    // Then, check for the "clean" URL pattern used by the web app for pagination
+    // e.g., /ZonaMetropolitana/ZonaMetropolitana2
+    const urlParts = url.split('/').filter(p => p && !p.startsWith('http'));
+    if(urlParts.length === 2 && urlParts[1].startsWith(urlParts[0]) && urlParts[1] !== urlParts[0]) {
+        return 'pagination';
+    }
+
+    return 'unknown';
 }
 
 
@@ -167,9 +175,11 @@ export async function getZoneItems(zoneId: string): Promise<ZoneItem[]> {
     return {
         id: extractIdFromUrl(item.URL),
         name: item.Name,
-        type: itemType as 'branch' | 'locality',
+        type: itemType as 'branch' | 'locality' | 'pagination',
+        // Pass the original URL for pagination items
+        url: itemType === 'pagination' ? item.URL : undefined,
     };
-  }).filter(item => item.type === 'branch' || item.type === 'locality');
+  }).filter(item => item.type === 'branch' || item.type === 'locality' || item.type === 'pagination');
 }
 
 
@@ -313,3 +323,4 @@ export async function getLocalityWithExtensions(localityId: string): Promise<Loc
     extensions,
   };
 }
+
