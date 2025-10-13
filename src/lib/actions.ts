@@ -312,7 +312,7 @@ export async function addLocalityOrBranchAction(params: {
         // 1. Create the new item's own XML file (empty but valid)
         const newItemContent = itemType === 'branch' 
             ? { CiscoIPPhoneMenu: { Title: itemName, Prompt: 'Select a Locality' } }
-            : { CiscoIPPhoneDirectory: { Title: itemName, Prompt: 'Select an extension' } };
+            : { CiscoIPPhoneDirectory: {} }; // Correctly empty for departments
         await buildAndWriteXML(newItemPath, newItemContent);
         
         // 2. Add the new item to its parent menu file
@@ -375,14 +375,13 @@ export async function editLocalityOrBranchAction(params: {
             await fs.rename(oldItemPath, newItemPath);
         }
 
-        // 2. Update the item's own title
+        // 2. Update the item's own title if it's a menu
         const itemContent = await readAndParseXML(newItemPath);
         if (itemType === 'branch' && itemContent?.CiscoIPPhoneMenu) {
             itemContent.CiscoIPPhoneMenu.Title = newItemName;
-        } else if (itemType === 'locality' && itemContent?.CiscoIPPhoneDirectory) {
-            itemContent.CiscoIPPhoneDirectory.Title = newItemName;
+             await buildAndWriteXML(newItemPath, itemContent);
         }
-        await buildAndWriteXML(newItemPath, itemContent);
+        // No need to update Title for locality as it shouldn't have one
 
         // 3. Update the item in its parent menu
         const parentMenu = await readAndParseXML(parentMenuPath);
@@ -630,6 +629,7 @@ export async function moveExtensionAction(
         itemName: newLocalityName,
         itemType: 'locality'
       });
+      // The file is created by addLocalityOrBranchAction, now we will add to it.
 
     } else { // 'existing' mode
       if (!localityId) {
@@ -872,6 +872,7 @@ export async function syncNamesFromXmlFeedAction(feedUrlsString: string): Promis
   if (missingExtensions.length > 0) {
     const missingExtensionsZoneId = 'MissingExtensionsFromFeed';
     const missingExtensionsZoneName = 'Missing Extensions from Feed';
+    // This URL points directly to the details page, not a zone page.
     const missingItemsUrl = `/${missingExtensionsZoneId}/localities/${missingExtensionsZoneId}`;
     
     const missingDeptFilePath = path.join(paths.DEPARTMENT_DIR, `${missingExtensionsZoneId}.xml`);
@@ -1073,5 +1074,3 @@ export async function searchAllDepartmentsAndExtensionsAction(query: string): Pr
   
   return Array.from(resultsMap.values());
 }
-
-    
