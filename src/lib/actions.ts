@@ -171,48 +171,46 @@ async function repaginateMenuItems(initialMenuPath: string, menuTitle: string, m
 
     // 1. Gather all items from all related paginated files
     const allItems: any[] = [];
-    let currentPath = initialMenuPath;
-    let nextPathBasedOnName = initialMenuPath;
-    let pageCounter = 1;
+    let nextPath: string | null = initialMenuPath;
 
-    // We'll keep track of files to delete at the end
     const discoveredFiles: Set<string> = new Set();
 
-    while (nextPathBasedOnName) {
-        discoveredFiles.add(nextPathBasedOnName);
-        const content = await readAndParseXML(nextPathBasedOnName);
-        let nextPageUrl: string | null = null;
+    while (nextPath) {
+        if (discoveredFiles.has(nextPath)) break; // Avoid infinite loops
+        discoveredFiles.add(nextPath);
+
+        const content = await readAndParseXML(nextPath);
+        nextPath = null; // Reset for next iteration
 
         if (content?.CiscoIPPhoneMenu?.MenuItem) {
             const menuItems = ensureArray(content.CiscoIPPhoneMenu.MenuItem);
             for (const item of menuItems) {
                 if (item.Name === 'Siguiente >>') {
-                    nextPageUrl = item.URL;
+                    // Extract file path from URL to continue traversal
+                    const url = new URL(item.URL);
+                    const pathSegments = url.pathname.split('/');
+                    const fileName = pathSegments.pop();
+                    if(fileName) {
+                       nextPath = path.join(parentDir, fileName);
+                    }
                 } else if (item.Name !== '<< Anterior') {
                     allItems.push(item);
                 }
             }
         }
-        
-        // Determine the path of the next file more reliably
-        pageCounter++;
-        const potentialNextFile = path.join(parentDir, `${baseName}${pageCounter}.xml`);
-        try {
-            await fs.access(potentialNextFile);
-            nextPathBasedOnName = potentialNextFile;
-        } catch {
-            nextPathBasedOnName = null;
-        }
     }
     
-    // 2. Clean up old paginated files before writing new ones
+    // 2. Clean up old paginated files (except the base one) before writing new ones
     for (const filePath of discoveredFiles) {
-        try {
-            await fs.unlink(filePath);
-        } catch (e: any) {
-            if (e.code !== 'ENOENT') console.warn(`Could not delete old paginated file: ${filePath}`);
+        if (path.basename(filePath) !== path.basename(initialMenuPath).replace(/(\d+)$/, '.xml')) {
+            try {
+                await fs.unlink(filePath);
+            } catch (e: any) {
+                if (e.code !== 'ENOENT') console.warn(`Could not delete old paginated file: ${filePath}`);
+            }
         }
     }
+
 
     // 3. Re-write the files
     if (allItems.length <= PAGINATION_THRESHOLD) {
@@ -231,6 +229,7 @@ async function repaginateMenuItems(initialMenuPath: string, menuTitle: string, m
         const pageItems = allItems.slice(i * PAGINATION_THRESHOLD, (i + 1) * PAGINATION_THRESHOLD);
         
         const pageFileName = currentPage === 1 ? `${baseName}.xml` : `${baseName}${currentPage}.xml`;
+        const pageId = currentPage === 1 ? baseName : `${baseName}${currentPage}`;
         const pageFilePath = path.join(parentDir, pageFileName);
         
         const menuContent: any = {
@@ -238,17 +237,18 @@ async function repaginateMenuItems(initialMenuPath: string, menuTitle: string, m
         };
 
         if (currentPage > 1) {
-            const prevPageFileName = currentPage === 2 ? `${baseName}.xml` : `${baseName}${currentPage - 1}.xml`;
-            const prevUrl = constructServiceUrl(protocol, host, port, rootDirName, `${parentSubDir}/${prevPageFileName}`);
-            menuContent.CiscoIPPhoneMenu.MenuItem.push({ Name: "<< Anterior", URL: prevUrl });
+            const prevPageId = currentPage === 2 ? baseName : `${baseName}${currentPage - 1}`;
+            // The URL for the web app is the "clean" route, not the file path
+            const prevUrl = constructServiceUrl(protocol, host, port, prevPageId, '');
+            menuContent.CiscoIPPhoneMenu.MenuItem.push({ Name: "<< Anterior", URL: prevUrl.slice(0, -1) }); // remove trailing slash
         }
 
         menuContent.CiscoIPPhoneMenu.MenuItem.push(...pageItems);
 
         if (currentPage < totalPages) {
-            const nextPageFileName = `${baseName}${currentPage + 1}.xml`;
-            const nextUrl = constructServiceUrl(protocol, host, port, rootDirName, `${parentSubDir}/${nextPageFileName}`);
-            menuContent.CiscoIPPhoneMenu.MenuItem.push({ Name: "Siguiente >>", URL: nextUrl });
+            const nextPageId = `${baseName}${currentPage + 1}`;
+            const nextUrl = constructServiceUrl(protocol, host, port, nextPageId, '');
+            menuContent.CiscoIPPhoneMenu.MenuItem.push({ Name: "Siguiente >>", URL: nextUrl.slice(0, -1) });
         }
         
         await buildAndWriteXML(pageFilePath, menuContent);
@@ -817,22 +817,29 @@ export async function updateXmlUrlsAction(host: string, port: string): Promise<{
         if (!fileContent?.CiscoIPPhoneMenu?.MenuItem) return;
 
         fileContent.CiscoIPPhoneMenu.MenuItem = ensureArray(fileContent.CiscoIPPhoneMenu.MenuItem).map((item: any) => {
-            const fileName = (item.URL || '').split('/').pop();
-            const itemType = getItemTypeFromUrl(item.URL);
-
-            if (fileName && (itemType === 'zone' || itemType === 'branch' || itemType === 'locality')) {
-                const subDirectory = itemTypeToDir[itemType];
-                const newServiceUrl = constructServiceUrl(protocol, host, port, rootDirName, `${subDirectory}/${fileName}`);
-                item.URL = newServiceUrl;
-            } else if (fileName && (item.Name.includes("Siguiente") || item.Name.includes("Anterior"))) {
-                // This is a pagination button. The URL needs to point to the service, not the web app's clean URL
-                const baseName = fileName.replace(/\.xml$/i, '');
-                const parentDirName = path.basename(path.dirname(filePath)); // this should be 'zonebranch' or 'branch'
-                const newServiceUrl = constructServiceUrl(protocol, host, port, rootDirName, `${parentDirName}/${fileName}`);
-                item.URL = newServiceUrl;
-            } else {
-                 console.warn(`[updateXmlUrlsAction] Could not process URL: ${item.URL}. It might be malformed or pointing to an unknown type.`);
+            let url;
+            try {
+                url = new URL(item.URL);
+            } catch(e){
+                // It might be a relative path for the web app
+                url = new URL(`http://localhost${item.URL}`);
             }
+
+            const pathSegments = url.pathname.split('/').filter(Boolean);
+            let newUrl;
+            
+            // Handle pagination buttons differently
+            if (item.Name.includes("Siguiente") || item.Name.includes("Anterior")) {
+                 // The ID is the clean route, e.g., /ZonaMetropolitana2
+                 const pageId = pathSegments[pathSegments.length -1];
+                 newUrl = `http://${host}:${port}/${pageId}`;
+            } else {
+                 const fileName = pathSegments[pathSegments.length - 1];
+                 const itemTypeDir = pathSegments[pathSegments.length - 2];
+                 const servicePath = path.join(rootDirName, itemTypeDir, fileName).replace(/\\/g, '/');
+                 newUrl = `http://${host}:${port}/${servicePath}`;
+            }
+            item.URL = newUrl;
             return item;
         });
         await buildAndWriteXML(filePath, fileContent);
