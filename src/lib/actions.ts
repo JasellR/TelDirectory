@@ -5,13 +5,12 @@ import fs from 'fs/promises';
 import path from 'path';
 import { parseStringPromise, Builder } from 'xml2js';
 import { revalidatePath } from 'next/cache';
-import type { GlobalSearchResult, MatchedExtension, Extension, CsvImportResult, CsvImportDetails, CsvImportError, SyncResult, ConflictedExtensionInfo, MissingExtensionInfo, AdSyncResult, AdSyncDetails, AdSyncFormValues } from '@/types';
+import type { GlobalSearchResult, MatchedExtension, Extension, CsvImportResult, CsvImportDetails, CsvImportError, SyncResult, ConflictedExtensionInfo, MissingExtensionInfo } from '@/types';
 import { CiscoIPPhoneMenuSchema, CiscoIPPhoneDirectorySchema } from '@/lib/data';
 import { getResolvedIvoxsRootPath, saveDirectoryConfig as saveDirConfig } from '@/lib/config';
 import { isAuthenticated, getCurrentUser } from '@/lib/auth-actions';
 import { redirect } from 'next/navigation';
 import { getDb, bcrypt } from './db';
-import ldap from 'ldapjs';
 
 
 // Case-insensitive file finder
@@ -829,14 +828,6 @@ export async function syncNamesFromXmlFeedAction(feedUrlsString: string): Promis
     conflictedExtensions,
     missingExtensions,
   };
-}
-
-export async function syncFromActiveDirectoryAction(params: AdSyncFormValues): Promise<AdSyncResult> {
-    const authenticated = await isAuthenticated();
-    if (!authenticated) {
-        return { success: false, message: "Authentication required." };
-    }
-    return { success: false, message: "This feature is not yet implemented."};
 }
 
 // ===================

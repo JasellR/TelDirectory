@@ -19,10 +19,10 @@ const nextConfig: NextConfig = {
       },
     ],
   },
-  serverExternalPackages: ['sqlite3', 'ldapjs', 'bcrypt'],
+  serverExternalPackages: ['sqlite3', 'bcrypt'],
   webpack: (config, { isServer }) => {
     if (isServer) {
-      config.externals.push('sqlite3', 'ldapjs', 'bcrypt');
+      config.externals.push('sqlite3', 'bcrypt');
     }
     return config;
   },

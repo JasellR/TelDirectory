@@ -5,10 +5,9 @@ import { useState, useEffect, useTransition } from 'react';
 import { Breadcrumbs } from '@/components/layout/Breadcrumbs';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { Palette, Languages, Settings as SettingsIcon, FileCode, Info, FolderCog, CheckCircle, AlertCircleIcon, UserCog, Tv, FileUp, Users } from 'lucide-react';
+import { Palette, Languages, Settings as SettingsIcon, FileCode, Info, FolderCog, CheckCircle, AlertCircleIcon, UserCog, Tv, FileUp } from 'lucide-react';
 import { CsvUploadForm } from '@/components/import/CsvUploadForm';
-import { ActiveDirectorySyncForm } from '@/components/import/ActiveDirectorySyncForm'; // New import
-import { updateDirectoryRootPathAction, updateXmlUrlsAction, syncNamesFromXmlFeedAction, importExtensionsFromCsvAction, syncFromActiveDirectoryAction } from '@/lib/actions';
+import { updateDirectoryRootPathAction, updateXmlUrlsAction, syncNamesFromXmlFeedAction, importExtensionsFromCsvAction } from '@/lib/actions';
 import { ThemeToggle } from '@/components/settings/ThemeToggle';
 import { LanguageToggle } from '@/components/settings/LanguageToggle';
 import { Separator } from '@/components/ui/separator';
@@ -21,7 +20,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Loader2 } from 'lucide-react';
 import { getDirectoryConfig } from '@/lib/config';
 import { logoutAction, getCurrentUser } from '@/lib/auth-actions';
-import type { UserSession, SyncResult, AdSyncResult } from '@/types';
+import type { UserSession, SyncResult } from '@/types';
 
 export default function SettingsPage() {
   const { t } = useTranslation();
@@ -314,21 +313,6 @@ export default function SettingsPage() {
             </CardHeader>
             <CardContent>
                 <CsvUploadForm importAction={importExtensionsFromCsvAction} />
-            </CardContent>
-        </Card>
-
-        <Separator />
-        
-        <Card>
-            <CardHeader>
-                <div className="flex items-center gap-3">
-                    <Users className="h-6 w-6 text-primary" />
-                    <CardTitle className="text-2xl">{t('syncFromAdTitle')}</CardTitle>
-                </div>
-                <CardDescription>{t('syncFromAdDescription')}</CardDescription>
-            </CardHeader>
-            <CardContent>
-                <ActiveDirectorySyncForm syncAction={syncFromActiveDirectoryAction} />
             </CardContent>
         </Card>
 
