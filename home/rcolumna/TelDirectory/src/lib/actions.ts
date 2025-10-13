@@ -88,13 +88,13 @@ async function readAndParseXML(filePath: string): Promise<any> {
 
 async function buildAndWriteXML(filePath: string, jsObject: any): Promise<void> {
    const builder = new Builder({
-    headless: true,
+    headless: false,
     renderOpts: { pretty: false }, // Set pretty to false
   });
 
   const xmlString = builder.buildObject(jsObject);
   // Ensure the declaration is on the same line
-  const finalXmlString = '<?xml version="1.0" encoding="UTF-8" standalone="no"?>' + xmlString;
+  const finalXmlString = '<?xml version="1.0" encoding="UTF-8" standalone="no"?>' + xmlString.replace(/(\r\n|\n|\r)/gm,"");
 
 
   await fs.mkdir(path.dirname(filePath), { recursive: true });

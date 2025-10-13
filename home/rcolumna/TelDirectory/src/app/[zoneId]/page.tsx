@@ -34,7 +34,7 @@ export async function generateMetadata({ params }: ZonePageProps): Promise<Metad
   if (zone.id === 'MissingExtensionsFromFeed') {
     pageTitle = `Missing Extensions from Feed`;
   } else {
-    const items = await getZoneItems(zoneId);
+    const items = await getZoneItems(zone.id);
     const isZonaMetropolitana = items.some(item => item.type === 'branch');
     pageTitle = isZonaMetropolitana ? `Branches in ${zone.name}` : `Localities in ${zone.name}`;
   }
@@ -58,7 +58,7 @@ export default async function ZonePage({ params }: ZonePageProps) {
 
   // Handle the special case for "Missing Extensions from Feed"
   if (zoneId === 'MissingExtensionsFromFeed') {
-    const locality = await getLocalityWithExtensions(zoneId);
+    const locality = await getLocalityWithExtensions("MissingExtensionsDepartment");
     if (!locality) notFound();
 
     return (
@@ -157,3 +157,5 @@ function itemTypeHelpText(isZonaMetropolitana: boolean) {
   }
   return "department XML file (in a .../department/ directory)";
 }
+
+    
