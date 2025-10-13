@@ -11,11 +11,12 @@ import {
   TableCell,
   TableCaption,
 } from '@/components/ui/table';
-import { UserCircle, PhoneOutgoing, ListX } from 'lucide-react';
+import { UserCircle, PhoneOutgoing, ListX, Move } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { DeleteExtensionButton } from '@/components/actions/DeleteExtensionButton';
 import { EditExtensionButton } from '@/components/actions/EditExtensionButton';
 import { useTranslation } from '@/hooks/useTranslation';
+import { MoveExtensionButton } from '../actions/MoveExtensionButton';
 
 interface ExtensionTableProps {
   extensions: Extension[];
@@ -28,6 +29,7 @@ interface ExtensionTableProps {
 
 export function ExtensionTable({ extensions, localityName, localityId, zoneId, branchId, isAuthenticated }: ExtensionTableProps) {
   const { t } = useTranslation();
+  const isMissingExtensionsPage = localityId === 'MissingExtensionsFromFeed';
 
   const renderTableContent = () => {
     if (!extensions || extensions.length === 0) {
@@ -45,7 +47,9 @@ export function ExtensionTable({ extensions, localityName, localityId, zoneId, b
     return (
       <Table>
         <TableCaption>
-          {t('extensionListCaption', { localityName: localityName })}
+          {isMissingExtensionsPage 
+            ? t('missingExtensionsTableCaption') 
+            : t('extensionListCaption', { localityName: localityName })}
         </TableCaption>
         <TableHeader>
           <TableRow>
@@ -78,18 +82,24 @@ export function ExtensionTable({ extensions, localityName, localityId, zoneId, b
               {isAuthenticated && (
                 <TableCell className="text-right">
                   <div className="flex justify-end space-x-1">
-                    <EditExtensionButton 
-                      localityId={localityId} 
-                      extension={ext} 
-                      zoneId={zoneId}
-                      branchId={branchId}
-                    />
-                    <DeleteExtensionButton 
-                        localityId={localityId} 
-                        zoneId={zoneId} 
-                        branchId={branchId} 
-                        extension={ext} 
-                    />
+                    {isMissingExtensionsPage ? (
+                        <MoveExtensionButton extension={ext} />
+                    ) : (
+                      <>
+                        <EditExtensionButton 
+                          localityId={localityId} 
+                          extension={ext} 
+                          zoneId={zoneId}
+                          branchId={branchId}
+                        />
+                        <DeleteExtensionButton 
+                            localityId={localityId} 
+                            zoneId={zoneId} 
+                            branchId={branchId} 
+                            extension={ext} 
+                        />
+                      </>
+                    )}
                   </div>
                 </TableCell>
               )}
@@ -111,4 +121,3 @@ export function ExtensionTable({ extensions, localityName, localityId, zoneId, b
     </Card>
   );
 }
-

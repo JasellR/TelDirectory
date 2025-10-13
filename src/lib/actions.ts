@@ -587,6 +587,80 @@ export async function deleteExtensionAction(localityId: string, extensionName: s
     }
 }
 
+// ===================
+// Complex Actions
+// ===================
+
+export async function moveExtensionAction(
+  extensionToMove: Extension,
+  destination: {
+    mode: 'existing' | 'new';
+    zoneId: string;
+    localityId?: string;
+    newLocalityName?: string;
+  }
+): Promise<{ success: boolean; message: string; error?: string }> {
+  const authenticated = await isAuthenticated();
+  if (!authenticated) {
+    return { success: false, message: 'Authentication required.' };
+  }
+
+  const { mode, zoneId, localityId, newLocalityName } = destination;
+  const { name: extName, number: extNumber } = extensionToMove;
+  const paths = await getPaths();
+  const sourceFile = path.join(paths.DEPARTMENT_DIR, 'MissingExtensionsFromFeed.xml');
+  let destinationFile: string;
+  let destinationLocalityId: string;
+
+  try {
+    // Determine destination and create it if necessary
+    if (mode === 'new') {
+      if (!newLocalityName) {
+        return { success: false, message: 'New locality name is required.' };
+      }
+      destinationLocalityId = generateIdFromName(newLocalityName);
+      destinationFile = path.join(paths.DEPARTMENT_DIR, `${destinationLocalityId}.xml`);
+
+      // Create new locality file and add it to the zone
+      await addLocalityOrBranchAction({
+        zoneId,
+        itemName: newLocalityName,
+        itemType: 'locality'
+      });
+
+    } else { // 'existing' mode
+      if (!localityId) {
+        return { success: false, message: 'Destination locality ID is required.' };
+      }
+      destinationLocalityId = localityId;
+      destinationFile = path.join(paths.DEPARTMENT_DIR, `${destinationLocalityId}.xml`);
+    }
+
+    // Add extension to destination file
+    const destContent = await readAndParseXML(destinationFile) || { CiscoIPPhoneDirectory: { DirectoryEntry: [] } };
+    if (!destContent.CiscoIPPhoneDirectory) destContent.CiscoIPPhoneDirectory = {};
+    destContent.CiscoIPPhoneDirectory.DirectoryEntry = ensureArray(destContent.CiscoIPPhoneDirectory.DirectoryEntry);
+    destContent.CiscoIPPhoneDirectory.DirectoryEntry.push({ Name: extName, Telephone: extNumber });
+    await buildAndWriteXML(destinationFile, destContent);
+
+    // Remove extension from source file (MissingExtensionsFromFeed.xml)
+    const sourceContent = await readAndParseXML(sourceFile);
+    if (sourceContent?.CiscoIPPhoneDirectory?.DirectoryEntry) {
+      sourceContent.CiscoIPPhoneDirectory.DirectoryEntry = ensureArray(sourceContent.CiscoIPPhoneDirectory.DirectoryEntry).filter(
+        (entry: any) => entry.Telephone !== extNumber
+      );
+      await buildAndWriteXML(sourceFile, sourceContent);
+    }
+    
+    revalidatePath('/', 'layout');
+    return { success: true, message: `Extension ${extNumber} moved successfully.` };
+
+  } catch (e: any) {
+    console.error('[moveExtensionAction] Error:', e);
+    return { success: false, message: 'Failed to move extension.', error: e.message };
+  }
+}
+
 
 // ===================
 // Settings and Import Actions
