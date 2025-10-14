@@ -11,6 +11,8 @@ import Link from 'next/link';
 import { ArrowLeft } from 'lucide-react';
 import { getTranslations } from '@/lib/translations-server';
 import { isAuthenticated } from '@/lib/auth-actions';
+import { MoveExtensionsManager } from '@/components/directory/MoveExtensionsManager';
+
 
 interface LocalityPageProps {
   params: {
@@ -47,6 +49,8 @@ export default async function LocalityPage({ params: paramsPromise }: LocalityPa
   }
   
   const t = await getTranslations();
+  const isMissingExtensionsPage = zoneId === 'MissingExtensionsFromFeed';
+
 
   return (
     <div className="space-y-8">
@@ -67,7 +71,7 @@ export default async function LocalityPage({ params: paramsPromise }: LocalityPa
         </div>
         <div className="flex justify-between items-center mb-6">
           <h1 className="text-3xl font-bold text-foreground">Extensions in {localityDisplayName}</h1>
-          {userIsAuthenticated && (
+          {userIsAuthenticated && !isMissingExtensionsPage && (
             <AddExtensionButton 
               localityId={localityId} 
               localityName={localityDisplayName} 
@@ -75,13 +79,21 @@ export default async function LocalityPage({ params: paramsPromise }: LocalityPa
             />
           )}
         </div>
-        <ExtensionTable 
-          extensions={locality.extensions || []} 
-          localityName={localityDisplayName} 
-          localityId={localityId}
-          zoneId={zoneId}
-          isAuthenticated={userIsAuthenticated}
-        />
+
+        {isMissingExtensionsPage && userIsAuthenticated ? (
+            <MoveExtensionsManager 
+                extensions={locality.extensions || []} 
+                sourceLocalityId={localityId}
+            />
+        ) : (
+            <ExtensionTable 
+              extensions={locality.extensions || []} 
+              localityName={localityDisplayName} 
+              localityId={localityId}
+              zoneId={zoneId}
+              isAuthenticated={userIsAuthenticated}
+            />
+        )}
       </div>
 
       <Separator />

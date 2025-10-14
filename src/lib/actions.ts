@@ -972,9 +972,6 @@ export async function syncNamesFromXmlFeedAction(feedUrlsString: string): Promis
           }
       };
       await buildAndWriteXML(zoneFilePath, zoneContent);
-
-      // 3. Link Zone in MainMenu.xml - THIS PART IS NOW REMOVED
-      // This is the key change: do not modify MainMenu.xml
   }
 
 
@@ -990,6 +987,77 @@ export async function syncNamesFromXmlFeedAction(feedUrlsString: string): Promis
     missingExtensions,
   };
 }
+
+export async function moveExtensionsAction(params: {
+    extensionsToMove: Extension[];
+    sourceLocalityId: string;
+    destinationZoneId: string;
+    destinationLocalityId?: string;
+    newLocalityName?: string;
+}): Promise<{ success: boolean; message: string; error?: string }> {
+    const authenticated = await isAuthenticated();
+    if (!authenticated) {
+        return { success: false, message: "Authentication required." };
+    }
+
+    const { extensionsToMove, sourceLocalityId, destinationZoneId, destinationLocalityId, newLocalityName } = params;
+
+    if (!extensionsToMove || extensionsToMove.length === 0) {
+        return { success: false, message: "No extensions were selected to move." };
+    }
+
+    const paths = await getPaths();
+    let finalDestinationLocalityId = destinationLocalityId;
+
+    try {
+        // Step 1: Handle creation of a new locality if requested
+        if (newLocalityName) {
+            const addResult = await addLocalityOrBranchAction({
+                zoneId: destinationZoneId,
+                itemName: newLocalityName,
+                itemType: 'locality',
+            });
+            if (!addResult.success) {
+                throw new Error(`Failed to create new locality: ${addResult.message}`);
+            }
+            finalDestinationLocalityId = generateIdFromName(newLocalityName);
+        }
+
+        if (!finalDestinationLocalityId) {
+            throw new Error("Destination locality is not specified.");
+        }
+
+        // Step 2: Add extensions to the destination file
+        const destDeptPath = path.join(paths.DEPARTMENT_DIR, `${finalDestinationLocalityId}.xml`);
+        const destDept = await readAndParseXML(destDeptPath) || { CiscoIPPhoneDirectory: { DirectoryEntry: [] } };
+        if (!destDept.CiscoIPPhoneDirectory) destDept.CiscoIPPhoneDirectory = {};
+        destDept.CiscoIPPhoneDirectory.DirectoryEntry = ensureArray(destDept.CiscoIPPhoneDirectory.DirectoryEntry);
+        
+        const extensionsToAdd = extensionsToMove.map(ext => ({ Name: ext.department, Telephone: ext.number }));
+        destDept.CiscoIPPhoneDirectory.DirectoryEntry.push(...extensionsToAdd);
+        destDept.CiscoIPPhoneDirectory.DirectoryEntry.sort((a: any, b: any) => parseInt(a.Telephone, 10) - parseInt(b.Telephone, 10));
+        await buildAndWriteXML(destDeptPath, destDept);
+
+        // Step 3: Remove extensions from the source file
+        const sourceDeptPath = path.join(paths.DEPARTMENT_DIR, `${sourceLocalityId}.xml`);
+        const sourceDept = await readAndParseXML(sourceDeptPath);
+        if (sourceDept && sourceDept.CiscoIPPhoneDirectory) {
+            const numbersToMove = new Set(extensionsToMove.map(ext => ext.number));
+            sourceDept.CiscoIPPhoneDirectory.DirectoryEntry = ensureArray(sourceDept.CiscoIPPhoneDirectory.DirectoryEntry).filter(
+                (entry: any) => !numbersToMove.has(entry.Telephone)
+            );
+            await buildAndWriteXML(sourceDeptPath, sourceDept);
+        }
+        
+        revalidatePath('/', 'layout');
+        return { success: true, message: `${extensionsToMove.length} extensions moved successfully.` };
+
+    } catch (e: any) {
+        console.error(`[moveExtensionsAction] Error:`, e);
+        return { success: false, message: 'An error occurred while moving extensions.', error: e.message };
+    }
+}
+
 
 export async function syncFromActiveDirectoryAction(params: AdSyncFormValues): Promise<AdSyncResult> {
     const authenticated = await isAuthenticated();

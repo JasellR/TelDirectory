@@ -36,7 +36,10 @@ export function ExtensionTable({ extensions, localityName, localityId, zoneId, b
           <ListX className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
           <p className="text-xl font-semibold text-foreground">{t('emptyLocalityTitle') || 'No Extensions Here'}</p>
           <p className="text-muted-foreground">
-            {t('noExtensionsAvailable', { localityName: localityName })}
+            {isAuthenticated ? 
+                t('noExtensionsAvailable', { localityName: localityName }) :
+                t('noExtensionsInLocalityPublic', { localityName: localityName })
+            }
           </p>
         </div>
       );
@@ -115,4 +118,3 @@ export function ExtensionTable({ extensions, localityName, localityId, zoneId, b
     </Card>
   );
 }
-
