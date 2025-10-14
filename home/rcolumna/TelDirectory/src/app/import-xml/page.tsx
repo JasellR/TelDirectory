@@ -265,27 +265,27 @@ export default function SettingsPage() {
                     <Network className="h-6 w-6 text-primary" />
                     <CardTitle className="text-2xl">{t('networkConfigurationTitle')}</CardTitle>
                 </div>
-                <CardDescription>Configure the server address used to generate full URLs in XML files for IP phones.</CardDescription>
+                <CardDescription>{t('networkConfigurationDescription')}</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
-                        <Label htmlFor="host-ip">Host (IP Address or Domain)</Label>
+                        <Label htmlFor="host-ip">{t('hostIpLabel')}</Label>
                         <Input
                             id="host-ip"
                             value={networkConfig.host}
                             onChange={(e) => setNetworkConfig(prev => ({...prev, host: e.target.value}))}
-                            placeholder="e.g., 192.168.1.100"
+                            placeholder={t('hostIpPlaceholder')}
                             disabled={isUrlUpdatePending}
                         />
                     </div>
                     <div>
-                        <Label htmlFor="port">Port</Label>
+                        <Label htmlFor="port">{t('portLabel')}</Label>
                         <Input
                             id="port"
                             value={networkConfig.port}
                             onChange={(e) => setNetworkConfig(prev => ({...prev, port: e.target.value}))}
-                            placeholder="e.g., 3000 (leave blank for port 80)"
+                            placeholder={t('portPlaceholder')}
                             disabled={isUrlUpdatePending}
                         />
                     </div>
@@ -293,7 +293,7 @@ export default function SettingsPage() {
                  <div className="flex items-center justify-between mt-2">
                     <p className="text-xs text-muted-foreground flex items-center gap-1">
                         <Info className="h-3 w-3" />
-                        This will regenerate all menu XMLs with full URLs.
+                        {t('regenerateUrlsHint')}
                     </p>
                     <Button onClick={handleUpdateXmlUrls} disabled={isUrlUpdatePending}>
                         {isUrlUpdatePending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <RefreshCw className="mr-2 h-4 w-4"/>}
