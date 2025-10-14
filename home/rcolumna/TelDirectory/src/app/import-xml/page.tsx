@@ -5,7 +5,7 @@ import { useState, useEffect, useTransition } from 'react';
 import { Breadcrumbs } from '@/components/layout/Breadcrumbs';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { UploadCloud, Palette, Languages, Settings as SettingsIcon, FileCode, Info, FolderCog, CheckCircle, AlertCircleIcon, UserCog, Rss, RefreshCw, ListChecks, AlertTriangle, FileWarning, FileUp, Tv, Users } from 'lucide-react';
+import { UploadCloud, Palette, Languages, Settings as SettingsIcon, FileCode, Info, FolderCog, CheckCircle, AlertCircleIcon, UserCog, Rss, RefreshCw, ListChecks, AlertTriangle, FileWarning, Tv, Users, FileUp } from 'lucide-react';
 import { FileUploadForm } from '@/components/import/FileUploadForm';
 import { syncNamesFromXmlFeedAction, updateDirectoryRootPathAction, updateXmlUrlsAction, importExtensionsFromCsvAction, syncFromActiveDirectoryAction } from '@/lib/actions';
 import type { SyncResult, AdSyncResult, CsvImportResult, AdSyncFormValues, UserSession } from '@/types';
