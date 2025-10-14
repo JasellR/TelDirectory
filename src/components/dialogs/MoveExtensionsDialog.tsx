@@ -46,6 +46,7 @@ export function MoveExtensionsDialog({ isOpen, onClose, extensionsToMove, source
 
   useEffect(() => {
     async function fetchInitialData() {
+      if (!isOpen) return;
       setIsLoading(true);
       try {
         const fetchedZones = await getZonesAction();
@@ -57,10 +58,8 @@ export function MoveExtensionsDialog({ isOpen, onClose, extensionsToMove, source
       }
       setIsLoading(false);
     }
-    if (isOpen) {
-      fetchInitialData();
-    }
-  }, [isOpen, toast]);
+    fetchInitialData();
+  }, [isOpen]);
 
   useEffect(() => {
     async function fetchLocalities() {
@@ -80,11 +79,11 @@ export function MoveExtensionsDialog({ isOpen, onClose, extensionsToMove, source
       setIsLoading(false);
     }
     fetchLocalities();
-  }, [selectedZoneId, toast]);
+  }, [selectedZoneId]);
 
   const handleZoneChange = (zoneId: string) => {
     setSelectedZoneId(zoneId);
-    setSelectedLocalityId('');
+    setSelectedLocalityId(''); // Reset locality selection
     setNewLocalityName('');
   };
   
@@ -169,7 +168,7 @@ export function MoveExtensionsDialog({ isOpen, onClose, extensionsToMove, source
           )}
 
           {selectedLocalityId === CREATE_NEW_LOCALITY_VALUE && (
-            <div className="space-y-2 pl-2 border-l-2 border-primary">
+            <div className="space-y-2 pl-2 border-l-2 border-primary animate-in fade-in-0">
               <Label htmlFor="new-locality-name">{t('newLocalityNameLabel')}</Label>
               <Input
                 id="new-locality-name"
