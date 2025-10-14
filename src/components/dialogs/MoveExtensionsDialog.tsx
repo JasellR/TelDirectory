@@ -60,7 +60,7 @@ export function MoveExtensionsDialog({ isOpen, onClose, extensionsToMove, source
     if (isOpen) {
       fetchInitialData();
     }
-  }, [isOpen, t, toast]);
+  }, [isOpen]);
 
   useEffect(() => {
     async function fetchLocalities() {
@@ -80,7 +80,7 @@ export function MoveExtensionsDialog({ isOpen, onClose, extensionsToMove, source
       setIsLoading(false);
     }
     fetchLocalities();
-  }, [selectedZoneId, t, toast]);
+  }, [selectedZoneId]);
 
   const handleZoneChange = (zoneId: string) => {
     setSelectedZoneId(zoneId);
