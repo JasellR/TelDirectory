@@ -226,16 +226,15 @@ async function repaginateMenuItems(parentFilePath: string, menuName: string) {
             const pageNum = i + 1;
             const pageName = `${menuName}${pageNum > 1 ? pageNum : ''}`;
             const pagePath = path.join(baseDir, `${pageName}.xml`);
-            const webPathBase = path.basename(parentFilePath, '.xml').replace(/\d+$/, '');
 
             if (i > 0) { // Add "<< Anterior" button
                 const prevPageName = `${menuName}${pageNum - 1 > 1 ? pageNum - 1 : ''}`;
-                const prevUrl = constructServiceUrl(protocol, host, port, rootDirName, `${webPathBase}/${prevPageName}`);
+                const prevUrl = constructServiceUrl(protocol, host, port, rootDirName, `zonebranch/${prevPageName}.xml`);
                 pageItems.unshift({ Name: '<< Anterior', URL: prevUrl });
             }
             if (i < totalPages - 1) { // Add "Siguiente >>" button
                 const nextPageName = `${menuName}${pageNum + 1}`;
-                const nextUrl = constructServiceUrl(protocol, host, port, rootDirName, `${webPathBase}/${nextPageName}`);
+                const nextUrl = constructServiceUrl(protocol, host, port, rootDirName, `zonebranch/${nextPageName}.xml`);
                 pageItems.push({ Name: 'Siguiente >>', URL: nextUrl });
             }
 
@@ -767,20 +766,14 @@ export async function updateXmlUrlsAction(host: string, port: string): Promise<{
             const itemType = getItemTypeFromUrl(urlString);
             const itemId = extractIdFromUrl(urlString);
 
-            if (itemType === 'zone' || itemType === 'branch' || itemType === 'locality' || itemType === 'pagination') {
-                const subDirectory = itemTypeToDir[itemType as 'zone' | 'branch' | 'locality'] || itemTypeToDir['zone'];
-                
-                let webPathBase = path.basename(filePath, '.xml').replace(/\d+$/, '');
-                
-                if (itemType === 'pagination') {
-                    // For web pagination, we generate a clean URL, which is the base name plus the item ID
-                    const webPath = `${webPathBase}/${itemId}`;
-                     item.URL = constructServiceUrl(protocol, host, port, rootDirName, webPath);
-                } else {
-                     let relativePath = `${subDirectory}/${itemId}.xml`;
-                     item.URL = constructServiceUrl(protocol, host, port, rootDirName, relativePath);
-                }
-
+            if (item.Name === 'Siguiente >>' || item.Name === '<< Anterior') {
+                const subDirectory = 'zonebranch';
+                const relativePath = `${subDirectory}/${itemId}.xml`;
+                item.URL = constructServiceUrl(protocol, host, port, rootDirName, relativePath);
+            } else if (itemType === 'zone' || itemType === 'branch' || itemType === 'locality') {
+                const subDirectory = itemTypeToDir[itemType as 'zone' | 'branch' | 'locality'];
+                let relativePath = `${subDirectory}/${itemId}.xml`;
+                item.URL = constructServiceUrl(protocol, host, port, rootDirName, relativePath);
             } else {
                  console.warn(`[updateXmlUrlsAction] Could not process URL: ${item.URL}. It might be malformed or pointing to an unknown type.`);
             }
