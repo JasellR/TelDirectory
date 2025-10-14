@@ -444,6 +444,17 @@ export async function addLocalityOrBranchAction(params: {
     const newUrl = constructServiceUrl(protocol, host, port, 'directory', newUrlPath);
 
     try {
+        // --- START VALIDATION ---
+        const parentMenuForValidation = await readAndParseXML(parentMenuPath);
+        if (parentMenuForValidation?.CiscoIPPhoneMenu) {
+            const existingItems = ensureArray(parentMenuForValidation.CiscoIPPhoneMenu.MenuItem);
+            const nameExists = existingItems.some(item => item.Name.toLowerCase() === itemName.trim().toLowerCase());
+            if (nameExists) {
+                return { success: false, message: `An item named "${itemName}" already exists in this location.` };
+            }
+        }
+        // --- END VALIDATION ---
+
         // 1. Create the new item's own XML file (empty but valid)
         const newItemContent = itemType === 'branch' 
             ? { CiscoIPPhoneMenu: { Title: itemName, Prompt: 'Select a Locality' } }
@@ -1027,7 +1038,8 @@ export async function moveExtensionsAction(params: {
                 itemType: 'locality',
             });
             if (!addResult.success) {
-                throw new Error(`Failed to create new locality: ${addResult.message}`);
+                // Pass the specific error message from the sub-action
+                return { success: false, message: addResult.message, error: addResult.error };
             }
             finalDestinationLocalityId = generateIdFromName(newLocalityName);
         }

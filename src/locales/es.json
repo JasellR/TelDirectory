@@ -180,7 +180,6 @@
   "extensionLabel": "Extensión",
   "nameLabel": "Nombre",
   "sourceFeedLabel": "Feed de Origen",
-
   "noMissingExtensionsTitle": "Todas las Extensiones Contabilizadas",
   "noMissingExtensionsDescription": "Actualmente no hay extensiones de los feeds de sincronización que falten en los directorios locales.",
   "manageMissingExtensionsTitle": "Gestionar Extensiones Faltantes",
@@ -195,12 +194,15 @@
   "selectZonePlaceholder": "Seleccione una zona...",
   "destinationLocalityLabel": "Localidad/Rama de Destino",
   "selectLocalityPlaceholder": "Seleccione una localidad o rama...",
-  "createNewLocalityOption": "--- Crear Nueva Localidad ---",
+  "createNewLocalityOption": "Crear Nueva Localidad",
   "newLocalityNamePlaceholder": "Ej: Nuevo Departamento de Ventas",
   "moveButtonLabel": "Mover Extensiones",
   "fetchZonesError": "No se pudieron cargar las zonas del directorio.",
   "fetchLocalitiesError": "No se pudieron cargar las localidades para la zona seleccionada.",
   "zoneSelectionRequired": "Debe seleccionar una zona de destino.",
   "localitySelectionRequired": "Debe seleccionar una localidad de destino o elegir crear una nueva.",
-  "newLocalityNameRequired": "Por favor, ingrese un nombre para la nueva localidad."
+  "newLocalityNameRequired": "Por favor, ingrese un nombre para la nueva localidad.",
+  "moveToExistingLabel": "Mover a Existente",
+  "existingLocalitySelectionRequired": "Debe seleccionar una localidad o rama existente.",
+  "localityExistsError": "Ya existe una localidad o rama llamada \"{localityName}\" en esta zona."
 }

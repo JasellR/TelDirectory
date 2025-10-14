@@ -19,30 +19,28 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
 import { getZonesAction, getZoneItemsAction, moveExtensionsAction } from '@/lib/actions';
-import { Loader2 } from 'lucide-react';
+import { Loader2, AlertTriangle } from 'lucide-react';
 import { useRouter } from 'next/navigation';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 
-interface MoveExtensionsDialogProps {
-  isOpen: boolean;
-  onClose: () => void;
-  extensionsToMove: Extension[];
-  sourceLocalityId: string;
-}
-
-const CREATE_NEW_LOCALITY_VALUE = '__CREATE_NEW__';
+type MoveMode = 'existing' | 'create';
 
 export function MoveExtensionsDialog({ isOpen, onClose, extensionsToMove, sourceLocalityId }: MoveExtensionsDialogProps) {
   const { t } = useTranslation();
   const { toast } = useToast();
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
+  const [isLoading, setIsLoading] = useState(true);
 
   const [zones, setZones] = useState<Omit<Zone, 'items'>[]>([]);
   const [zoneItems, setZoneItems] = useState<ZoneItem[]>([]);
+
   const [selectedZoneId, setSelectedZoneId] = useState('');
-  const [selectedItemId, setSelectedItemId] = useState(''); // Can be locality or branch
+  const [moveMode, setMoveMode] = useState<MoveMode>('existing');
+  const [selectedItemId, setSelectedItemId] = useState('');
   const [newLocalityName, setNewLocalityName] = useState('');
-  const [isLoading, setIsLoading] = useState(true);
+  const [nameError, setNameError] = useState<string | null>(null);
 
   useEffect(() => {
     async function fetchInitialData() {
@@ -79,17 +77,32 @@ export function MoveExtensionsDialog({ isOpen, onClose, extensionsToMove, source
     fetchZoneItems();
   }, [selectedZoneId]);
 
+  useEffect(() => {
+    if (moveMode === 'create' && newLocalityName.trim()) {
+      const nameExists = zoneItems.some(item => item.name.toLowerCase() === newLocalityName.trim().toLowerCase());
+      if (nameExists) {
+        setNameError(t('localityExistsError', { localityName: newLocalityName.trim() }));
+      } else {
+        setNameError(null);
+      }
+    } else {
+      setNameError(null);
+    }
+  }, [newLocalityName, moveMode, zoneItems, t]);
+
+
   const handleZoneChange = (zoneId: string) => {
     setSelectedZoneId(zoneId);
     setSelectedItemId('');
     setNewLocalityName('');
+    setNameError(null);
   };
   
-  const handleItemChange = (itemId: string) => {
-      setSelectedItemId(itemId);
-      if (itemId !== CREATE_NEW_LOCALITY_VALUE) {
-          setNewLocalityName('');
-      }
+  const handleModeChange = (mode: MoveMode) => {
+      setMoveMode(mode);
+      setSelectedItemId('');
+      setNewLocalityName('');
+      setNameError(null);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -99,26 +112,36 @@ export function MoveExtensionsDialog({ isOpen, onClose, extensionsToMove, source
         toast({ title: t('errorTitle'), description: t('zoneSelectionRequired'), variant: 'destructive'});
         return;
     }
-    if (!selectedItemId) {
-        toast({ title: t('errorTitle'), description: t('localitySelectionRequired'), variant: 'destructive'});
-        return;
+    
+    if (moveMode === 'existing' && !selectedItemId) {
+      toast({ title: t('errorTitle'), description: t('existingLocalitySelectionRequired'), variant: 'destructive'});
+      return;
     }
-    if (selectedItemId === CREATE_NEW_LOCALITY_VALUE && !newLocalityName.trim()) {
-        toast({ title: t('errorTitle'), description: t('newLocalityNameRequired'), variant: 'destructive'});
+    
+    if (moveMode === 'create' && (!newLocalityName.trim() || nameError)) {
+        toast({ title: t('errorTitle'), description: nameError || t('newLocalityNameRequired'), variant: 'destructive'});
         return;
     }
     
     startTransition(async () => {
         const selectedItem = zoneItems.find(item => item.id === selectedItemId);
         const isBranch = selectedItem?.type === 'branch';
+        
+        let destinationLocalityId = (moveMode === 'existing' && !isBranch) ? selectedItemId : undefined;
+        let destinationBranchId = (moveMode === 'existing' && isBranch) ? selectedItemId : undefined;
+        
+        // If creating a new locality under an existing branch
+        if (moveMode === 'create' && selectedItemId && isBranch) {
+            destinationBranchId = selectedItemId;
+        }
 
         const result = await moveExtensionsAction({
             extensionsToMove,
             sourceLocalityId,
             destinationZoneId: selectedZoneId,
-            destinationLocalityId: !isBranch && selectedItemId !== CREATE_NEW_LOCALITY_VALUE ? selectedItemId : undefined,
-            newLocalityName: newLocalityName.trim() || undefined,
-            destinationBranchId: isBranch ? selectedItemId : undefined,
+            destinationLocalityId: destinationLocalityId,
+            newLocalityName: moveMode === 'create' ? newLocalityName.trim() : undefined,
+            destinationBranchId: destinationBranchId,
         });
 
         if (result.success) {
@@ -126,27 +149,30 @@ export function MoveExtensionsDialog({ isOpen, onClose, extensionsToMove, source
             router.refresh();
             onClose();
         } else {
-            toast({ title: t('errorTitle'), description: result.message + (result.error ? ` ${t('detailsLabel')}: ${result.error}`: ''), variant: 'destructive' });
+            toast({ title: t('errorTitle'), description: result.message + (result.error ? ` ${t('detailsLabel')}: ${result.error}`: ''), variant: 'destructive', duration: 8000 });
         }
     });
   };
   
-  const isCreatingNewInBranch = zoneItems.find(item => item.id === selectedItemId)?.type === 'branch' && newLocalityName.trim() !== '';
-
-  if (!isOpen) return null;
+  const isSubmitDisabled = 
+    isPending ||
+    !selectedZoneId ||
+    (moveMode === 'existing' && !selectedItemId) ||
+    (moveMode === 'create' && (!newLocalityName.trim() || !!nameError));
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent>
+      <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle>{t('moveExtensionsDialogTitle')}</DialogTitle>
           <DialogDescription>{t('moveExtensionsDialogDescription', { count: extensionsToMove.length })}</DialogDescription>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4 pt-4">
+          
           <div className="space-y-2">
             <Label htmlFor="dest-zone">{t('destinationZoneLabel')}</Label>
             <Select onValueChange={handleZoneChange} value={selectedZoneId} disabled={isPending || isLoading}>
-              <SelectTrigger id="dest-zone">
+              <SelectTrigger id="dest-zone" className="w-full">
                 <SelectValue placeholder={t('selectZonePlaceholder')} />
               </SelectTrigger>
               <SelectContent>
@@ -156,36 +182,54 @@ export function MoveExtensionsDialog({ isOpen, onClose, extensionsToMove, source
           </div>
 
           {selectedZoneId && (
-            <div className="space-y-2">
-              <Label htmlFor="dest-item">{t('destinationLocalityLabel')}</Label>
-              <Select onValueChange={handleItemChange} value={selectedItemId} disabled={isPending || isLoading || !selectedZoneId}>
-                <SelectTrigger id="dest-item">
-                  <SelectValue placeholder={t('selectLocalityPlaceholder')} />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value={CREATE_NEW_LOCALITY_VALUE}>{t('createNewLocalityOption')}</SelectItem>
-                  <hr className="my-1" />
-                  {zoneItems.map(item => <SelectItem key={item.id} value={item.id}>{item.name} ({item.type})</SelectItem>)}
-                </SelectContent>
-              </Select>
-            </div>
-          )}
-          
-          {(selectedItemId === CREATE_NEW_LOCALITY_VALUE || isCreatingNewInBranch) && (
-            <div className="space-y-2 pl-2 border-l-2 border-primary animate-in fade-in-0">
-              <Label htmlFor="new-locality-name">
-                {isCreatingNewInBranch
-                    ? `New Locality Name in Branch '${zoneItems.find(item => item.id === selectedItemId)?.name}'`
-                    : t('newLocalityNameLabel')
-                }
-              </Label>
-              <Input
-                id="new-locality-name"
-                placeholder={t('newLocalityNamePlaceholder')}
-                value={newLocalityName}
-                onChange={e => setNewLocalityName(e.target.value)}
-                disabled={isPending}
-              />
+            <div className="space-y-4 animate-in fade-in-0 duration-300">
+                <RadioGroup value={moveMode} onValueChange={handleModeChange} className="grid grid-cols-2 gap-4">
+                    <div>
+                        <RadioGroupItem value="existing" id="mode-existing" className="peer sr-only" />
+                        <Label htmlFor="mode-existing" className="flex flex-col items-center justify-between rounded-md border-2 border-muted bg-popover p-4 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary">
+                            {t('moveToExistingLabel')}
+                        </Label>
+                    </div>
+                     <div>
+                        <RadioGroupItem value="create" id="mode-create" className="peer sr-only" />
+                        <Label htmlFor="mode-create" className="flex flex-col items-center justify-between rounded-md border-2 border-muted bg-popover p-4 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary">
+                            {t('createNewLocalityOption')}
+                        </Label>
+                    </div>
+                </RadioGroup>
+
+                {moveMode === 'existing' && (
+                    <div className="space-y-2 animate-in fade-in-0">
+                        <Label htmlFor="dest-item">{t('destinationLocalityLabel')}</Label>
+                        <Select onValueChange={setSelectedItemId} value={selectedItemId} disabled={isPending || isLoading || !selectedZoneId}>
+                            <SelectTrigger id="dest-item" className="w-full">
+                            <SelectValue placeholder={t('selectLocalityPlaceholder')} />
+                            </SelectTrigger>
+                            <SelectContent>
+                            {zoneItems.map(item => <SelectItem key={item.id} value={item.id}>{item.name} ({item.type})</SelectItem>)}
+                            </SelectContent>
+                        </Select>
+                    </div>
+                )}
+                
+                {moveMode === 'create' && (
+                  <div className="space-y-2 animate-in fade-in-0">
+                    <Label htmlFor="new-locality-name">{t('newLocalityNameLabel')}</Label>
+                    <Input
+                      id="new-locality-name"
+                      placeholder={t('newLocalityNamePlaceholder')}
+                      value={newLocalityName}
+                      onChange={e => setNewLocalityName(e.target.value)}
+                      disabled={isPending}
+                    />
+                    {nameError && (
+                      <Alert variant="destructive" className="p-2 text-xs flex items-center gap-2">
+                        <AlertTriangle className="h-4 w-4" />
+                        <AlertDescription>{nameError}</AlertDescription>
+                      </Alert>
+                    )}
+                  </div>
+                )}
             </div>
           )}
 
@@ -193,7 +237,7 @@ export function MoveExtensionsDialog({ isOpen, onClose, extensionsToMove, source
             <DialogClose asChild>
               <Button type="button" variant="outline" disabled={isPending}>{t('cancelButton')}</Button>
             </DialogClose>
-            <Button type="submit" disabled={isPending || !selectedZoneId || !selectedItemId || (selectedItemId === CREATE_NEW_LOCALITY_VALUE && !newLocalityName.trim())}>
+            <Button type="submit" disabled={isSubmitDisabled}>
               {isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               {t('moveButtonLabel')}
             </Button>
@@ -202,4 +246,11 @@ export function MoveExtensionsDialog({ isOpen, onClose, extensionsToMove, source
       </DialogContent>
     </Dialog>
   );
+}
+
+interface MoveExtensionsDialogProps {
+  isOpen: boolean;
+  onClose: () => void;
+  extensionsToMove: Extension[];
+  sourceLocalityId: string;
 }
