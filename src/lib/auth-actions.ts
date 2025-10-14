@@ -1,3 +1,4 @@
+
 'use server';
 
 import { cookies } from 'next/headers';
@@ -79,6 +80,7 @@ export async function getCurrentUser(): Promise<UserSession | null> {
   const cookieStore = await cookies();
   const cookieValue = cookieStore.get(AUTH_COOKIE_NAME)?.value;
   
+  // Prevent parsing if cookie is empty or undefined
   if (!cookieValue) {
     return null;
   }
@@ -108,3 +110,4 @@ export async function getCurrentUser(): Promise<UserSession | null> {
     return null;
   }
 }
+

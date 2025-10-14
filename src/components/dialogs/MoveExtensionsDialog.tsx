@@ -130,7 +130,7 @@ export function MoveExtensionsDialog({ isOpen, onClose, extensionsToMove, source
         let destinationLocalityId = (moveMode === 'existing' && !isBranch) ? selectedItemId : undefined;
         let destinationBranchId = (moveMode === 'existing' && isBranch) ? selectedItemId : undefined;
         
-        // If creating a new locality under an existing branch
+        // If creating a new locality under an existing branch (if a branch was selected in the 'existing' dropdown before switching to create)
         if (moveMode === 'create' && selectedItemId && isBranch) {
             destinationBranchId = selectedItemId;
         }
