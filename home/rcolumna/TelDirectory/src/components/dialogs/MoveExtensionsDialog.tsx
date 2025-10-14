@@ -20,7 +20,7 @@ import { useRouter } from 'next/navigation';
 import { Loader2, FolderPlus, MapPin } from 'lucide-react';
 import { useTranslation } from '@/hooks/useTranslation';
 import type { Extension, Zone, ZoneItem } from '@/types';
-import { getZones, getZoneItems } from '@/lib/data';
+import { getZonesAction, getZoneItemsAction } from '@/lib/server-data';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 
@@ -48,7 +48,7 @@ export function MoveExtensionsDialog({ isOpen, onClose, extensionsToMove, source
   useEffect(() => {
     async function fetchInitialData() {
       if (isOpen) {
-        const allZones = await getZones();
+        const allZones = await getZonesAction();
         // Filter out the 'Missing Extensions' zone itself as a destination
         setZones(allZones.filter(z => z.id !== 'MissingExtensionsFromFeed'));
       }
@@ -59,7 +59,7 @@ export function MoveExtensionsDialog({ isOpen, onClose, extensionsToMove, source
   useEffect(() => {
     async function fetchLocalities() {
       if (selectedZoneId) {
-        const items = await getZoneItems(selectedZoneId);
+        const items = await getZoneItemsAction(selectedZoneId);
         // We can only move to localities, so we filter for them
         setLocalities(items.filter(item => item.type === 'locality'));
         setSelectedLocalityId(''); // Reset locality selection when zone changes
