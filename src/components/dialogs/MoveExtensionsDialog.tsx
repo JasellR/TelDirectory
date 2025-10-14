@@ -60,7 +60,7 @@ export function MoveExtensionsDialog({ isOpen, onClose, extensionsToMove, source
     if (isOpen) {
       fetchInitialData();
     }
-  }, [isOpen]);
+  }, [isOpen, toast]);
 
   useEffect(() => {
     async function fetchLocalities() {
@@ -80,7 +80,7 @@ export function MoveExtensionsDialog({ isOpen, onClose, extensionsToMove, source
       setIsLoading(false);
     }
     fetchLocalities();
-  }, [selectedZoneId]);
+  }, [selectedZoneId, toast]);
 
   const handleZoneChange = (zoneId: string) => {
     setSelectedZoneId(zoneId);
@@ -185,7 +185,7 @@ export function MoveExtensionsDialog({ isOpen, onClose, extensionsToMove, source
             <DialogClose asChild>
               <Button type="button" variant="outline" disabled={isPending}>{t('cancelButton')}</Button>
             </DialogClose>
-            <Button type="submit" disabled={isPending || !selectedZoneId || !selectedLocalityId}>
+            <Button type="submit" disabled={isPending || !selectedZoneId || !selectedLocalityId || (selectedLocalityId === CREATE_NEW_LOCALITY_VALUE && !newLocalityName.trim())}>
               {isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               {t('moveButtonLabel')}
             </Button>
