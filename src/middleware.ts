@@ -2,7 +2,6 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import type { UserSession } from '@/types';
-import { getDb } from './lib/db';
 
 const AUTH_COOKIE_NAME = 'teldirectory-session';
 const PROTECTED_ROUTES = ['/import-xml'];
@@ -50,6 +49,6 @@ export async function middleware(request: NextRequest) {
 
 export const config = {
   // The matcher is updated to correctly exclude static files and API routes
-  // while covering all other pages.
-  matcher: ['/((?!api|_next/static|_next/image|favicon.ico|.*\\.xml$).*)'],
+  // while covering all other pages. It now also explicitly ignores /directory/ paths.
+  matcher: ['/((?!api|_next/static|_next/image|favicon.ico|.*\\.xml|directory/).*)'],
 };
