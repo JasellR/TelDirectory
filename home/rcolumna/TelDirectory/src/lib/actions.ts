@@ -88,13 +88,13 @@ async function readAndParseXML(filePath: string): Promise<any> {
 
 async function buildAndWriteXML(filePath: string, jsObject: any): Promise<void> {
    const builder = new Builder({
-    headless: false,
-    renderOpts: { pretty: false }, // Set pretty to false
+    headless: true, // No XML declaration by default
+    renderOpts: { pretty: false, indent: '', newline: '' },
   });
-
+  
   const xmlString = builder.buildObject(jsObject);
-  // Ensure the declaration is on the same line
-  const finalXmlString = '<?xml version="1.0" encoding="UTF-8" standalone="no"?>' + xmlString.replace(/(\r\n|\n|\r)/gm,"");
+  // Manually add the declaration to ensure it's on the first line and there's no newline after it.
+  const finalXmlString = '<?xml version="1.0" encoding="UTF-8" standalone="no"?>' + xmlString;
 
 
   await fs.mkdir(path.dirname(filePath), { recursive: true });
@@ -214,6 +214,9 @@ async function repaginateMenuItems(parentFilePath: string, menuName: string) {
         await fs.unlink(file).catch(e => console.warn(`Could not delete old pagination file ${file}: ${e.message}`));
     }
     
+    // Sort all collected items alphabetically before repaginating
+    allItems.sort((a, b) => a.Name.localeCompare(b.Name));
+
     // 3. Repaginate if necessary
     const { protocol, host, port, rootDirName } = await getServiceUrlComponents();
     if (allItems.length > PAGINATION_LIMIT) {
@@ -223,15 +226,16 @@ async function repaginateMenuItems(parentFilePath: string, menuName: string) {
             const pageNum = i + 1;
             const pageName = `${menuName}${pageNum > 1 ? pageNum : ''}`;
             const pagePath = path.join(baseDir, `${pageName}.xml`);
+            const webPathBase = path.basename(parentFilePath, '.xml').replace(/\d+$/, '');
 
             if (i > 0) { // Add "<< Anterior" button
                 const prevPageName = `${menuName}${pageNum - 1 > 1 ? pageNum - 1 : ''}`;
-                const prevUrl = constructServiceUrl(protocol, host, port, rootDirName, `zonebranch/${prevPageName}.xml`);
+                const prevUrl = constructServiceUrl(protocol, host, port, rootDirName, `${webPathBase}/${prevPageName}`);
                 pageItems.unshift({ Name: '<< Anterior', URL: prevUrl });
             }
             if (i < totalPages - 1) { // Add "Siguiente >>" button
                 const nextPageName = `${menuName}${pageNum + 1}`;
-                const nextUrl = constructServiceUrl(protocol, host, port, rootDirName, `zonebranch/${nextPageName}.xml`);
+                const nextUrl = constructServiceUrl(protocol, host, port, rootDirName, `${webPathBase}/${nextPageName}`);
                 pageItems.push({ Name: 'Siguiente >>', URL: nextUrl });
             }
 
@@ -287,13 +291,15 @@ export async function addZoneAction(zoneName: string): Promise<{ success: boolea
     };
     await buildAndWriteXML(newZoneBranchFilePath, newZoneBranchContent);
 
-    // 2. Add the new zone to MAINMENU.xml
+    // 2. Add the new zone to MAINMENU.xml and sort
     const mainMenu = await readAndParseXML(mainMenuPath) || { CiscoIPPhoneMenu: { MenuItem: [] } };
     mainMenu.CiscoIPPhoneMenu.MenuItem = ensureArray(mainMenu.CiscoIPPhoneMenu.MenuItem);
     mainMenu.CiscoIPPhoneMenu.MenuItem.push({
       Name: zoneName,
       URL: newZoneURL
     });
+    // Sort alphabetically by Name
+    mainMenu.CiscoIPPhoneMenu.MenuItem.sort((a: any, b: any) => a.Name.localeCompare(b.Name));
     await buildAndWriteXML(mainMenuPath, mainMenu);
 
     revalidatePath('/');
@@ -429,11 +435,13 @@ export async function addLocalityOrBranchAction(params: {
             : { CiscoIPPhoneDirectory: {} }; // No Title or Prompt for department files
         await buildAndWriteXML(newItemPath, newItemContent);
         
-        // 2. Add the new item to its parent menu file
+        // 2. Add the new item to its parent menu file and sort
         const parentMenu = await readAndParseXML(parentMenuPath);
         if (!parentMenu.CiscoIPPhoneMenu) parentMenu.CiscoIPPhoneMenu = {};
         parentMenu.CiscoIPPhoneMenu.MenuItem = ensureArray(parentMenu.CiscoIPPhoneMenu.MenuItem);
         parentMenu.CiscoIPPhoneMenu.MenuItem.push({ Name: itemName, URL: newUrl });
+        // Sort alphabetically by Name
+        parentMenu.CiscoIPPhoneMenu.MenuItem.sort((a: any, b: any) => a.Name.localeCompare(b.Name));
         await buildAndWriteXML(parentMenuPath, parentMenu);
 
         // 3. Repaginate if the parent is ZonaMetropolitana
@@ -502,7 +510,7 @@ export async function editLocalityOrBranchAction(params: {
         // Department files don't have a title, so no 'else if' needed
         await buildAndWriteXML(newItemPath, itemContent);
 
-        // 3. Update the item in its parent menu
+        // 3. Update the item in its parent menu and sort
         const parentMenu = await readAndParseXML(parentMenuPath);
         let itemUpdated = false;
         parentMenu.CiscoIPPhoneMenu.MenuItem = ensureArray(parentMenu.CiscoIPPhoneMenu.MenuItem).map((item: any) => {
@@ -514,6 +522,7 @@ export async function editLocalityOrBranchAction(params: {
             return item;
         });
         if (itemUpdated) {
+            parentMenu.CiscoIPPhoneMenu.MenuItem.sort((a: any, b: any) => a.Name.localeCompare(b.Name));
             await buildAndWriteXML(parentMenuPath, parentMenu);
         }
 
@@ -620,6 +629,13 @@ export async function addExtensionAction(localityId: string, newName: string, ne
             Telephone: newTelephone
         });
         
+        // Sort numerically by Telephone
+        department.CiscoIPPhoneDirectory.DirectoryEntry.sort((a: any, b: any) => {
+            const numA = parseInt(a.Telephone, 10);
+            const numB = parseInt(b.Telephone, 10);
+            return numA - numB;
+        });
+
         await buildAndWriteXML(departmentFilePath, department);
         
         revalidatePath(`/`); // Revalidate all paths as extension could be in any zone/branch
@@ -662,6 +678,12 @@ export async function editExtensionAction(params: {
 
         if (extensionFoundAndUpdated) {
             department.CiscoIPPhoneDirectory.DirectoryEntry = updatedEntries;
+             // Sort numerically by Telephone after updating
+            department.CiscoIPPhoneDirectory.DirectoryEntry.sort((a: any, b: any) => {
+                const numA = parseInt(a.Telephone, 10);
+                const numB = parseInt(b.Telephone, 10);
+                return numA - numB;
+            });
             await buildAndWriteXML(departmentFilePath, department);
             revalidatePath(`/`);
             return { success: true, message: `Extension updated to "${newExtensionName}".` };
@@ -748,13 +770,14 @@ export async function updateXmlUrlsAction(host: string, port: string): Promise<{
             if (itemType === 'zone' || itemType === 'branch' || itemType === 'locality' || itemType === 'pagination') {
                 const subDirectory = itemTypeToDir[itemType as 'zone' | 'branch' | 'locality'] || itemTypeToDir['zone'];
                 
-                let relativePath = `${subDirectory}/${itemId}.xml`;
+                let webPathBase = path.basename(filePath, '.xml').replace(/\d+$/, '');
                 
-                if(itemType === 'pagination') {
-                    // For web pagination, we generate a clean URL
-                    const webPath = `${path.basename(filePath, '.xml').replace(/\d+$/, '')}/${itemId}`;
+                if (itemType === 'pagination') {
+                    // For web pagination, we generate a clean URL, which is the base name plus the item ID
+                    const webPath = `${webPathBase}/${itemId}`;
                      item.URL = constructServiceUrl(protocol, host, port, rootDirName, webPath);
                 } else {
+                     let relativePath = `${subDirectory}/${itemId}.xml`;
                      item.URL = constructServiceUrl(protocol, host, port, rootDirName, relativePath);
                 }
 
