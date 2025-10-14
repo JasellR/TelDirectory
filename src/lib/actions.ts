@@ -329,7 +329,16 @@ export async function deleteZoneAction(zoneId: string): Promise<{ success: boole
           // Attempt to delete both files, but don't fail if they don't exist
           await fs.unlink(zoneBranchFileToDelete).catch(err => { if(err.code !== 'ENOENT') throw err; });
           await fs.unlink(departmentFileToDelete).catch(err => { if(err.code !== 'ENOENT') throw err; });
-          // No need to touch MainMenu.xml as this zone is not supposed to be there
+          
+          if (paths.MAINMENU_PATH) {
+            const mainMenu = await readAndParseXML(paths.MAINMENU_PATH);
+            if (mainMenu?.CiscoIPPhoneMenu?.MenuItem) {
+              const menuItems = ensureArray(mainMenu.CiscoIPPhoneMenu.MenuItem);
+              mainMenu.CiscoIPPhoneMenu.MenuItem = menuItems.filter(item => extractIdFromUrl(item.URL) !== zoneId);
+              await buildAndWriteXML(paths.MAINMENU_PATH, mainMenu);
+            }
+          }
+
           revalidatePath('/');
           return { success: true, message: `Cleaned up files for zone "${zoneId}".` };
       } catch(err: any) {
@@ -949,7 +958,6 @@ export async function syncNamesFromXmlFeedAction(feedUrlsString: string): Promis
       const departmentName = 'Missing Extensions';
       const { protocol, host, port, rootDirName } = await getServiceUrlComponents();
       
-      // 1. Create Department file with extensions
       const deptFilePath = path.join(paths.DEPARTMENT_DIR, `${departmentId}.xml`);
       const deptContent = {
           CiscoIPPhoneDirectory: {
@@ -958,7 +966,6 @@ export async function syncNamesFromXmlFeedAction(feedUrlsString: string): Promis
       };
       await buildAndWriteXML(deptFilePath, deptContent);
 
-      // 2. Create ZoneBranch file linking to department
       const zoneFilePath = path.join(paths.ZONE_BRANCH_DIR, `${zoneId}.xml`);
       const zoneUrl = constructServiceUrl(protocol, host, port, 'directory', `department/${departmentId}.xml`);
       const zoneContent = {
@@ -994,13 +1001,14 @@ export async function moveExtensionsAction(params: {
     destinationZoneId: string;
     destinationLocalityId?: string;
     newLocalityName?: string;
+    destinationBranchId?: string;
 }): Promise<{ success: boolean; message: string; error?: string }> {
     const authenticated = await isAuthenticated();
     if (!authenticated) {
         return { success: false, message: "Authentication required." };
     }
 
-    const { extensionsToMove, sourceLocalityId, destinationZoneId, destinationLocalityId, newLocalityName } = params;
+    const { extensionsToMove, sourceLocalityId, destinationZoneId, destinationLocalityId, newLocalityName, destinationBranchId } = params;
 
     if (!extensionsToMove || extensionsToMove.length === 0) {
         return { success: false, message: "No extensions were selected to move." };
@@ -1014,6 +1022,7 @@ export async function moveExtensionsAction(params: {
         if (newLocalityName) {
             const addResult = await addLocalityOrBranchAction({
                 zoneId: destinationZoneId,
+                branchId: destinationBranchId,
                 itemName: newLocalityName,
                 itemType: 'locality',
             });

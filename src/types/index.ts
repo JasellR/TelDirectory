@@ -150,3 +150,13 @@ export interface AdSyncResult {
   details?: AdSyncDetails;
   error?: string;
 }
+
+// Type for Move Extensions Action
+export interface MoveExtensionsParams {
+  extensionsToMove: Extension[];
+  sourceLocalityId: string;
+  destinationZoneId: string;
+  destinationLocalityId?: string;
+  destinationBranchId?: string;
+  newLocalityName?: string;
+}

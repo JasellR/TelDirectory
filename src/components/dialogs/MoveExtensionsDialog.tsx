@@ -38,9 +38,9 @@ export function MoveExtensionsDialog({ isOpen, onClose, extensionsToMove, source
   const [isPending, startTransition] = useTransition();
 
   const [zones, setZones] = useState<Omit<Zone, 'items'>[]>([]);
-  const [localities, setLocalities] = useState<ZoneItem[]>([]);
+  const [zoneItems, setZoneItems] = useState<ZoneItem[]>([]);
   const [selectedZoneId, setSelectedZoneId] = useState('');
-  const [selectedLocalityId, setSelectedLocalityId] = useState('');
+  const [selectedItemId, setSelectedItemId] = useState(''); // Can be locality or branch
   const [newLocalityName, setNewLocalityName] = useState('');
   const [isLoading, setIsLoading] = useState(true);
 
@@ -50,7 +50,6 @@ export function MoveExtensionsDialog({ isOpen, onClose, extensionsToMove, source
       setIsLoading(true);
       try {
         const fetchedZones = await getZonesAction();
-        // Exclude the 'Missing Extensions' zone from the destination options
         setZones(fetchedZones.filter(z => z.id !== 'MissingExtensionsFromFeed'));
       } catch (error) {
         console.error("Failed to fetch zones:", error);
@@ -62,34 +61,33 @@ export function MoveExtensionsDialog({ isOpen, onClose, extensionsToMove, source
   }, [isOpen]);
 
   useEffect(() => {
-    async function fetchLocalities() {
+    async function fetchZoneItems() {
       if (!selectedZoneId) {
-        setLocalities([]);
+        setZoneItems([]);
         return;
       }
       setIsLoading(true);
       try {
         const items = await getZoneItemsAction(selectedZoneId);
-        // We only want localities/branches as potential destinations
-        setLocalities(items.filter(item => item.type === 'locality' || item.type === 'branch'));
+        setZoneItems(items.filter(item => item.type === 'locality' || item.type === 'branch'));
       } catch (error) {
-        console.error(`Failed to fetch localities for zone ${selectedZoneId}:`, error);
+        console.error(`Failed to fetch items for zone ${selectedZoneId}:`, error);
         toast({ title: t('errorTitle'), description: t('fetchLocalitiesError'), variant: 'destructive' });
       }
       setIsLoading(false);
     }
-    fetchLocalities();
+    fetchZoneItems();
   }, [selectedZoneId]);
 
   const handleZoneChange = (zoneId: string) => {
     setSelectedZoneId(zoneId);
-    setSelectedLocalityId(''); // Reset locality selection
+    setSelectedItemId('');
     setNewLocalityName('');
   };
   
-  const handleLocalityChange = (localityId: string) => {
-      setSelectedLocalityId(localityId);
-      if (localityId !== CREATE_NEW_LOCALITY_VALUE) {
+  const handleItemChange = (itemId: string) => {
+      setSelectedItemId(itemId);
+      if (itemId !== CREATE_NEW_LOCALITY_VALUE) {
           setNewLocalityName('');
       }
   };
@@ -101,22 +99,26 @@ export function MoveExtensionsDialog({ isOpen, onClose, extensionsToMove, source
         toast({ title: t('errorTitle'), description: t('zoneSelectionRequired'), variant: 'destructive'});
         return;
     }
-    if (!selectedLocalityId) {
+    if (!selectedItemId) {
         toast({ title: t('errorTitle'), description: t('localitySelectionRequired'), variant: 'destructive'});
         return;
     }
-    if (selectedLocalityId === CREATE_NEW_LOCALITY_VALUE && !newLocalityName.trim()) {
+    if (selectedItemId === CREATE_NEW_LOCALITY_VALUE && !newLocalityName.trim()) {
         toast({ title: t('errorTitle'), description: t('newLocalityNameRequired'), variant: 'destructive'});
         return;
     }
     
     startTransition(async () => {
+        const selectedItem = zoneItems.find(item => item.id === selectedItemId);
+        const isBranch = selectedItem?.type === 'branch';
+
         const result = await moveExtensionsAction({
             extensionsToMove,
             sourceLocalityId,
             destinationZoneId: selectedZoneId,
-            destinationLocalityId: selectedLocalityId === CREATE_NEW_LOCALITY_VALUE ? undefined : selectedLocalityId,
+            destinationLocalityId: !isBranch && selectedItemId !== CREATE_NEW_LOCALITY_VALUE ? selectedItemId : undefined,
             newLocalityName: newLocalityName.trim() || undefined,
+            destinationBranchId: isBranch ? selectedItemId : undefined,
         });
 
         if (result.success) {
@@ -128,6 +130,8 @@ export function MoveExtensionsDialog({ isOpen, onClose, extensionsToMove, source
         }
     });
   };
+  
+  const isCreatingNewInBranch = zoneItems.find(item => item.id === selectedItemId)?.type === 'branch' && newLocalityName.trim() !== '';
 
   if (!isOpen) return null;
 
@@ -153,23 +157,28 @@ export function MoveExtensionsDialog({ isOpen, onClose, extensionsToMove, source
 
           {selectedZoneId && (
             <div className="space-y-2">
-              <Label htmlFor="dest-locality">{t('destinationLocalityLabel')}</Label>
-              <Select onValueChange={handleLocalityChange} value={selectedLocalityId} disabled={isPending || isLoading || !selectedZoneId}>
-                <SelectTrigger id="dest-locality">
+              <Label htmlFor="dest-item">{t('destinationLocalityLabel')}</Label>
+              <Select onValueChange={handleItemChange} value={selectedItemId} disabled={isPending || isLoading || !selectedZoneId}>
+                <SelectTrigger id="dest-item">
                   <SelectValue placeholder={t('selectLocalityPlaceholder')} />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value={CREATE_NEW_LOCALITY_VALUE}>{t('createNewLocalityOption')}</SelectItem>
                   <hr className="my-1" />
-                  {localities.map(item => <SelectItem key={item.id} value={item.id}>{item.name} ({item.type})</SelectItem>)}
+                  {zoneItems.map(item => <SelectItem key={item.id} value={item.id}>{item.name} ({item.type})</SelectItem>)}
                 </SelectContent>
               </Select>
             </div>
           )}
-
-          {selectedLocalityId === CREATE_NEW_LOCALITY_VALUE && (
+          
+          {(selectedItemId === CREATE_NEW_LOCALITY_VALUE || isCreatingNewInBranch) && (
             <div className="space-y-2 pl-2 border-l-2 border-primary animate-in fade-in-0">
-              <Label htmlFor="new-locality-name">{t('newLocalityNameLabel')}</Label>
+              <Label htmlFor="new-locality-name">
+                {isCreatingNewInBranch
+                    ? `New Locality Name in Branch '${zoneItems.find(item => item.id === selectedItemId)?.name}'`
+                    : t('newLocalityNameLabel')
+                }
+              </Label>
               <Input
                 id="new-locality-name"
                 placeholder={t('newLocalityNamePlaceholder')}
@@ -184,7 +193,7 @@ export function MoveExtensionsDialog({ isOpen, onClose, extensionsToMove, source
             <DialogClose asChild>
               <Button type="button" variant="outline" disabled={isPending}>{t('cancelButton')}</Button>
             </DialogClose>
-            <Button type="submit" disabled={isPending || !selectedZoneId || !selectedLocalityId || (selectedLocalityId === CREATE_NEW_LOCALITY_VALUE && !newLocalityName.trim())}>
+            <Button type="submit" disabled={isPending || !selectedZoneId || !selectedItemId || (selectedItemId === CREATE_NEW_LOCALITY_VALUE && !newLocalityName.trim())}>
               {isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               {t('moveButtonLabel')}
             </Button>

@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState, useMemo, useTransition } from 'react';
+import { useState, useMemo } from 'react';
 import type { Extension } from '@/types';
 import { useTranslation } from '@/hooks/useTranslation';
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
@@ -10,10 +10,6 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Button } from '@/components/ui/button';
 import { ListX, Move } from 'lucide-react';
 import { MoveExtensionsDialog } from '@/components/dialogs/MoveExtensionsDialog';
-import { getZones, getZoneItems } from '@/lib/data'; // Assuming these can be called client-side or wrapped
-
-type Zone = Omit<import('@/types').Zone, 'items'>;
-type ZoneItem = import('@/types').ZoneItem;
 
 
 export function MoveExtensionsManager({ extensions, sourceLocalityId }: { extensions: Extension[], sourceLocalityId: string }) {
@@ -53,16 +49,30 @@ export function MoveExtensionsManager({ extensions, sourceLocalityId }: { extens
   
   return (
     <>
+    <Card className="mb-6">
+        <CardHeader>
+            <CardTitle>{t('manageMissingExtensionsTitle')}</CardTitle>
+            <p className="text-sm text-muted-foreground">{t('manageMissingExtensionsDescription')}</p>
+        </CardHeader>
+        <CardContent>
+             <div className="flex justify-between items-center w-full">
+                <div className="text-sm text-muted-foreground">
+                    {t('selectedItemsCount', { count: selectedExtensions.length, total: extensions.length })}
+                </div>
+                <Button disabled={selectedExtensions.length === 0} onClick={() => setIsDialogOpen(true)}>
+                    <Move className="mr-2 h-4 w-4" />
+                    {t('moveSelectedButtonLabel', { count: selectedExtensions.length })}
+                </Button>
+            </div>
+        </CardContent>
+    </Card>
+    
     <Card>
-      <CardHeader>
-        <CardTitle>{t('manageMissingExtensionsTitle')}</CardTitle>
-        <p className="text-sm text-muted-foreground">{t('manageMissingExtensionsDescription')}</p>
-      </CardHeader>
-      <CardContent>
+      <CardContent className="p-0">
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead className="w-[50px]">
+              <TableHead className="w-[50px] pl-4">
                 <Checkbox
                   checked={isAllSelected}
                   onCheckedChange={handleSelectAll}
@@ -76,7 +86,7 @@ export function MoveExtensionsManager({ extensions, sourceLocalityId }: { extens
           <TableBody>
             {extensions.map((ext) => (
               <TableRow key={ext.id} data-state={selectedExtensions.some(e => e.id === ext.id) && "selected"}>
-                <TableCell>
+                <TableCell className="pl-4">
                   <Checkbox
                     checked={selectedExtensions.some(e => e.id === ext.id)}
                     onCheckedChange={(checked) => handleSelectRow(!!checked, ext)}
@@ -90,18 +100,8 @@ export function MoveExtensionsManager({ extensions, sourceLocalityId }: { extens
           </TableBody>
         </Table>
       </CardContent>
-      <CardFooter className="border-t px-6 py-4">
-        <div className="flex justify-between items-center w-full">
-            <div className="text-sm text-muted-foreground">
-                {t('selectedItemsCount', { count: selectedExtensions.length, total: extensions.length })}
-            </div>
-            <Button disabled={selectedExtensions.length === 0} onClick={() => setIsDialogOpen(true)}>
-                <Move className="mr-2 h-4 w-4" />
-                {t('moveSelectedButtonLabel', { count: selectedExtensions.length })}
-            </Button>
-        </div>
-      </CardFooter>
     </Card>
+
     {isDialogOpen && (
         <MoveExtensionsDialog 
             isOpen={isDialogOpen}
