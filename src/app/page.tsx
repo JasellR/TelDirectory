@@ -39,32 +39,40 @@ export default async function HomePage() {
       </div>
       {zones.length > 0 ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {zones.map((zone) => (
-            <div key={zone.id} className="relative group">
-              <NavigationCard
-                title={zone.name}
-                href={`/${zone.id}`}
-                description={t('exploreZoneItems', { zoneName: zone.name })}
-                iconType={zone.id === 'MissingExtensionsFromFeed' ? 'missing' : 'zone'}
-              />
-              {userIsAuthenticated && (
-                <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-                  <DeleteZoneButton 
-                    zoneId={zone.id} 
-                    zoneName={zone.name} 
-                    isAuthenticated={userIsAuthenticated} 
-                  />
-                </div>
-              )}
-            </div>
-          ))}
+          {zones.map((zone) => {
+            // Special navigation logic for the "Missing Extensions" zone
+            const isMissingExtensionsZone = zone.id === 'MissingExtensionsFromFeed';
+            const href = isMissingExtensionsZone
+              ? '/MissingExtensionsFromFeed/localities/MissingExtensionsDepartment'
+              : `/${zone.id}`;
+
+            return (
+              <div key={zone.id} className="relative group">
+                <NavigationCard
+                  title={zone.name}
+                  href={href}
+                  description={t('exploreZoneItems', { zoneName: zone.name })}
+                  iconType={isMissingExtensionsZone ? 'missing' : 'zone'}
+                />
+                {userIsAuthenticated && (
+                  <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                    <DeleteZoneButton 
+                      zoneId={zone.id} 
+                      zoneName={zone.name} 
+                      isAuthenticated={userIsAuthenticated} 
+                    />
+                  </div>
+                )}
+              </div>
+            );
+          })}
         </div>
       ) : (
          <Alert variant="destructive">
             <AlertCircle className="h-4 w-4" />
             <AlertTitle>Directory Not Found</AlertTitle>
             <AlertDescription>
-              Could not load the directory zones. Please ensure that <strong>MAINMENU.xml</strong> exists at the root of your configured directory path and is not empty or malformed.
+              Could not load the directory zones. Please ensure that <strong>MainMenu.xml</strong> exists at the root of your configured directory path and is not empty or malformed.
             </AlertDescription>
         </Alert>
       )}
