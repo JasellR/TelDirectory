@@ -3,35 +3,38 @@
 
 import fs from 'fs/promises';
 import path from 'path';
+import type { DirectoryConfig } from '@/types';
 
 // Ensure .config directory is at the project root, not within src
 const CONFIG_DIR = path.join(process.cwd(), '.config');
 const DIRECTORY_CONFIG_PATH = path.join(CONFIG_DIR, 'directory.config.json');
 
-export interface DirectoryConfig {
-  ivoxsRootPath: string | null;
-}
+const DEFAULT_CONFIG: DirectoryConfig = {
+  ivoxsRootPath: path.join(process.cwd(), 'public', 'ivoxsdir'),
+  host: '127.0.0.1',
+  port: '3000',
+};
+
 
 export async function getDirectoryConfig(): Promise<DirectoryConfig> {
   try {
     await fs.mkdir(CONFIG_DIR, { recursive: true });
     const data = await fs.readFile(DIRECTORY_CONFIG_PATH, 'utf-8');
     const parsedData = JSON.parse(data);
-    // Basic validation to ensure the object has the expected key
-    if (parsedData && typeof parsedData.ivoxsRootPath !== 'undefined') {
-      return { ivoxsRootPath: parsedData.ivoxsRootPath };
-    }
-    // If structure is unexpected, return default
-    return { ivoxsRootPath: null };
+    
+    // Return a merged object with defaults for any missing properties
+    return { ...DEFAULT_CONFIG, ...parsedData };
   } catch (error) {
-    // If file doesn't exist or is invalid JSON, it's not an application error, just means no config is set.
-    return { ivoxsRootPath: null };
+    // If file doesn't exist or is invalid JSON, return the full default config
+    return DEFAULT_CONFIG;
   }
 }
 
-export async function saveDirectoryConfig(config: DirectoryConfig): Promise<void> {
+export async function saveDirectoryConfig(newConfig: Partial<DirectoryConfig>): Promise<void> {
+  const currentConfig = await getDirectoryConfig();
+  const mergedConfig = { ...currentConfig, ...newConfig };
   await fs.mkdir(CONFIG_DIR, { recursive: true });
-  await fs.writeFile(DIRECTORY_CONFIG_PATH, JSON.stringify(config, null, 2));
+  await fs.writeFile(DIRECTORY_CONFIG_PATH, JSON.stringify(mergedConfig, null, 2));
 }
 
 /**

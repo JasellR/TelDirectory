@@ -8,7 +8,7 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { UploadCloud, Palette, Languages, Settings as SettingsIcon, FileCode, Info, FolderCog, CheckCircle, AlertCircleIcon, UserCog, Rss, RefreshCw, ListChecks, AlertTriangle, FileWarning, FileUp, Tv, Users, Network } from 'lucide-react';
 import { FileUploadForm } from '@/components/import/FileUploadForm';
 import { syncNamesFromXmlFeedAction, updateDirectoryRootPathAction, updateXmlUrlsAction, importExtensionsFromCsvAction, syncFromActiveDirectoryAction } from '@/lib/actions';
-import type { SyncResult, AdSyncResult, CsvImportResult, AdSyncFormValues, UserSession } from '@/types';
+import type { SyncResult, AdSyncResult, CsvImportResult, AdSyncFormValues, UserSession, DirectoryConfig } from '@/types';
 import { ThemeToggle } from '@/components/settings/ThemeToggle';
 import { LanguageToggle } from '@/components/settings/LanguageToggle';
 import { Separator } from '@/components/ui/separator';
@@ -23,6 +23,7 @@ import { logoutAction, getCurrentUser } from '@/lib/auth-actions';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { CsvUploadForm } from '@/components/import/CsvUploadForm';
 import { ActiveDirectorySyncForm } from '@/components/import/ActiveDirectorySyncForm';
+import { getDirectoryConfig } from '@/lib/config';
 
 
 export default function SettingsPage() {
@@ -39,7 +40,9 @@ export default function SettingsPage() {
   const [isLoadingPath, setIsLoadingPath] = useState(true);
   const [pathStatus, setPathStatus] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
 
+  const [networkConfig, setNetworkConfig] = useState<{ host: string; port: string }>({ host: '', port: '' });
   const [xmlUrlStatus, setXmlUrlStatus] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
+
 
   const [xmlFeedUrls, setXmlFeedUrls] = useState('');
   const [syncResults, setSyncResults] = useState<SyncResult | null>(null);
@@ -52,22 +55,31 @@ export default function SettingsPage() {
   useEffect(() => {
     let isMounted = true;
     
-    setIsLoadingPath(false);
-    setCurrentConfigDisplayPath('public/ivoxsdir');
-    setDirectoryRootPath('public/ivoxsdir');
-    
-    const fetchUser = async () => {
-        try {
-            const user = await getCurrentUser();
-            if (isMounted) {
-                setCurrentUser(user);
-            }
-        } catch(e) {
-            if (isMounted) setCurrentUser(null);
+    async function fetchInitialConfig() {
+      try {
+        const config: DirectoryConfig = await getDirectoryConfig();
+        const user = await getCurrentUser();
+        if(isMounted) {
+          setCurrentUser(user);
+          setNetworkConfig({
+            host: config.host || '',
+            port: config.port || ''
+          });
+          setCurrentConfigDisplayPath(config.ivoxsRootPath || 'public/ivoxsdir');
+          setDirectoryRootPath(config.ivoxsRootPath || 'public/ivoxsdir');
         }
-    };
+      } catch (e) {
+        if(isMounted) {
+          setCurrentUser(null);
+          setCurrentConfigDisplayPath('public/ivoxsdir');
+        }
+        console.error("Failed to fetch initial config:", e);
+      } finally {
+        if (isMounted) setIsLoadingPath(false);
+      }
+    }
 
-    fetchUser();
+    fetchInitialConfig();
 
     return () => { isMounted = false; };
   }, []);
@@ -88,7 +100,11 @@ export default function SettingsPage() {
 
   const handleUpdateXmlUrls = async () => {
     startUrlUpdateTransition(async () => {
-        const result = await updateXmlUrlsAction();
+        if (!networkConfig.host) {
+            toast({ title: t('errorTitle'), description: "Host/IP is required for generating phone URLs.", variant: 'destructive'});
+            return;
+        }
+        const result = await updateXmlUrlsAction(networkConfig);
         if (result.success) {
             toast({ title: t('successTitle'), description: result.message });
             setXmlUrlStatus({type: 'success', message: result.message});
@@ -249,13 +265,35 @@ export default function SettingsPage() {
                     <Network className="h-6 w-6 text-primary" />
                     <CardTitle className="text-2xl">{t('networkConfigurationTitle')}</CardTitle>
                 </div>
-                <CardDescription>This action regenerates all URLs in your menu files to ensure they point to the correct static paths. Use this if you suspect URLs are broken.</CardDescription>
+                <CardDescription>Configure the server address used to generate full URLs in XML files for IP phones.</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
+                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                        <Label htmlFor="host-ip">Host (IP Address or Domain)</Label>
+                        <Input
+                            id="host-ip"
+                            value={networkConfig.host}
+                            onChange={(e) => setNetworkConfig(prev => ({...prev, host: e.target.value}))}
+                            placeholder="e.g., 192.168.1.100"
+                            disabled={isUrlUpdatePending}
+                        />
+                    </div>
+                    <div>
+                        <Label htmlFor="port">Port</Label>
+                        <Input
+                            id="port"
+                            value={networkConfig.port}
+                            onChange={(e) => setNetworkConfig(prev => ({...prev, port: e.target.value}))}
+                            placeholder="e.g., 3000 (leave blank for port 80)"
+                            disabled={isUrlUpdatePending}
+                        />
+                    </div>
+                 </div>
                  <div className="flex items-center justify-between mt-2">
                     <p className="text-xs text-muted-foreground flex items-center gap-1">
                         <Info className="h-3 w-3" />
-                        This no longer requires host and port configuration.
+                        This will regenerate all menu XMLs with full URLs.
                     </p>
                     <Button onClick={handleUpdateXmlUrls} disabled={isUrlUpdatePending}>
                         {isUrlUpdatePending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <RefreshCw className="mr-2 h-4 w-4"/>}

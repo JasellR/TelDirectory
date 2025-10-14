@@ -5,9 +5,9 @@ import fs from 'fs/promises';
 import path from 'path';
 import { parseStringPromise, Builder } from 'xml2js';
 import { revalidatePath } from 'next/cache';
-import type { GlobalSearchResult, MatchedExtension, Extension, CsvImportResult, CsvImportDetails, CsvImportError, SyncResult, ConflictedExtensionInfo, MissingExtensionInfo, AdSyncResult, AdSyncDetails, AdSyncFormValues, Zone, ZoneItem } from '@/types';
+import type { GlobalSearchResult, MatchedExtension, Extension, CsvImportResult, CsvImportDetails, CsvImportError, SyncResult, ConflictedExtensionInfo, MissingExtensionInfo, AdSyncResult, AdSyncDetails, AdSyncFormValues, Zone, ZoneItem, DirectoryConfig } from '@/types';
 import { CiscoIPPhoneMenuSchema, CiscoIPPhoneDirectorySchema, getZones, getZoneItems } from '@/lib/data';
-import { getResolvedIvoxsRootPath, saveDirectoryConfig as saveDirConfig } from '@/lib/config';
+import { getResolvedIvoxsRootPath, saveDirectoryConfig as saveDirConfig, getDirectoryConfig } from '@/lib/config';
 import { isAuthenticated, getCurrentUser } from '@/lib/auth-actions';
 import { redirect } from 'next/navigation';
 import { getDb, bcrypt } from './db';
@@ -113,9 +113,9 @@ function getItemTypeFromUrl(url: string): 'branch' | 'locality' | 'zone' | 'unkn
     if (!url) return 'unknown';
     const lowerUrl = url.toLowerCase();
     
-    if (lowerUrl.startsWith('/ivoxsdir/branch/')) return 'branch';
-    if (lowerUrl.startsWith('/ivoxsdir/department/')) return 'locality';
-    if (lowerUrl.startsWith('/ivoxsdir/zonebranch/')) return 'zone';
+    if (lowerUrl.includes('/branch/')) return 'branch';
+    if (lowerUrl.includes('/department/')) return 'locality';
+    if (lowerUrl.includes('/zonebranch/')) return 'zone';
 
     // Fallback for older URL formats if any exist
     if (lowerUrl.includes('/branch/')) return 'branch';
@@ -139,14 +139,28 @@ const itemTypeToDir: Record<'zone' | 'branch' | 'locality', string> = {
 };
 
 
-function constructServiceUrl(pathSegment: string): string {
+async function constructServiceUrl(pathSegment: string): Promise<string> {
+    const config = await getDirectoryConfig();
+    const host = config.host;
+    const port = config.port;
+
+    if (!host) {
+        // This should not happen if called from updateXmlUrlsAction, which validates first.
+        throw new Error("Host is not configured. Cannot generate full URL for IP phones.");
+    }
+    
+    let baseUrl = `http://${host}`;
+    if (port && port !== '80') {
+        baseUrl += `:${port}`;
+    }
+
     const rootDirName = 'ivoxsdir';
     if (pathSegment.startsWith('/')) {
         pathSegment = pathSegment.substring(1);
     }
     
     // Ensure the path always starts with the public directory name.
-    return `/${rootDirName}/${pathSegment.replace(/\\/g, '/')}`;
+    return `${baseUrl}/${rootDirName}/${pathSegment.replace(/\\/g, '/')}`;
 }
 
 
@@ -219,12 +233,12 @@ async function repaginateMenuItems(parentFilePath: string, menuName: string) {
 
             if (i > 0) { // Add "<< Anterior" button
                 const prevPageName = `${menuName}${pageNum - 1 > 1 ? pageNum - 1 : ''}`;
-                const prevUrl = constructServiceUrl(`zonebranch/${prevPageName}.xml`);
+                const prevUrl = await constructServiceUrl(`zonebranch/${prevPageName}.xml`);
                 pageItems.unshift({ Name: '<< Anterior', URL: prevUrl });
             }
             if (i < totalPages - 1) { // Add "Siguiente >>" button
                 const nextPageName = `${menuName}${pageNum + 1}`;
-                const nextUrl = constructServiceUrl(`zonebranch/${nextPageName}.xml`);
+                const nextUrl = await constructServiceUrl(`zonebranch/${nextPageName}.xml`);
                 pageItems.push({ Name: 'Siguiente >>', URL: nextUrl });
             }
 
@@ -267,7 +281,7 @@ export async function addZoneAction(zoneName: string): Promise<{ success: boolea
   }
   const mainMenuPath = paths.MAINMENU_PATH;
   const newZoneBranchFilePath = path.join(paths.ZONE_BRANCH_DIR, `${newZoneId}.xml`);
-  const newZoneURL = constructServiceUrl(`zonebranch/${newZoneId}.xml`);
+  const newZoneURL = await constructServiceUrl(`zonebranch/${newZoneId}.xml`);
 
   try {
     // 1. Create the new zone branch file
@@ -426,7 +440,7 @@ export async function addLocalityOrBranchAction(params: {
         revalidationPath = branchId ? `/${zoneId}/branches/${branchId}` : `/${zoneId}`;
     }
     
-    const newUrl = constructServiceUrl(newUrlPath);
+    const newUrl = await constructServiceUrl(newUrlPath);
 
     try {
         // --- START VALIDATION ---
@@ -504,7 +518,7 @@ export async function editLocalityOrBranchAction(params: {
         revalidationPath = branchId ? `/${zoneId}/branches/${branchId}` : `/${zoneId}`;
     }
 
-    const newUrl = constructServiceUrl(newUrlPath);
+    const newUrl = await constructServiceUrl(newUrlPath);
 
     try {
         // 1. Rename the item's XML file if ID changes
@@ -755,11 +769,19 @@ export async function updateDirectoryRootPathAction(newPath: string): Promise<{ 
     return { success: false, message: "This functionality is deprecated. The directory path is fixed to 'public/ivoxsdir' for stability."}
 }
 
-export async function updateXmlUrlsAction(): Promise<{ success: boolean, message: string, error?: string }> {
+export async function updateXmlUrlsAction(networkConfig: { host: string, port: string }): Promise<{ success: boolean, message: string, error?: string }> {
     const authenticated = await isAuthenticated();
     if (!authenticated) {
         return { success: false, message: "Authentication required." };
     }
+
+    const { host, port } = networkConfig;
+
+    if (!host) {
+        return { success: false, message: "Host/IP cannot be empty." };
+    }
+    
+    await saveDirConfig({ host, port });
 
     const paths = await getPaths();
     
@@ -771,7 +793,7 @@ export async function updateXmlUrlsAction(): Promise<{ success: boolean, message
         const fileContent = await readAndParseXML(filePath);
         if (!fileContent?.CiscoIPPhoneMenu?.MenuItem) return;
 
-        fileContent.CiscoIPPhoneMenu.MenuItem = ensureArray(fileContent.CiscoIPPhoneMenu.MenuItem).map((item: any) => {
+        fileContent.CiscoIPPhoneMenu.MenuItem = await Promise.all(ensureArray(fileContent.CiscoIPPhoneMenu.MenuItem).map(async (item: any) => {
             const urlString = item.URL || '';
             const itemType = getItemTypeFromUrl(urlString);
             const itemId = extractIdFromUrl(urlString);
@@ -779,12 +801,12 @@ export async function updateXmlUrlsAction(): Promise<{ success: boolean, message
             if (itemType === 'zone' || itemType === 'branch' || itemType === 'locality' || itemType === 'pagination') {
                 const subDirectory = (itemType === 'locality') ? 'department' : (itemType === 'branch' ? 'branch' : 'zonebranch');
                 let relativePath = `${subDirectory}/${itemId}.xml`;
-                item.URL = constructServiceUrl(relativePath);
+                item.URL = await constructServiceUrl(relativePath);
             } else {
                  console.warn(`[updateXmlUrlsAction] Could not process URL: ${item.URL}. It might be malformed or pointing to an unknown type.`);
             }
             return item;
-        });
+        }));
         await buildAndWriteXML(filePath, fileContent);
     };
     
@@ -800,7 +822,7 @@ export async function updateXmlUrlsAction(): Promise<{ success: boolean, message
         
         try {
             const branchFiles = await fs.readdir(paths.BRANCH_DIR);
-for(const file of branchFiles) {
+            for(const file of branchFiles) {
                 if(file.endsWith('.xml')) {
                     await updateUrlsInFile(path.join(paths.BRANCH_DIR, file));
                 }
@@ -956,7 +978,7 @@ export async function syncNamesFromXmlFeedAction(feedUrlsString: string): Promis
       await buildAndWriteXML(deptFilePath, deptContent);
 
       const zoneFilePath = path.join(paths.ZONE_BRANCH_DIR, `${zoneId}.xml`);
-      const zoneUrl = constructServiceUrl(`department/${departmentId}.xml`);
+      const zoneUrl = await constructServiceUrl(`department/${departmentId}.xml`);
       const zoneContent = {
           CiscoIPPhoneMenu: {
               Title: zoneName,

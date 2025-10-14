@@ -47,6 +47,13 @@ export interface DirectoryData {
   zones: Zone[];
 }
 
+// Config file type
+export interface DirectoryConfig {
+  ivoxsRootPath: string | null;
+  host: string;
+  port: string;
+}
+
 // Types for Global Search
 export interface MatchedExtension {
   name: string;
