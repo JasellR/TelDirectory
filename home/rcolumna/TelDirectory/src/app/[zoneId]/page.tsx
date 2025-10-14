@@ -82,6 +82,7 @@ export default async function ZonePage({ params }: ZonePageProps) {
               localityId={locality.id}
               zoneId={zoneId}
               isAuthenticated={userIsAuthenticated}
+              isMissingExtensionsPage={true}
             />
         </div>
       </div>

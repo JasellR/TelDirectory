@@ -5,7 +5,7 @@ import fs from 'fs/promises';
 import path from 'path';
 import { parseStringPromise, Builder } from 'xml2js';
 import { revalidatePath } from 'next/cache';
-import type { GlobalSearchResult, MatchedExtension, Extension, CsvImportResult, CsvImportDetails, CsvImportError, SyncResult, ConflictedExtensionInfo, MissingExtensionInfo, AdSyncResult, AdSyncDetails, AdSyncFormValues } from '@/types';
+import type { GlobalSearchResult, MatchedExtension, Extension, CsvImportResult, CsvImportDetails, CsvImportError, SyncResult, ConflictedExtensionInfo, MissingExtensionInfo, AdSyncResult, AdSyncDetails, AdSyncFormValues, MoveExtensionsParams } from '@/types';
 import { CiscoIPPhoneMenuSchema, CiscoIPPhoneDirectorySchema } from '@/lib/data';
 import { getResolvedIvoxsRootPath, saveDirectoryConfig as saveDirConfig } from '@/lib/config';
 import { isAuthenticated, getCurrentUser } from '@/lib/auth-actions';
@@ -1180,4 +1180,70 @@ export async function searchAllDepartmentsAndExtensionsAction(query: string): Pr
   return Array.from(resultsMap.values());
 }
 
-    
+
+export async function moveExtensionsAction(params: MoveExtensionsParams): Promise<{ success: boolean; message: string; error?: string }> {
+  const authenticated = await isAuthenticated();
+  if (!authenticated) {
+    return { success: false, message: "Authentication required." };
+  }
+
+  const { extensions, sourceLocalityId, destination } = params;
+  if (extensions.length === 0) {
+    return { success: false, message: "No extensions selected to move." };
+  }
+
+  const paths = await getPaths();
+  let destinationLocalityId = '';
+  let destinationLocalityName = '';
+
+  try {
+    // Step 1: Determine destination and create it if it's new
+    if (destination.type === 'new') {
+      const addResult = await addLocalityOrBranchAction({
+        zoneId: destination.zoneId,
+        itemName: destination.newLocalityName,
+        itemType: 'locality'
+      });
+      if (!addResult.success) {
+        return { success: false, message: "Failed to create new locality.", error: addResult.error };
+      }
+      destinationLocalityId = generateIdFromName(destination.newLocalityName);
+      destinationLocalityName = destination.newLocalityName;
+    } else {
+      destinationLocalityId = destination.localityId;
+    }
+
+    // Step 2: Add extensions to the destination file
+    const destFilePath = path.join(paths.DEPARTMENT_DIR, `${destinationLocalityId}.xml`);
+    const destFile = await readAndParseXML(destFilePath) || { CiscoIPPhoneDirectory: { DirectoryEntry: [] } };
+    if (!destFile.CiscoIPPhoneDirectory) destFile.CiscoIPPhoneDirectory = {};
+    destFile.CiscoIPPhoneDirectory.DirectoryEntry = ensureArray(destFile.CiscoIPPhoneDirectory.DirectoryEntry);
+
+    for (const ext of extensions) {
+      destFile.CiscoIPPhoneDirectory.DirectoryEntry.push({ Name: ext.name, Telephone: ext.number });
+    }
+    destFile.CiscoIPPhoneDirectory.DirectoryEntry.sort((a: any, b: any) => parseInt(a.Telephone, 10) - parseInt(b.Telephone, 10));
+    await buildAndWriteXML(destFilePath, destFile);
+
+    // Step 3: Remove extensions from the source file
+    const sourceFilePath = path.join(paths.DEPARTMENT_DIR, `${sourceLocalityId}.xml`);
+    const sourceFile = await readAndParseXML(sourceFilePath);
+    if (sourceFile?.CiscoIPPhoneDirectory?.DirectoryEntry) {
+      const extensionsToMoveIds = new Set(extensions.map(e => e.id));
+      const sourceEntries = ensureArray(sourceFile.CiscoIPPhoneDirectory.DirectoryEntry);
+      
+      sourceFile.CiscoIPPhoneDirectory.DirectoryEntry = sourceEntries.filter((entry: any) => {
+        const entryId = `${entry.Name}-${entry.Telephone}`.trim().replace(/\s+/g, '-').replace(/[^a-zA-Z0-9-]/g, '').toLowerCase();
+        return !extensionsToMoveIds.has(entryId);
+      });
+      await buildAndWriteXML(sourceFilePath, sourceFile);
+    }
+
+    revalidatePath('/', 'layout');
+    return { success: true, message: `${extensions.length} extensions moved successfully to ${destinationLocalityName || destinationLocalityId}.` };
+
+  } catch (e: any) {
+    console.error(`[moveExtensionsAction] Error:`, e);
+    return { success: false, message: `Failed to move extensions.`, error: e.message };
+  }
+}
