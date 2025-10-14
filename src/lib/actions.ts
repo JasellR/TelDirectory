@@ -154,7 +154,6 @@ async function constructServiceUrl(pathSegment: string): Promise<string> {
         baseUrl += `:${port}`;
     }
 
-    // Always use 'ivoxsdir' as the root directory name since it is in 'public'
     const rootDirName = 'ivoxsdir';
     if (pathSegment.startsWith('/')) {
         pathSegment = pathSegment.substring(1);
@@ -1132,14 +1131,14 @@ export async function searchAllDepartmentsAndExtensionsAction(query: string): Pr
             const itemId = extractIdFromUrl(item.URL);
             const itemType = getItemTypeFromUrl(item.URL);
             
-            // Handle pagination by recursively processing the next page
             if (item.Name === 'Siguiente >>') {
                 const nextFileId = extractIdFromUrl(item.URL);
                 if (nextFileId) {
+                  // CORRECTED: The next file is in the same directory as the current one.
                   const nextFilePath = path.join(path.dirname(filePath), `${nextFileId}.xml`);
                   await processMenu(nextFilePath, context);
                 }
-                continue; // Skip adding the "Siguiente >>" button itself
+                continue; 
             }
             if (item.Name === '<< Anterior') {
                 continue; // Skip "Anterior" button
@@ -1151,6 +1150,7 @@ export async function searchAllDepartmentsAndExtensionsAction(query: string): Pr
                 }
             } else if (itemType === 'branch') {
                 const newContext = { ...context, branchId: itemId, branchName: item.Name };
+                // CORRECTED: Branch files are in the BRANCH_DIR
                 const nextFilePath = path.join(BRANCH_DIR, `${itemId}.xml`);
                 try {
                   await fs.access(nextFilePath);
@@ -1257,5 +1257,3 @@ export async function searchAllDepartmentsAndExtensionsAction(query: string): Pr
   
   return Array.from(resultsMap.values());
 }
-
-    
