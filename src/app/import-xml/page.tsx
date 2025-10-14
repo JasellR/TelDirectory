@@ -347,7 +347,7 @@ export default function SettingsPage() {
                     <Rss className="h-6 w-6 text-primary" />
                     <CardTitle className="text-2xl">{t('syncNamesFromXmlFeedTitle')}</CardTitle>
                 </div>
-                <CardDescription>{t('syncNamesFromXmlFeedDescription', { dirPath: 'public/ivoxsdir' })}</CardDescription>
+                <CardDescription>{t('syncNamesFromXmlFeedDescriptionMulti', { dirPath: 'public/ivoxsdir' })}</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
                 <div className="space-y-2">
@@ -418,3 +418,5 @@ export default function SettingsPage() {
     </div>
   );
 }
+
+    

@@ -12,7 +12,7 @@ const DIRECTORY_CONFIG_PATH = path.join(CONFIG_DIR, 'directory.config.json');
 const DEFAULT_CONFIG: DirectoryConfig = {
   ivoxsRootPath: path.join(process.cwd(), 'public', 'ivoxsdir'),
   host: '', // Default to empty, forcing user to configure
-  port: '', // Default to empty
+  port: '3000', // Default to 3000 as per package.json
 };
 
 
@@ -24,8 +24,13 @@ export async function getDirectoryConfig(): Promise<DirectoryConfig> {
     
     // Return a merged object with defaults for any missing properties
     return { ...DEFAULT_CONFIG, ...parsedData };
-  } catch (error) {
+  } catch (error: any) {
     // If file doesn't exist or is invalid JSON, return the full default config
+    if (error.code === 'ENOENT') {
+        // If file doesn't exist, create it with defaults
+        await saveDirectoryConfig({});
+        return DEFAULT_CONFIG;
+    }
     return DEFAULT_CONFIG;
   }
 }
@@ -49,3 +54,5 @@ export async function getResolvedIvoxsRootPath(): Promise<string> {
   // will correctly target the publicly served directory.
   return path.join(process.cwd(), 'public', 'ivoxsdir');
 }
+
+    

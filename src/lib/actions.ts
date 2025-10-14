@@ -145,6 +145,7 @@ async function constructServiceUrl(pathSegment: string): Promise<string> {
     const port = config.port;
 
     if (!host) {
+        // This should not happen if called from updateXmlUrlsAction, which validates first.
         throw new Error("Host is not configured. Cannot generate full URL for IP phones.");
     }
     
@@ -153,6 +154,7 @@ async function constructServiceUrl(pathSegment: string): Promise<string> {
         baseUrl += `:${port}`;
     }
 
+    // Always use 'ivoxsdir' as the root directory name since it is in 'public'
     const rootDirName = 'ivoxsdir';
     if (pathSegment.startsWith('/')) {
         pathSegment = pathSegment.substring(1);
@@ -1255,3 +1257,5 @@ export async function searchAllDepartmentsAndExtensionsAction(query: string): Pr
   
   return Array.from(resultsMap.values());
 }
+
+    

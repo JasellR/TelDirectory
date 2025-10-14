@@ -159,7 +159,7 @@
   "accountSettingsDescription": "Manage your account and session.",
   "authRequiredError": "Authentication required. Please log in.",
   "syncNamesFromXmlFeedTitle": "Synchronize Extension Names",
-  "syncNamesFromXmlFeedDescription": "Fetch XML feeds (CiscoIPPhoneDirectory format) from multiple URLs and update the names of matching extensions in your local `{dirPath}/department` files. Extensions with conflicting names across feeds will be reported.",
+  "syncNamesFromXmlFeedDescriptionMulti": "Fetch XML feeds (CiscoIPPhoneDirectory format) from multiple URLs and update the names of matching extensions in your local `{dirPath}/department` files. Extensions with conflicting names across feeds will be reported.",
   "xmlFeedUrlsLabel": "XML Feed URLs (one per line)",
   "xmlFeedUrlsPlaceholder": "e.g., http://server1/feed.php\nhttp://server2/another_feed.php",
   "xmlFeedUrlsInfo": "Enter each XML feed URL on a new line. The system will attempt to fetch and process all of them.",
@@ -257,3 +257,5 @@
   "rowLabel": "Row {row}",
   "unknownError": "An unknown error occurred."
 }
+
+    
