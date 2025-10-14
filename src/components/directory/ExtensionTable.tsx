@@ -115,3 +115,4 @@ export function ExtensionTable({ extensions, localityName, localityId, zoneId, b
     </Card>
   );
 }
+

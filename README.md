@@ -15,20 +15,22 @@ TelDirectory is a Next.js web application designed to manage and display a corpo
     *   Default administrator credentials: `admin` / `admin123` (should be changed in a real environment, specifically by setting the `ADMIN_PASSWORD` environment variable or modifying the initial seed in `src/lib/db.ts`).
     *   User data is stored in an SQLite database (`teldirectory.db`).
 *   **Data Management (Authenticated Users Only)**:
-    *   Import XML files for zone branches and departments via the Settings page.
+    *   Import extensions via CSV file.
+    *   Synchronize extension names from one or more external XML feeds (e.g., from FreePBX PHP scripts).
     *   Add, edit, and delete zones, branches, localities, and extensions directly through the web UI.
 *   **Extension Name Synchronization (Authenticated Users Only)**:
     *   Sync extension names from a custom XML feed URL (e.g., a PHP script outputting `<CiscoIPPhoneDirectory>` format). This updates the names in your local department XML files based on matching extension numbers.
 *   **Customization**:
     *   Dark Mode support (toggle in header and Settings).
     *   Language toggle (English/Español - toggle in header and Settings).
-    *   Configurable root path for the directory data via the Settings page. The application expects the `MainMenu.xml` file to be PascalCase and structural directory names like `zonebranch`, `branch`, `department` to be in **lowercase** within this root path.
+    *   Configurable root path for the directory data via the Settings page. The application expects `MainMenu.xml` file to be PascalCase and structural directory names like `zonebranch`, `branch`, `department` to be in **lowercase** within this root path.
+    *   Configurable Host and Port for URLs within XML files (via Settings page), ensuring IP phones are directed to the correct application instance.
 
 ## Project Structure
 
 *   `src/app/`: Contains the Next.js App Router pages.
     *   `src/app/[zoneId]/...`: Dynamic routes for displaying zone, branch, and locality pages.
-    *   `src/app/import-xml/`: Page for settings, XML import, and application configuration (protected).
+    *   `src/app/import-xml/`: Page for settings, CSV import, XML feed sync, and application configuration (protected).
     *   `src/app/login/`: Login page.
 *   `src/components/`: Reusable React components.
 *   `src/lib/`: Core logic, data fetching utilities (`data.ts`), server actions (`actions.ts`), configuration management (`config.ts`), authentication (`auth-actions.ts`), and database (`db.ts`).
@@ -119,45 +121,75 @@ The application relies on XML files for its directory data. By default, it looks
 
 3.  **Data Management:**
     *   The application reads XML files from the configured `ivoxsdir` path.
-    *   Any changes made via the UI (adding/editing/deleting items) will directly modify these XML files, provided the application has write permissions to the `ivoxsdir` directory and its contents.
+    *   Any changes made via the UI (adding/editing/deleting items, importing CSVs, syncing from feeds) will directly modify these XML files, provided the application has write permissions to the `ivoxsdir` directory and its contents.
 
 ### Production Environment (Productivo)
 
+Deploying a Next.js application to run unattended in production typically involves a process manager like PM2.
+
 1.  **Build the Application:**
+    On your production server, navigate to the project directory and run:
     ```bash
     npm run build
     ```
     This command creates an optimized production build in the `.next` directory.
 
-2.  **Start the Production Server:**
+2.  **Install PM2 Globally (if not already installed):**
     ```bash
-    npm run start
+    sudo npm install pm2 -g
     ```
-    The application will start on port `3000` (as configured in `package.json`).
 
-3.  **Deployment Considerations:**
-    *   **`ivoxsdir` Directory**: The `ivoxsdir` directory (with all its XML files and correct casing for subfolders: `zonebranch`, `branch`, `department` as lowercase, and `MainMenu.xml` as PascalCase) **must be present at the location specified in the application's settings** (or at the project root if using the default). The application reads these files at runtime. If you configured a custom absolute path in settings, ensure that path is accessible to the production server process and the user running the Node.js process has read and **write permissions** to this directory and its contents if you intend to use the UI for modifications.
+3.  **Start the Application with PM2:**
+    From your project directory, run:
+    ```bash
+    pm2 start npm --name "teldirectory" -- run start
+    ```
+    *   `pm2 start npm`: Tells PM2 to run an npm script.
+    *   `--name "teldirectory"`: Assigns a manageable name to your process.
+    *   `-- run start`: Executes the `start` script from your `package.json` (which is `next start -p 3000`).
+
+4.  **PM2 Management Commands:**
+    *   `pm2 list`: View running processes.
+    *   `pm2 logs teldirectory`: View logs for your application.
+    *   `pm2 stop teldirectory`: Stop the application.
+    *   `pm2 restart teldirectory`: Restart the application.
+    *   `pm2 delete teldirectory`: Remove the application from PM2.
+
+5.  **(Recommended) Setup PM2 Startup Script:**
+    To ensure your application restarts automatically if the server reboots:
+    ```bash
+    pm2 startup
+    ```
+    Follow the instructions PM2 provides (usually a command to run with `sudo`). Then, save your current PM2 process list:
+    ```bash
+    pm2 save
+    ```
+
+6.  **Production Environment Considerations:**
     *   **`teldirectory.db` Database File**:
-        *   Ensure the `teldirectory.db` file is present in the project root or the location where the application expects it.
-        *   The user running the Node.js process **must have read and write permissions** to this database file and its directory to allow for login and potential future user management features.
-    *   **Environment Variables**: For improved security, consider setting the `ADMIN_PASSWORD` via an environment variable if you modify the code to read it, instead of relying on the hardcoded default or database seed. (Currently, passwords are not managed via environment variables after the initial seed).
-    *   **Firewall**: Make sure your server's firewall allows incoming connections on the port the application is running on (e.g., port 3000).
-    *   **Process Manager**: For long-running production deployments, use a process manager like PM2.
-        ```bash
-        pm2 start npm --name "teldirectory" -- run start
-        ```
+        *   Ensure the `teldirectory.db` file is present in the project root (or the location where the application expects it based on `process.cwd()` when run by PM2).
+        *   The user account running the PM2 process (and thus the Next.js application) **must have read and write permissions** to this database file and its directory.
+    *   **`ivoxsdir` Directory**:
+        *   The `ivoxsdir` directory (with all its XML files and correct casing for subfolders: `zonebranch`, `branch`, `department` as lowercase, and `MainMenu.xml` as PascalCase) **must be present at the location specified in the application's settings** (or at the project root if using the default).
+        *   The user running the PM2 process **must have read and write permissions** to this directory and its contents if you intend to use the UI for modifications (XML imports, sync, manual edits, CSV imports).
+    *   **`.config/directory.config.json`**: If you use a custom path for `ivoxsdir`, this file must be present in the project's `.config/` directory and be readable by the application process.
+    *   **Environment Variables**: For critical settings (e.g., a future, more secure admin password method), use environment variables. PM2 can manage these.
+    *   **Firewall**: Make sure your server's firewall allows incoming TCP connections on the port the application is running on (e.g., port `3000`).
+        *   Example for `ufw` (Ubuntu): `sudo ufw allow 3000/tcp`
 
-4.  **Accessing in Production:**
+7.  **Accessing in Production:**
     *   Web UI: `http://YOUR_SERVER_IP_OR_DOMAIN:3000`
 
 ## Using the Import Feature (Authenticated Users)
 
-The "Settings" page (`/import-xml`), accessible after logging in, allows users to upload XML files directly:
+The "Settings" page (`/import-xml`), accessible after logging in, allows users to:
 
-*   **Import Zone Branch XML**: Upload XML files for specific zones (e.g., `ZonaEste.xml`). These will be saved to `[ivoxsdir_root]/zonebranch/`. The filename (without `.xml`) is used as the ID.
-*   **Import Department XML Files**: Upload XML files for departments/localities (e.g., `Bavaro.xml`). These will be saved to `[ivoxsdir_root]/department/`. The filename (without `.xml`) is used as the ID.
+*   **Configure `ivoxsdir` Path**: Set the absolute path to the root directory containing your XML data.
+*   **Configure Network Settings for XML URLs**: Define the Host and Port that will be written into the URLs within `MainMenu.xml`, `zonebranch/*.xml`, and `branch/*.xml` files. This is crucial if your XMLs are used by IP phones.
+*   **Import Extensions from CSV**: Upload a CSV file (columns: `Name,Extension,LocalityID,ZoneID`) to bulk add extensions. New department XMLs and parent menu links will be created if necessary.
+*   **Synchronize Names from XML Feed**: Provide one or more URLs to external XML feeds (e.g., from PHP scripts connected to FreePBX). The application will update extension names in your local department XMLs based on these feeds and report conflicts or missing extensions.
 
-**Caution**: Importing files will overwrite existing files with the same name in the target directory.
+**Caution**: Actions like CSV import, XML feed sync, and applying network settings directly modify your XML files in the `ivoxsdir`. Ensure you have backups if needed.
 
 ## Synchronize Extension Names (Authenticated Users)
 

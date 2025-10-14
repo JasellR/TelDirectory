@@ -82,8 +82,8 @@ export function GlobalSearch() {
       {!isSearching && searchTerm.trim().length >= 2 && results.length === 0 && (
         <div className="flex flex-col items-center justify-center py-6 text-center">
           <Frown className="h-12 w-12 text-muted-foreground mb-3" />
-          <p className="text-xl font-semibold text-foreground">{t('noResultsFoundTitle')}</p>
-          <p className="text-muted-foreground">{t('noResultsFoundDescription', { searchTerm })}</p>
+          <p className="text-xl font-semibold text-foreground">{t('noItemsMatchSearchTitle')}</p>
+          <p className="text-muted-foreground">{t('noItemsMatchSearch', { itemTypePlural: 'items', searchTerm: searchTerm })}</p>
         </div>
       )}
 

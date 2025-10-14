@@ -1,16 +1,12 @@
 
 import Link from 'next/link';
 import { Phone } from 'lucide-react';
-import { ThemeToggleHeader } from '@/components/settings/ThemeToggleHeader';
 import { LanguageToggleHeader } from '@/components/settings/LanguageToggleHeader';
-import { getCurrentUser } from '@/lib/auth-actions';
-import { AuthNav } from './AuthNav'; // New import
+import { AuthNav } from './AuthNav';
+import { ThemeToggleHeader } from '@/components/settings/ThemeToggleHeader';
 
-export async function AppHeader() {
-  console.log(`[AppHeader @ ${new Date().toISOString()}] Component rendering. Attempting to get current user...`);
-  const user = await getCurrentUser();
-  console.log(`[AppHeader @ ${new Date().toISOString()}] User object received by AppHeader:`, user ? { userId: user.userId, username: user.username } : null);
 
+export function AppHeader() {
 
   return (
     <header className="bg-card border-b border-border shadow-sm">
@@ -23,10 +19,9 @@ export async function AppHeader() {
         <nav className="flex items-center gap-2">
           <LanguageToggleHeader />
           <ThemeToggleHeader />
-          <AuthNav user={user} /> {/* Use the new client component */}
+          <AuthNav />
         </nav>
       </div>
     </header>
   );
 }
-

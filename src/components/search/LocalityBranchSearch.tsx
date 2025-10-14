@@ -6,10 +6,11 @@ import Link from 'next/link';
 import type { ZoneItem } from '@/types';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent } from '@/components/ui/card';
-import { GitBranch, Building, Search as SearchIcon, Inbox, SearchX } from 'lucide-react';
+import { GitBranch, Building, Search as SearchIcon, Inbox, SearchX, ArrowLeft, ArrowRight } from 'lucide-react';
 import { EditLocalityButton } from '@/components/actions/EditLocalityButton';
 import { DeleteLocalityButton } from '@/components/actions/DeleteLocalityButton';
 import { useTranslation } from '@/hooks/useTranslation';
+import { Button } from '@/components/ui/button';
 
 interface LocalityBranchSearchProps {
   items: ZoneItem[];
@@ -28,11 +29,18 @@ export function LocalityBranchSearch({ items, zoneId, itemType, itemTypePlural, 
       return items;
     }
     const lowerSearchTerm = searchTerm.toLowerCase();
+    // Pagination buttons should not be filterable
     return items.filter(item =>
-      item.name.toLowerCase().includes(lowerSearchTerm) ||
-      item.id.toLowerCase().includes(lowerSearchTerm)
+      item.type !== 'pagination' && 
+      (item.name.toLowerCase().includes(lowerSearchTerm) ||
+      item.id.toLowerCase().includes(lowerSearchTerm))
     );
   }, [items, searchTerm]);
+
+  // Separate pagination items from the list to render them differently.
+  const paginationItems = useMemo(() => items.filter(item => item.type === 'pagination'), [items]);
+  const regularItems = useMemo(() => filteredItems.filter(item => item.type !== 'pagination'), [filteredItems]);
+
 
   const searchPlaceholder = t('searchPlaceholder', { itemType: itemTypePlural.toLowerCase() });
 
@@ -50,9 +58,9 @@ export function LocalityBranchSearch({ items, zoneId, itemType, itemTypePlural, 
         />
       </div>
 
-      {filteredItems.length > 0 ? (
+      {regularItems.length > 0 ? (
         <div className="space-y-4">
-          {filteredItems.map((item) => {
+          {regularItems.map((item) => {
             const Icon = item.type === 'branch' ? GitBranch : Building;
             const href = item.type === 'branch'
               ? `/${zoneId}/branches/${item.id}`
@@ -82,13 +90,13 @@ export function LocalityBranchSearch({ items, zoneId, itemType, itemTypePlural, 
                       <EditLocalityButton
                         zoneId={zoneId}
                         item={item}
-                        itemType={item.type}
+                        itemType={item.type as 'branch' | 'locality'}
                       />
                       <DeleteLocalityButton
                         zoneId={zoneId}
                         itemId={item.id}
                         itemName={item.name}
-                        itemType={item.type}
+                        itemType={item.type as 'branch' | 'locality'}
                       />
                     </div>
                   )}
@@ -117,6 +125,29 @@ export function LocalityBranchSearch({ items, zoneId, itemType, itemTypePlural, 
             </>
           )}
         </div>
+      )}
+
+      {/* Pagination Controls */}
+      {paginationItems.length > 0 && (
+          <div className="flex justify-between items-center pt-4 border-t">
+              {paginationItems.find(p => p.name === '<< Anterior') ? (
+                  <Button asChild variant="outline">
+                      <Link href={paginationItems.find(p => p.name === '<< Anterior')?.url || '#'}>
+                          <ArrowLeft className="mr-2 h-4 w-4" />
+                          Anterior
+                      </Link>
+                  </Button>
+              ) : <div/>}
+
+              {paginationItems.find(p => p.name === 'Siguiente >>') ? (
+                  <Button asChild variant="outline">
+                      <Link href={paginationItems.find(p => p.name === 'Siguiente >>')?.url || '#'}>
+                          Siguiente
+                          <ArrowRight className="ml-2 h-4 w-4" />
+                      </Link>
+                  </Button>
+              ) : <div/>}
+          </div>
       )}
     </div>
   );

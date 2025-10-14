@@ -7,11 +7,20 @@ import { getTranslations } from '@/lib/translations-server';
 import { GlobalSearch } from '@/components/search/GlobalSearch';
 import { Separator } from '@/components/ui/separator';
 import { isAuthenticated } from '@/lib/auth-actions';
+import { DeleteZoneButton } from '@/components/actions/DeleteZoneButton'; 
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { AlertCircle } from 'lucide-react';
+
 
 export default async function HomePage() {
-  const zones = await getZones();
+  const allZones = await getZones();
   const t = await getTranslations();
   const userIsAuthenticated = await isAuthenticated();
+
+  // Filter out the "Missing Extensions" zone if the user is not authenticated
+  const zones = userIsAuthenticated 
+    ? allZones 
+    : allZones.filter(zone => zone.id !== 'MissingExtensionsFromFeed');
 
   return (
     <div>
@@ -31,18 +40,35 @@ export default async function HomePage() {
       {zones.length > 0 ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {zones.map((zone) => (
-            <NavigationCard
-              key={zone.id}
-              title={zone.name}
-              href={`/${zone.id}`}
-              description={t('exploreZoneItems', { zoneName: zone.name })}
-              iconType="zone"
-            />
+            <div key={zone.id} className="relative group">
+              <NavigationCard
+                title={zone.name}
+                href={`/${zone.id}`}
+                description={t('exploreZoneItems', { zoneName: zone.name })}
+                iconType={zone.id === 'MissingExtensionsFromFeed' ? 'missing' : 'zone'}
+              />
+              {userIsAuthenticated && (
+                <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                  <DeleteZoneButton 
+                    zoneId={zone.id} 
+                    zoneName={zone.name} 
+                    isAuthenticated={userIsAuthenticated} 
+                  />
+                </div>
+              )}
+            </div>
           ))}
         </div>
       ) : (
-        <p className="text-muted-foreground">{t('noZonesAvailable')}</p>
+         <Alert variant="destructive">
+            <AlertCircle className="h-4 w-4" />
+            <AlertTitle>Directory Not Found</AlertTitle>
+            <AlertDescription>
+              Could not load the directory zones. Please ensure that <strong>MAINMENU.xml</strong> exists at the root of your configured directory path and is not empty or malformed.
+            </AlertDescription>
+        </Alert>
       )}
     </div>
   );
 }
+

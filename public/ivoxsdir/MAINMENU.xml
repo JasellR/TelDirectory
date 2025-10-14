@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<CiscoIPPhoneMenu>
+  <Title>Farmacia Carol</Title>
+  <Prompt>Select a Zone Branch</Prompt>
+  <MenuItem>
+    <Name>Oficinas Administrativas</Name>
+    <URL>http://127.0.0.1:3000/ivoxsdir/zonebranch/OficinasAdministrativas.xml</URL>
+  </MenuItem>
+  <MenuItem>
+    <Name>Zona Este</Name>
+    <URL>http://127.0.0.1:3000/ivoxsdir/zonebranch/ZonaEste.xml</URL>
+  </MenuItem>
+  <MenuItem>
+    <Name>Zona Metropolitana</Name>
+    <URL>http://127.0.0.1:3000/ivoxsdir/zonebranch/ZonaMetropolitana.xml</URL>
+  </MenuItem>
+  <MenuItem>
+    <Name>Zona Norte</Name>
+    <URL>http://127.0.0.1:3000/ivoxsdir/zonebranch/ZonaNorte.xml</URL>
+  </MenuItem>
+  <MenuItem>
+    <Name>Zona Sur</Name>
+    <URL>http://127.0.0.1:3000/ivoxsdir/zonebranch/ZonaSur.xml</URL>
+  </MenuItem>
+</CiscoIPPhoneMenu>

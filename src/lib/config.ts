@@ -17,13 +17,14 @@ export async function getDirectoryConfig(): Promise<DirectoryConfig> {
     await fs.mkdir(CONFIG_DIR, { recursive: true });
     const data = await fs.readFile(DIRECTORY_CONFIG_PATH, 'utf-8');
     const parsedData = JSON.parse(data);
-    if (typeof parsedData.ivoxsRootPath === 'string' || parsedData.ivoxsRootPath === null) {
-      return parsedData;
+    // Basic validation to ensure the object has the expected key
+    if (parsedData && typeof parsedData.ivoxsRootPath !== 'undefined') {
+      return { ivoxsRootPath: parsedData.ivoxsRootPath };
     }
     // If structure is unexpected, return default
     return { ivoxsRootPath: null };
   } catch (error) {
-    // If file doesn't exist or is invalid, return default
+    // If file doesn't exist or is invalid JSON, it's not an application error, just means no config is set.
     return { ivoxsRootPath: null };
   }
 }
@@ -35,26 +36,13 @@ export async function saveDirectoryConfig(config: DirectoryConfig): Promise<void
 
 /**
  * Resolves the root path for the ivoxsdir directory.
- * Uses the path from directory.config.json if set, otherwise defaults to 'ivoxsdir' in the project root.
+ * This version is updated to ALWAYS point to the `public/ivoxsdir` directory,
+ * as serving XMLs statically is the correct architectural approach for this app.
+ * The ability to configure a custom path is removed to simplify logic and prevent errors.
  */
 export async function getResolvedIvoxsRootPath(): Promise<string> {
-  const config = await getDirectoryConfig();
-  if (config.ivoxsRootPath && path.isAbsolute(config.ivoxsRootPath)) {
-    try {
-      // Basic check: does the path exist and is it a directory?
-      const stats = await fs.stat(config.ivoxsRootPath);
-      if (stats.isDirectory()) {
-        return config.ivoxsRootPath;
-      } else {
-        console.warn(`Configured ivoxsdir root path "${config.ivoxsRootPath}" is not a directory. Falling back to default.`);
-      }
-    } catch (error) {
-      console.warn(`Error accessing configured ivoxsdir root path "${config.ivoxsRootPath}": ${error}. Falling back to default.`);
-    }
-  } else if (config.ivoxsRootPath) {
-    console.warn(`Configured ivoxsdir root path "${config.ivoxsRootPath}" is not an absolute path. Falling back to default.`);
-  }
-  // Default to 'ivoxsdir' in the project root
-  return path.join(process.cwd(), 'ivoxsdir');
+  // This function now returns a static, reliable path.
+  // All file operations (read, write, delete) for the directory
+  // will correctly target the publicly served directory.
+  return path.join(process.cwd(), 'public', 'ivoxsdir');
 }
-
