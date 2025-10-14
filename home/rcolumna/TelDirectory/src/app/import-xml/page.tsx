@@ -101,7 +101,7 @@ export default function SettingsPage() {
   const handleUpdateXmlUrls = async () => {
     startUrlUpdateTransition(async () => {
         if (!networkConfig.host) {
-            toast({ title: t('errorTitle'), description: "Host/IP is required for generating phone URLs.", variant: 'destructive'});
+            toast({ title: t('errorTitle'), description: t('hostIpRequiredError'), variant: 'destructive'});
             return;
         }
         const result = await updateXmlUrlsAction(networkConfig);
