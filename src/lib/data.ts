@@ -177,37 +177,68 @@ export async function getZoneDetails(zoneId: string): Promise<Omit<Zone, 'items'
 
 export async function getZoneItems(zoneId: string): Promise<ZoneItem[]> {
   const { ZONE_BRANCH_DIR } = await getPaths();
-  const zoneFilePath = path.join(ZONE_BRANCH_DIR, `${zoneId}.xml`);
-  const xmlContent = await readFileContent(zoneFilePath);
-  if (!xmlContent) return [];
+  let allItems: ZoneItem[] = [];
+  let currentFilePath = path.join(ZONE_BRANCH_DIR, `${zoneId}.xml`);
+  const visitedFiles = new Set<string>();
 
-  const parsedXml = await parseStringPromise(xmlContent, { explicitArray: false, trim: true });
-   if (!parsedXml || !parsedXml.CiscoIPPhoneMenu) {
-    console.error(`Zone file ${zoneId}.xml is malformed. Missing CiscoIPPhoneMenu root element.`);
-    return [];
-  }
-  const validated = CiscoIPPhoneMenuSchema.safeParse(parsedXml.CiscoIPPhoneMenu);
+  while (currentFilePath && !visitedFiles.has(currentFilePath)) {
+    visitedFiles.add(currentFilePath);
+    const xmlContent = await readFileContent(currentFilePath);
+    if (!xmlContent) break;
 
-  if (!validated.success) {
-    console.error(`Failed to parse ZoneBranch XML for ${zoneId}:`, validated.error.issues);
-    return [];
-  }
+    try {
+      const parsedXml = await parseStringPromise(xmlContent, { explicitArray: false, trim: true });
+      if (!parsedXml || !parsedXml.CiscoIPPhoneMenu) {
+        console.error(`File ${path.basename(currentFilePath)} is malformed. Missing CiscoIPPhoneMenu root element.`);
+        break;
+      }
+      
+      const validated = CiscoIPPhoneMenuSchema.safeParse(parsedXml.CiscoIPPhoneMenu);
+      if (!validated.success) {
+        console.error(`Failed to parse XML in ${path.basename(currentFilePath)}:`, validated.error.issues);
+        break;
+      }
 
-  const menuItems = validated.data.MenuItem || [];
-  return menuItems.map(item => {
-    const itemType = getItemTypeFromUrl(item.URL);
+      const menuItems = validated.data.MenuItem || [];
+      let nextFileUrl: string | null = null;
+      
+      for (const item of menuItems) {
+        if (item.Name === 'Siguiente >>') {
+          nextFileUrl = item.URL;
+          continue; // Don't add pagination button to the list
+        }
+        if (item.Name === '<< Anterior') {
+          continue; // Don't add pagination button to the list
+        }
 
-    if (itemType === 'unknown') {
-        console.warn(`Unknown URL type in ${zoneId}.xml for item ${item.Name}: ${item.URL}`);
+        const itemType = getItemTypeFromUrl(item.URL);
+        if (itemType === 'branch' || itemType === 'locality') {
+           allItems.push({
+             id: extractIdFromUrl(item.URL),
+             name: item.Name,
+             type: itemType,
+           });
+        }
+      }
+
+      if (nextFileUrl) {
+        // The URL for pagination might be a full http URL or just the file name
+        const nextFileId = extractIdFromUrl(nextFileUrl);
+        currentFilePath = path.join(ZONE_BRANCH_DIR, `${nextFileId}.xml`);
+      } else {
+        currentFilePath = ''; // No more pages
+      }
+
+    } catch (e) {
+      console.error(`Error processing file ${path.basename(currentFilePath)}: `, e);
+      currentFilePath = ''; // Stop processing on error
     }
-    return {
-        id: extractIdFromUrl(item.URL),
-        name: item.Name,
-        type: itemType as 'branch' | 'locality' | 'pagination',
-        // Pass the original URL for pagination items
-        url: itemType === 'pagination' ? item.URL : undefined,
-    };
-  }).filter(item => item.type === 'branch' || item.type === 'locality' || item.type === 'pagination');
+  }
+  
+  // Sort all collected items alphabetically by name
+  allItems.sort((a, b) => a.name.localeCompare(b.name));
+
+  return allItems;
 }
 
 
