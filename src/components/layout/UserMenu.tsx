@@ -15,47 +15,47 @@ import { LogOut, UserCircle } from 'lucide-react';
 import { logoutAction } from '@/lib/auth-actions';
 import { useTransition } from 'react';
 import { useTranslation } from '@/hooks/useTranslation';
-import { useRouter } from 'next/navigation';
-import { useAuth } from '@/context/AuthContext';
 
-export function UserMenu() {
+interface UserMenuProps {
+  username: string;
+}
+
+export function UserMenu({ username }: UserMenuProps) {
   const [isPending, startTransition] = useTransition();
   const { t } = useTranslation();
-  const { user, setUser } = useAuth();
-  const router = useRouter();
 
   const handleLogout = () => {
     startTransition(async () => {
       await logoutAction();
-      setUser(null); // Update context on client
-      router.push('/');
-      router.refresh(); 
     });
   };
-  
-  if (!user) {
-    return null;
-  }
 
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
         <Button variant="ghost" className="relative h-8 w-8 rounded-full">
           <Avatar className="h-8 w-8">
-            <AvatarFallback>{user.username.substring(0, 1).toUpperCase()}</AvatarFallback>
+            {/* Placeholder for actual avatar image if you add them later */}
+            {/* <AvatarImage src="/avatars/01.png" alt={username} /> */}
+            <AvatarFallback>{username.substring(0, 1).toUpperCase()}</AvatarFallback>
           </Avatar>
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent className="w-56" align="end" forceMount>
         <DropdownMenuLabel className="font-normal">
           <div className="flex flex-col space-y-1">
-            <p className="text-sm font-medium leading-none">{user.username}</p>
+            <p className="text-sm font-medium leading-none">{username}</p>
             <p className="text-xs leading-none text-muted-foreground">
               {t('authenticatedUserLabel')}
             </p>
           </div>
         </DropdownMenuLabel>
         <DropdownMenuSeparator />
+        {/* Add more items here if needed, e.g., "Profile", "Settings" */}
+        {/* <DropdownMenuItem>
+          <UserCircle className="mr-2 h-4 w-4" />
+          <span>{t('profileDropdownItem')}</span>
+        </DropdownMenuItem> */}
         <DropdownMenuSeparator />
         <DropdownMenuItem onClick={handleLogout} disabled={isPending} className="cursor-pointer">
           <LogOut className="mr-2 h-4 w-4" />

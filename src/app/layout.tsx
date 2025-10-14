@@ -1,42 +1,50 @@
 
 import type { Metadata } from 'next';
+import { Geist, Geist_Mono } from 'next/font/google'; // Corrected: Geist_Sans to Geist
 import './globals.css';
 import { AppHeader } from '@/components/layout/AppHeader';
 import { PageWrapper } from '@/components/layout/PageWrapper';
 import { Toaster } from "@/components/ui/toaster";
 import { ThemeInitializer } from '@/components/settings/ThemeInitializer';
 import { LanguageProvider } from '@/context/LanguageContext';
-import { AuthProvider } from '@/context/AuthContext';
-import { getCurrentUser } from '@/lib/auth-actions';
+
+
+const geistSans = Geist({ // Corrected: Geist_Sans to Geist
+  variable: '--font-geist-sans',
+  subsets: ['latin'],
+});
+
+const geistMono = Geist_Mono({
+  variable: '--font-geist-mono',
+  subsets: ['latin'],
+});
 
 export const metadata: Metadata = {
   title: 'TelDirectory - Corporate Phone Directory',
   description: 'Find extensions and contact information easily.',
 };
 
-const bodyClassNames = `antialiased flex flex-col min-h-screen`;
+const bodyClassNames = `${geistSans.variable} ${geistMono.variable} antialiased flex flex-col min-h-screen`;
 
-export default async function RootLayout({
+
+export default function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  const user = await getCurrentUser();
-
   return (
     <html lang="en" suppressHydrationWarning>
-      <body className={bodyClassNames}>
+      <body className={`${geistSans.variable} ${geistMono.variable} antialiased flex flex-col min-h-screen`}>
         <LanguageProvider>
-          <AuthProvider initialUser={user}>
-            <ThemeInitializer />
-            <AppHeader />
-            <PageWrapper>
-              {children}
-            </PageWrapper>
-            <Toaster />
-          </AuthProvider>
+          <ThemeInitializer />
+          <AppHeader />
+          <PageWrapper>
+            {children}
+          </PageWrapper>
+          <Toaster />
         </LanguageProvider>
       </body>
     </html>
   );
 }
+
