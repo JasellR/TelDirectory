@@ -19,8 +19,7 @@ interface LocalityPageProps {
   };
 }
 
-export async function generateMetadata({ params: paramsPromise }: LocalityPageProps): Promise<Metadata> {
-  const params = await paramsPromise;
+export async function generateMetadata({ params }: LocalityPageProps): Promise<Metadata> {
   const locality = await getLocalityDetails(params.localityId, { zoneId: params.zoneId });
   if (!locality) {
     return {
@@ -33,8 +32,7 @@ export async function generateMetadata({ params: paramsPromise }: LocalityPagePr
   };
 }
 
-export default async function LocalityPage({ params: paramsPromise }: LocalityPageProps) {
-  const params = await paramsPromise;
+export default async function LocalityPage({ params }: LocalityPageProps) {
   const { zoneId, localityId } = params;
   const zone = await getZoneDetails(zoneId);
   const locality = await getLocalityWithExtensions(localityId);

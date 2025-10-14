@@ -24,27 +24,6 @@ async function _initializeDbSchema(db: Database): Promise<void> {
   `);
   console.log('[DB] "users" table ensured.');
 
-  await db.exec(`
-    CREATE TABLE IF NOT EXISTS extension_details (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      extension_number TEXT NOT NULL,
-      locality_id TEXT NOT NULL, -- The department/locality XML filename ID
-      user_name TEXT, -- DisplayName from AD / Name from XML
-      organization TEXT,
-      ad_department TEXT, -- Department name as it comes from AD
-      job_title TEXT,
-      email TEXT,
-      main_phone_number TEXT,
-      source TEXT DEFAULT 'xml', -- 'xml', 'ad', 'csv'
-      last_synced DATETIME DEFAULT CURRENT_TIMESTAMP,
-      UNIQUE(extension_number, locality_id, source) 
-    );
-  `);
-  console.log('[DB] "extension_details" table ensured.');
-  await db.exec(`CREATE INDEX IF NOT EXISTS idx_extension_details_number_locality ON extension_details (extension_number, locality_id);`);
-  console.log('[DB] Index for "extension_details" ensured.');
-
-
   // Seed initial admin user if no users exist
   const userCount = await db.get('SELECT COUNT(*) as count FROM users');
   if (userCount && userCount.count === 0) {
@@ -82,6 +61,9 @@ async function getDb(): Promise<Database> {
     // Initialize schema and seed data on first connection
     await _initializeDbSchema(dbInstance);
   } else if (!dbInitialized) {
+    // This case might occur if dbInstance was somehow set but initialization didn't complete
+    // or if multiple near-simultaneous calls happen before dbInitialized is true.
+    // The dbInitialized flag inside _initializeDbSchema should prevent redundant DDL execution.
     console.log('[DB] Database instance exists, ensuring schema is initialized...');
     await _initializeDbSchema(dbInstance);
   }
