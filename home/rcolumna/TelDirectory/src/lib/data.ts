@@ -1,5 +1,4 @@
 
-
 import type { Zone, Locality, Extension, ZoneItem, Branch, BranchItem } from '@/types';
 import fs from 'fs/promises';
 import path from 'path';
@@ -16,7 +15,8 @@ const ensureArray = <T_1,>(item: T_1 | T_1[] | undefined | null): T_1[] => {
 // Helper to generate URL-friendly IDs from names, also used for extension IDs from their names
 const toUrlFriendlyId = (name: string): string => {
   if (!name) return `unnamed-${Date.now()}`;
-  return name.trim().replace(/\s+/g, '-').replace(/[^a-zA-Z0-9-]/g, '').toLowerCase();
+  const cleanedId = name.trim().replace(/\s+/g, '-').replace(/[^a-zA-Z0-9-]/g, '').toLowerCase();
+  return cleanedId || `unnamed-${Date.now()}`;
 };
 
 // Schemas for parsing XML
@@ -90,22 +90,23 @@ async function readFileContent(filePath: string): Promise<string> {
 }
 
 function extractIdFromUrl(url: string): string {
+  if (!url) return '';
   const parts = url.split('/');
   const fileName = parts.pop() || '';
   return fileName.replace(/\.xml$/i, ''); // Case-insensitive .xml removal
 }
 
 function getItemTypeFromUrl(url: string): 'branch' | 'locality' | 'zone' | 'unknown' | 'pagination' {
+    if (!url) return 'unknown';
     const lowerUrl = url.toLowerCase();
     
-    if (url === '<< Anterior' || url === 'Siguiente >>') {
-        return 'pagination';
-    }
-
+    // Check for explicit directory paths first, which are used for Cisco phones
     if (lowerUrl.includes('/branch/')) return 'branch';
     if (lowerUrl.includes('/department/')) return 'locality';
     if (lowerUrl.includes('/zonebranch/')) return 'zone';
 
+    // Then, check for the "clean" URL pattern used by the web app for pagination
+    // e.g., /ZonaMetropolitana/ZonaMetropolitana2
     const urlParts = url.split('/').filter(p => p && !p.startsWith('http'));
     const isPaginationPath = urlParts.length >= 1 && urlParts[0].toLowerCase().startsWith('zonametropolitana');
 
@@ -154,10 +155,10 @@ export async function getZoneItems(zoneId: string): Promise<ZoneItem[]> {
   const { ZONE_BRANCH_DIR } = await getPaths();
   const zoneFilePath = path.join(ZONE_BRANCH_DIR, `${zoneId}.xml`);
   
-  const collectedItems: any[] = [];
+  const collectedItemsMap = new Map<string, ZoneItem>();
+  const visitedFiles = new Set<string>();
   let fileToRead: string | null = zoneFilePath;
-  let isPaginatedMenu = zoneId.toLowerCase() === 'zonametropolitana';
-  let visitedFiles = new Set<string>();
+  const isPaginatedMenu = zoneId.toLowerCase() === 'zonametropolitana';
 
   while(fileToRead && !visitedFiles.has(fileToRead)) {
       visitedFiles.add(fileToRead);
@@ -181,10 +182,21 @@ export async function getZoneItems(zoneId: string): Promise<ZoneItem[]> {
                         continue;
                     }
                     if (item.Name === '<< Anterior') {
-                        continue; // We are collecting all, so we skip pagination controls.
+                        continue;
                     }
                 }
-                collectedItems.push(item);
+                
+                const itemType = getItemTypeFromUrl(item.URL);
+                if (itemType === 'branch' || itemType === 'locality') {
+                    const itemId = extractIdFromUrl(item.URL);
+                    if (!collectedItemsMap.has(itemId)) { // Prevent duplicates
+                        collectedItemsMap.set(itemId, {
+                            id: itemId,
+                            name: item.Name,
+                            type: itemType,
+                        });
+                    }
+                }
               }
           } else if (!validated.success) {
               console.error(`Failed to parse XML for ${path.basename(fileToRead)}:`, validated.error.issues);
@@ -194,24 +206,10 @@ export async function getZoneItems(zoneId: string): Promise<ZoneItem[]> {
           break; // Stop if a file is unparsable
       }
       
-      if(isPaginatedMenu && nextFileId) {
-          fileToRead = path.join(ZONE_BRANCH_DIR, `${nextFileId}.xml`);
-      } else {
-          fileToRead = null; // Stop the loop
-      }
+      fileToRead = (isPaginatedMenu && nextFileId) ? path.join(ZONE_BRANCH_DIR, `${nextFileId}.xml`) : null;
   }
 
-  return collectedItems.map(item => {
-    const itemType = getItemTypeFromUrl(item.URL);
-    if (itemType === 'unknown') {
-        console.warn(`Unknown URL type in ${zoneId}.xml for item ${item.Name}: ${item.URL}`);
-    }
-    return {
-        id: extractIdFromUrl(item.URL),
-        name: item.Name,
-        type: itemType as 'branch' | 'locality', // No pagination items are returned
-    };
-  }).filter(item => item.type === 'branch' || item.type === 'locality');
+  return Array.from(collectedItemsMap.values());
 }
 
 
