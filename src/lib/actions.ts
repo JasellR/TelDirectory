@@ -113,7 +113,11 @@ function getItemTypeFromUrl(url: string): 'branch' | 'locality' | 'zone' | 'unkn
     if (!url) return 'unknown';
     const lowerUrl = url.toLowerCase();
     
-    // Check for explicit directory paths first, which are used for Cisco phones
+    if (lowerUrl.startsWith('/ivoxsdir/branch/')) return 'branch';
+    if (lowerUrl.startsWith('/ivoxsdir/department/')) return 'locality';
+    if (lowerUrl.startsWith('/ivoxsdir/zonebranch/')) return 'zone';
+
+    // Fallback for older URL formats if any exist
     if (lowerUrl.includes('/branch/')) return 'branch';
     if (lowerUrl.includes('/department/')) return 'locality';
     if (lowerUrl.includes('/zonebranch/')) return 'zone';
@@ -135,30 +139,14 @@ const itemTypeToDir: Record<'zone' | 'branch' | 'locality', string> = {
 };
 
 
-// Helper to get configured service URL components
-async function getServiceUrlComponents(): Promise<{ protocol: string, host: string, port: string, rootDirName: string }> {
-  // This is now simplified as the root directory is always 'ivoxsdir' inside 'public'
-  const rootDirName = 'ivoxsdir';
-  // These can be configured via environment variables in a real production setup
-  let protocol = 'http';
-  let host = '127.0.0.1';
-  let port = '3000';
-  
-  return { protocol, host, port, rootDirName };
-}
-
-function constructServiceUrl(protocol: string, host: string, port: string, rootDirName: string, pathSegment: string): string {
+function constructServiceUrl(pathSegment: string): string {
+    const rootDirName = 'ivoxsdir';
     if (pathSegment.startsWith('/')) {
         pathSegment = pathSegment.substring(1);
     }
     
-    const isPaginationPath = pathSegment.toLowerCase().startsWith('zonametropolitana') && !pathSegment.toLowerCase().endsWith('.xml');
-    if (isPaginationPath) {
-        // Construct the full URL for the phone to fetch the next XML page
-        return `${protocol}://${host}:${port}/directory/zonebranch/${path.basename(pathSegment)}.xml`;
-    }
-
-  return `${protocol}://${host}:${port}/directory/${pathSegment.replace(/\\/g, '/')}`;
+    // Ensure the path always starts with the public directory name.
+    return `/${rootDirName}/${pathSegment.replace(/\\/g, '/')}`;
 }
 
 
@@ -221,7 +209,6 @@ async function repaginateMenuItems(parentFilePath: string, menuName: string) {
     const allItems = Array.from(allItemsMap.values()).sort((a, b) => a.Name.localeCompare(b.Name));
 
     // 3. Repaginate if necessary
-    const { protocol, host, port, rootDirName } = await getServiceUrlComponents();
     if (allItems.length > PAGINATION_LIMIT) {
         const totalPages = Math.ceil(allItems.length / PAGINATION_LIMIT);
         for (let i = 0; i < totalPages; i++) {
@@ -232,12 +219,12 @@ async function repaginateMenuItems(parentFilePath: string, menuName: string) {
 
             if (i > 0) { // Add "<< Anterior" button
                 const prevPageName = `${menuName}${pageNum - 1 > 1 ? pageNum - 1 : ''}`;
-                const prevUrl = constructServiceUrl(protocol, host, port, 'directory', `zonebranch/${prevPageName}.xml`);
+                const prevUrl = constructServiceUrl(`zonebranch/${prevPageName}.xml`);
                 pageItems.unshift({ Name: '<< Anterior', URL: prevUrl });
             }
             if (i < totalPages - 1) { // Add "Siguiente >>" button
                 const nextPageName = `${menuName}${pageNum + 1}`;
-                const nextUrl = constructServiceUrl(protocol, host, port, 'directory', `zonebranch/${nextPageName}.xml`);
+                const nextUrl = constructServiceUrl(`zonebranch/${nextPageName}.xml`);
                 pageItems.push({ Name: 'Siguiente >>', URL: nextUrl });
             }
 
@@ -280,8 +267,7 @@ export async function addZoneAction(zoneName: string): Promise<{ success: boolea
   }
   const mainMenuPath = paths.MAINMENU_PATH;
   const newZoneBranchFilePath = path.join(paths.ZONE_BRANCH_DIR, `${newZoneId}.xml`);
-  const { protocol, host, port, rootDirName } = await getServiceUrlComponents();
-  const newZoneURL = constructServiceUrl(protocol, host, port, 'directory', `zonebranch/${newZoneId}.xml`);
+  const newZoneURL = constructServiceUrl(`zonebranch/${newZoneId}.xml`);
 
   try {
     // 1. Create the new zone branch file
@@ -422,7 +408,6 @@ export async function addLocalityOrBranchAction(params: {
     const { zoneId, branchId, itemName, itemType } = params;
     const newItemId = generateIdFromName(itemName);
     const paths = await getPaths();
-    const { protocol, host, port, rootDirName } = await getServiceUrlComponents();
     
     let parentMenuPath, newItemPath, newUrlPath, revalidationPath;
     const subDir = itemTypeToDir[itemType];
@@ -441,7 +426,7 @@ export async function addLocalityOrBranchAction(params: {
         revalidationPath = branchId ? `/${zoneId}/branches/${branchId}` : `/${zoneId}`;
     }
     
-    const newUrl = constructServiceUrl(protocol, host, port, 'directory', newUrlPath);
+    const newUrl = constructServiceUrl(newUrlPath);
 
     try {
         // --- START VALIDATION ---
@@ -499,7 +484,6 @@ export async function editLocalityOrBranchAction(params: {
     const { zoneId, branchId, oldItemId, newItemName, itemType } = params;
     const newItemId = generateIdFromName(newItemName);
     const paths = await getPaths();
-    const { protocol, host, port, rootDirName } = await getServiceUrlComponents();
     const subDir = itemTypeToDir[itemType];
 
     let parentMenuPath, oldItemPath, newItemPath, newUrlPath, revalidationPath;
@@ -520,7 +504,7 @@ export async function editLocalityOrBranchAction(params: {
         revalidationPath = branchId ? `/${zoneId}/branches/${branchId}` : `/${zoneId}`;
     }
 
-    const newUrl = constructServiceUrl(protocol, host, port, 'directory', newUrlPath);
+    const newUrl = constructServiceUrl(newUrlPath);
 
     try {
         // 1. Rename the item's XML file if ID changes
@@ -771,14 +755,13 @@ export async function updateDirectoryRootPathAction(newPath: string): Promise<{ 
     return { success: false, message: "This functionality is deprecated. The directory path is fixed to 'public/ivoxsdir' for stability."}
 }
 
-export async function updateXmlUrlsAction(host: string, port: string): Promise<{ success: boolean, message: string, error?: string }> {
+export async function updateXmlUrlsAction(): Promise<{ success: boolean, message: string, error?: string }> {
     const authenticated = await isAuthenticated();
     if (!authenticated) {
         return { success: false, message: "Authentication required." };
     }
 
     const paths = await getPaths();
-    const { protocol, rootDirName } = await getServiceUrlComponents();
     
     const updateUrlsInFile = async (filePath: string | null) => {
         if (!filePath) {
@@ -793,14 +776,10 @@ export async function updateXmlUrlsAction(host: string, port: string): Promise<{
             const itemType = getItemTypeFromUrl(urlString);
             const itemId = extractIdFromUrl(urlString);
 
-            if (item.Name === 'Siguiente >>' || item.Name === '<< Anterior') {
-                const subDirectory = 'zonebranch';
-                const relativePath = `${subDirectory}/${itemId}.xml`;
-                item.URL = constructServiceUrl(protocol, host, port, 'directory', relativePath);
-            } else if (itemType === 'zone' || itemType === 'branch' || itemType === 'locality') {
-                const subDirectory = itemTypeToDir[itemType as 'zone' | 'branch' | 'locality'];
+            if (itemType === 'zone' || itemType === 'branch' || itemType === 'locality' || itemType === 'pagination') {
+                const subDirectory = (itemType === 'locality') ? 'department' : (itemType === 'branch' ? 'branch' : 'zonebranch');
                 let relativePath = `${subDirectory}/${itemId}.xml`;
-                item.URL = constructServiceUrl(protocol, host, port, 'directory', relativePath);
+                item.URL = constructServiceUrl(relativePath);
             } else {
                  console.warn(`[updateXmlUrlsAction] Could not process URL: ${item.URL}. It might be malformed or pointing to an unknown type.`);
             }
@@ -821,7 +800,7 @@ export async function updateXmlUrlsAction(host: string, port: string): Promise<{
         
         try {
             const branchFiles = await fs.readdir(paths.BRANCH_DIR);
-            for(const file of branchFiles) {
+for(const file of branchFiles) {
                 if(file.endsWith('.xml')) {
                     await updateUrlsInFile(path.join(paths.BRANCH_DIR, file));
                 }
@@ -967,7 +946,6 @@ export async function syncNamesFromXmlFeedAction(feedUrlsString: string): Promis
       const zoneName = 'Missing Extensions from Feed';
       const departmentId = 'MissingExtensionsDepartment';
       const departmentName = 'Missing Extensions';
-      const { protocol, host, port, rootDirName } = await getServiceUrlComponents();
       
       const deptFilePath = path.join(paths.DEPARTMENT_DIR, `${departmentId}.xml`);
       const deptContent = {
@@ -978,7 +956,7 @@ export async function syncNamesFromXmlFeedAction(feedUrlsString: string): Promis
       await buildAndWriteXML(deptFilePath, deptContent);
 
       const zoneFilePath = path.join(paths.ZONE_BRANCH_DIR, `${zoneId}.xml`);
-      const zoneUrl = constructServiceUrl(protocol, host, port, 'directory', `department/${departmentId}.xml`);
+      const zoneUrl = constructServiceUrl(`department/${departmentId}.xml`);
       const zoneContent = {
           CiscoIPPhoneMenu: {
               Title: zoneName,

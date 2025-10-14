@@ -5,7 +5,7 @@ import { useState, useEffect, useTransition } from 'react';
 import { Breadcrumbs } from '@/components/layout/Breadcrumbs';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { UploadCloud, Palette, Languages, Settings as SettingsIcon, FileCode, Info, FolderCog, CheckCircle, AlertCircleIcon, UserCog, Rss, RefreshCw, ListChecks, AlertTriangle, FileWarning, FileUp, Tv, Users } from 'lucide-react';
+import { UploadCloud, Palette, Languages, Settings as SettingsIcon, FileCode, Info, FolderCog, CheckCircle, AlertCircleIcon, UserCog, Rss, RefreshCw, ListChecks, AlertTriangle, FileWarning, FileUp, Tv, Users, Network } from 'lucide-react';
 import { FileUploadForm } from '@/components/import/FileUploadForm';
 import { syncNamesFromXmlFeedAction, updateDirectoryRootPathAction, updateXmlUrlsAction, importExtensionsFromCsvAction, syncFromActiveDirectoryAction } from '@/lib/actions';
 import type { SyncResult, AdSyncResult, CsvImportResult, AdSyncFormValues, UserSession } from '@/types';
@@ -39,8 +39,6 @@ export default function SettingsPage() {
   const [isLoadingPath, setIsLoadingPath] = useState(true);
   const [pathStatus, setPathStatus] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
 
-  const [serviceHost, setServiceHost] = useState('');
-  const [servicePort, setServicePort] = useState('');
   const [xmlUrlStatus, setXmlUrlStatus] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
 
   const [xmlFeedUrls, setXmlFeedUrls] = useState('');
@@ -89,13 +87,8 @@ export default function SettingsPage() {
   };
 
   const handleUpdateXmlUrls = async () => {
-    if (!serviceHost.trim() && !servicePort.trim()) {
-        toast({ title: t('errorTitle'), description: t('hostOrPortRequiredError'), variant: 'destructive' });
-        setXmlUrlStatus({type: 'error', message: t('hostOrPortRequiredError')});
-        return;
-    }
     startUrlUpdateTransition(async () => {
-        const result = await updateXmlUrlsAction(serviceHost.trim(), servicePort.trim());
+        const result = await updateXmlUrlsAction();
         if (result.success) {
             toast({ title: t('successTitle'), description: result.message });
             setXmlUrlStatus({type: 'success', message: result.message});
@@ -253,42 +246,19 @@ export default function SettingsPage() {
         <Card>
             <CardHeader>
                 <div className="flex items-center gap-3">
-                    <Tv className="h-6 w-6 text-primary" />
+                    <Network className="h-6 w-6 text-primary" />
                     <CardTitle className="text-2xl">{t('networkConfigurationTitle')}</CardTitle>
                 </div>
-                <CardDescription>{t('networkConfigurationDescription', { dirPath: 'public/ivoxsdir' })}</CardDescription>
+                <CardDescription>This action regenerates all URLs in your menu files to ensure they point to the correct static paths. Use this if you suspect URLs are broken.</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 items-end">
-                    <div className="space-y-2">
-                        <Label htmlFor="serviceHost">{t('serviceHostLabel')}</Label>
-                        <Input
-                            id="serviceHost"
-                            value={serviceHost}
-                            onChange={(e) => setServiceHost(e.target.value)}
-                            placeholder={t('serviceHostPlaceholder')}
-                            disabled={isUrlUpdatePending}
-                        />
-                    </div>
-                    <div className="space-y-2">
-                        <Label htmlFor="servicePort">{t('servicePortLabel')}</Label>
-                        <Input
-                            id="servicePort"
-                            type="number"
-                            value={servicePort}
-                            onChange={(e) => setServicePort(e.target.value)}
-                            placeholder={t('servicePortPlaceholder')}
-                            disabled={isUrlUpdatePending}
-                        />
-                    </div>
-                </div>
                  <div className="flex items-center justify-between mt-2">
                     <p className="text-xs text-muted-foreground flex items-center gap-1">
                         <Info className="h-3 w-3" />
-                        {t('serviceHostInfo')}
+                        This no longer requires host and port configuration.
                     </p>
                     <Button onClick={handleUpdateXmlUrls} disabled={isUrlUpdatePending}>
-                        {isUrlUpdatePending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                        {isUrlUpdatePending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <RefreshCw className="mr-2 h-4 w-4"/>}
                         {t('applyNetworkSettingsButton')}
                     </Button>
                 </div>
@@ -410,5 +380,3 @@ export default function SettingsPage() {
     </div>
   );
 }
-
-    
