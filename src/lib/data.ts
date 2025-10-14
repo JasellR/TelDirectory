@@ -5,6 +5,8 @@ import path from 'path';
 import { parseStringPromise } from 'xml2js';
 import { z } from 'zod';
 import { getResolvedIvoxsRootPath } from '@/lib/config';
+import { isAuthenticated } from '@/lib/auth-actions';
+
 
 // Helper to ensure an element is an array, useful for xml2js when explicitArray: false
 const ensureArray = <T,>(item: T | T[] | undefined | null): T[] => {
@@ -115,32 +117,58 @@ function getItemTypeFromUrl(url: string): 'branch' | 'locality' | 'zone' | 'unkn
 
 export async function getZones(): Promise<Omit<Zone, 'items'>[]> {
   const paths = await getPaths();
-  if (!paths.MAINMENU_PATH) {
+  let zones: Omit<Zone, 'items'>[] = [];
+
+  // 1. Get standard zones from MainMenu.xml
+  if (paths.MAINMENU_PATH) {
+      const xmlContent = await readFileContent(paths.MAINMENU_PATH);
+      if (xmlContent) {
+          try {
+              const parsedXml = await parseStringPromise(xmlContent, { explicitArray: false, trim: true });
+              if (parsedXml && parsedXml.CiscoIPPhoneMenu) {
+                  const validated = CiscoIPPhoneMenuSchema.safeParse(parsedXml.CiscoIPPhoneMenu);
+                  if (validated.success) {
+                      const menuItems = validated.data.MenuItem || [];
+                      zones = menuItems.map(item => ({
+                          id: extractIdFromUrl(item.URL),
+                          name: item.Name,
+                      }));
+                  } else {
+                      console.error(`Failed to parse ${paths.MAINMENU_FILENAME}:`, validated.error.issues);
+                  }
+              } else {
+                   console.error(`Main menu file ${paths.MAINMENU_FILENAME} is malformed. Missing CiscoIPPhoneMenu root element.`);
+              }
+          } catch(e) {
+              console.error(`Error parsing MainMenu.xml: `, e);
+          }
+      }
+  } else {
       console.warn("[getZones] Main menu file (e.g., MainMenu.xml) not found in the root directory.");
-      return [];
   }
-  const xmlContent = await readFileContent(paths.MAINMENU_PATH);
-  if (!xmlContent) return [];
-
-  const parsedXml = await parseStringPromise(xmlContent, { explicitArray: false, trim: true });
-  // Ensure we validate the correct object
-  if (!parsedXml || !parsedXml.CiscoIPPhoneMenu) {
-    console.error(`Main menu file ${paths.MAINMENU_FILENAME} is malformed. Missing CiscoIPPhoneMenu root element.`);
-    return [];
+  
+  // 2. For authenticated users, check for the "Missing Extensions" zone file directly
+  const userIsAuthenticated = await isAuthenticated();
+  if (userIsAuthenticated) {
+      const missingExtensionsZoneFile = path.join(paths.ZONE_BRANCH_DIR, 'MissingExtensionsFromFeed.xml');
+      try {
+          // Check if file exists without reading it
+          await fs.access(missingExtensionsZoneFile);
+          // If it exists, add it to the zones list if it's not already there
+          if (!zones.some(z => z.id === 'MissingExtensionsFromFeed')) {
+              zones.push({
+                  id: 'MissingExtensionsFromFeed',
+                  name: 'Missing Extensions from Feed',
+              });
+          }
+      } catch (error) {
+          // File does not exist, which is a normal case, so do nothing.
+      }
   }
-  const validated = CiscoIPPhoneMenuSchema.safeParse(parsedXml.CiscoIPPhoneMenu);
 
-  if (!validated.success) {
-    console.error(`Failed to parse ${paths.MAINMENU_FILENAME}:`, validated.error.issues);
-    return [];
-  }
-
-  const menuItems = validated.data.MenuItem || [];
-  return menuItems.map(item => ({
-    id: extractIdFromUrl(item.URL),
-    name: item.Name,
-  }));
+  return zones;
 }
+
 
 export async function getZoneDetails(zoneId: string): Promise<Omit<Zone, 'items'> | undefined> {
   const zones = await getZones();
@@ -323,4 +351,3 @@ export async function getLocalityWithExtensions(localityId: string): Promise<Loc
     extensions,
   };
 }
-
