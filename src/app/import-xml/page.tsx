@@ -5,10 +5,9 @@ import { useState, useEffect, useTransition } from 'react';
 import { Breadcrumbs } from '@/components/layout/Breadcrumbs';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { UploadCloud, Palette, Languages, Settings as SettingsIcon, FileCode, Info, FolderCog, CheckCircle, AlertCircleIcon, UserCog, Rss, RefreshCw, ListChecks, AlertTriangle, FileWarning, FileUp, Tv, Users, Network } from 'lucide-react';
-import { FileUploadForm } from '@/components/import/FileUploadForm';
+import { Palette, Languages, Settings as SettingsIcon, Info, FolderCog, CheckCircle, AlertCircleIcon, UserCog, Rss, RefreshCw, FileUp, Users, Network } from 'lucide-react';
 import { syncNamesFromXmlFeedAction, updateDirectoryRootPathAction, updateXmlUrlsAction, importExtensionsFromCsvAction, syncFromActiveDirectoryAction } from '@/lib/actions';
-import type { SyncResult, AdSyncResult, CsvImportResult, AdSyncFormValues, UserSession, DirectoryConfig } from '@/types';
+import type { SyncResult, UserSession, DirectoryConfig } from '@/types';
 import { ThemeToggle } from '@/components/settings/ThemeToggle';
 import { LanguageToggle } from '@/components/settings/LanguageToggle';
 import { Separator } from '@/components/ui/separator';
@@ -24,6 +23,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { CsvUploadForm } from '@/components/import/CsvUploadForm';
 import { ActiveDirectorySyncForm } from '@/components/import/ActiveDirectorySyncForm';
 import { getDirectoryConfig } from '@/lib/config';
+import { FileWarning, AlertTriangle } from 'lucide-react';
 
 
 export default function SettingsPage() {
@@ -101,7 +101,7 @@ export default function SettingsPage() {
   const handleUpdateXmlUrls = async () => {
     startUrlUpdateTransition(async () => {
         if (!networkConfig.host) {
-            toast({ title: t('errorTitle'), description: "Host/IP is required for generating phone URLs.", variant: 'destructive'});
+            toast({ title: t('errorTitle'), description: t('hostIpRequiredError'), variant: 'destructive'});
             return;
         }
         const result = await updateXmlUrlsAction(networkConfig);
@@ -242,7 +242,7 @@ export default function SettingsPage() {
             <div className="flex items-center justify-between">
                 <p className="text-xs text-muted-foreground flex items-center gap-1">
                     <Info className="h-3 w-3" />
-                    Path is now fixed to 'public/ivoxsdir' for static serving.
+                    {t('directoryPathInfo')}
                 </p>
                 <Button onClick={handleSaveDirectoryPath} disabled={true}>
                     {t('saveDirectoryPathButton')}
@@ -265,27 +265,27 @@ export default function SettingsPage() {
                     <Network className="h-6 w-6 text-primary" />
                     <CardTitle className="text-2xl">{t('networkConfigurationTitle')}</CardTitle>
                 </div>
-                <CardDescription>Configure the server address used to generate full URLs in XML files for IP phones.</CardDescription>
+                <CardDescription>{t('networkConfigurationDescription')}</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
-                        <Label htmlFor="host-ip">Host (IP Address or Domain)</Label>
+                        <Label htmlFor="host-ip">{t('hostIpLabel')}</Label>
                         <Input
                             id="host-ip"
                             value={networkConfig.host}
                             onChange={(e) => setNetworkConfig(prev => ({...prev, host: e.target.value}))}
-                            placeholder="e.g., 192.168.1.100"
+                            placeholder={t('hostIpPlaceholder')}
                             disabled={isUrlUpdatePending}
                         />
                     </div>
                     <div>
-                        <Label htmlFor="port">Port</Label>
+                        <Label htmlFor="port">{t('portLabel')}</Label>
                         <Input
                             id="port"
                             value={networkConfig.port}
                             onChange={(e) => setNetworkConfig(prev => ({...prev, port: e.target.value}))}
-                            placeholder="e.g., 3000 (leave blank for port 80)"
+                            placeholder={t('portPlaceholder')}
                             disabled={isUrlUpdatePending}
                         />
                     </div>
@@ -293,7 +293,7 @@ export default function SettingsPage() {
                  <div className="flex items-center justify-between mt-2">
                     <p className="text-xs text-muted-foreground flex items-center gap-1">
                         <Info className="h-3 w-3" />
-                        This will regenerate all menu XMLs with full URLs.
+                        {t('regenerateUrlsHint')}
                     </p>
                     <Button onClick={handleUpdateXmlUrls} disabled={isUrlUpdatePending}>
                         {isUrlUpdatePending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <RefreshCw className="mr-2 h-4 w-4"/>}
@@ -374,8 +374,8 @@ export default function SettingsPage() {
                             {syncResults.conflictedExtensions && syncResults.conflictedExtensions.length > 0 && (
                                 <Alert variant="warning" className="mt-4">
                                   <AlertTriangle className="h-4 w-4" />
-                                  <AlertTitle>{t('syncConflictedExtensionsTitle')}</AlertTitle>
-                                  <AlertDescription>{t('syncConflictedExtensionsDescription')}</AlertDescription>
+                                  <AlertTitle>{t('conflictedExtensionsTitle')}</AlertTitle>
+                                  <AlertDescription>{t('conflictedExtensionsDescription')}</AlertDescription>
                                   <ScrollArea className="mt-2 h-40 rounded-md border p-2">
                                     <ul className="space-y-1 text-sm">
                                       {syncResults.conflictedExtensions.map(conflict => (

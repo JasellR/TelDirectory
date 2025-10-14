@@ -11,8 +11,8 @@ const DIRECTORY_CONFIG_PATH = path.join(CONFIG_DIR, 'directory.config.json');
 
 const DEFAULT_CONFIG: DirectoryConfig = {
   ivoxsRootPath: path.join(process.cwd(), 'public', 'ivoxsdir'),
-  host: '127.0.0.1',
-  port: '3000',
+  host: '', // Default to empty, forcing user to configure
+  port: '', // Default to empty
 };
 
 

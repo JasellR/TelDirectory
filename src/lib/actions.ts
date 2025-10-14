@@ -118,9 +118,9 @@ function getItemTypeFromUrl(url: string): 'branch' | 'locality' | 'zone' | 'unkn
     if (lowerUrl.includes('/zonebranch/')) return 'zone';
 
     // Fallback for older URL formats if any exist
-    if (lowerUrl.includes('/branch/')) return 'branch';
-    if (lowerUrl.includes('/department/')) return 'locality';
-    if (lowerUrl.includes('/zonebranch/')) return 'zone';
+    if (lowerUrl.includes('branch/')) return 'branch';
+    if (lowerUrl.includes('department/')) return 'locality';
+    if (lowerUrl.includes('zonebranch/')) return 'zone';
 
     const urlParts = url.split('/').filter(p => p && !p.startsWith('http'));
     const isPaginationPath = urlParts.length >= 1 && urlParts[0].toLowerCase().startsWith('zonametropolitana');
@@ -145,7 +145,6 @@ async function constructServiceUrl(pathSegment: string): Promise<string> {
     const port = config.port;
 
     if (!host) {
-        // This should not happen if called from updateXmlUrlsAction, which validates first.
         throw new Error("Host is not configured. Cannot generate full URL for IP phones.");
     }
     
@@ -802,8 +801,6 @@ export async function updateXmlUrlsAction(networkConfig: { host: string, port: s
                 const subDirectory = (itemType === 'locality') ? 'department' : (itemType === 'branch' ? 'branch' : 'zonebranch');
                 let relativePath = `${subDirectory}/${itemId}.xml`;
                 item.URL = await constructServiceUrl(relativePath);
-            } else {
-                 console.warn(`[updateXmlUrlsAction] Could not process URL: ${item.URL}. It might be malformed or pointing to an unknown type.`);
             }
             return item;
         }));
@@ -1110,7 +1107,7 @@ export async function searchAllDepartmentsAndExtensionsAction(query: string): Pr
     return [];
   }
   
-  const { IVOXS_DIR, MAINMENU_PATH, ZONE_BRANCH_DIR } = await getPaths();
+  const { IVOXS_DIR, MAINMENU_PATH, ZONE_BRANCH_DIR, BRANCH_DIR } = await getPaths();
   const lowerQuery = query.toLowerCase();
   
   const allLocalities = new Map<string, {name: string, zoneId: string, zoneName: string, branchId?: string, branchName?: string}>();
@@ -1135,8 +1132,11 @@ export async function searchAllDepartmentsAndExtensionsAction(query: string): Pr
             
             // Handle pagination by recursively processing the next page
             if (item.Name === 'Siguiente >>') {
-                const nextFilePath = path.join(ZONE_BRANCH_DIR, `${itemId}.xml`);
-                await processMenu(nextFilePath, context);
+                const nextFileId = extractIdFromUrl(item.URL);
+                if (nextFileId) {
+                  const nextFilePath = path.join(path.dirname(filePath), `${nextFileId}.xml`);
+                  await processMenu(nextFilePath, context);
+                }
                 continue; // Skip adding the "Siguiente >>" button itself
             }
             if (item.Name === '<< Anterior') {
@@ -1149,7 +1149,7 @@ export async function searchAllDepartmentsAndExtensionsAction(query: string): Pr
                 }
             } else if (itemType === 'branch') {
                 const newContext = { ...context, branchId: itemId, branchName: item.Name };
-                const nextFilePath = path.join(IVOXS_DIR, 'branch', `${itemId}.xml`);
+                const nextFilePath = path.join(BRANCH_DIR, `${itemId}.xml`);
                 try {
                   await fs.access(nextFilePath);
                   await processMenu(nextFilePath, newContext);
