@@ -965,10 +965,10 @@ export async function syncNamesFromXmlFeedAction(feedUrlsString: string): Promis
           CiscoIPPhoneMenu: {
               Title: zoneName,
               Prompt: `Select a department`,
-              MenuItem: {
+              MenuItem: [{
                   Name: departmentName,
                   URL: zoneUrl
-              }
+              }]
           }
       };
       await buildAndWriteXML(zoneFilePath, zoneContent);
