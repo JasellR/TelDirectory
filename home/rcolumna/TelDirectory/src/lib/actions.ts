@@ -154,11 +154,11 @@ function constructServiceUrl(protocol: string, host: string, port: string, rootD
     
     const isPaginationPath = pathSegment.toLowerCase().startsWith('zonametropolitana') && !pathSegment.toLowerCase().endsWith('.xml');
     if (isPaginationPath) {
-        // Return a clean path for the web app's router
-        return `/${pathSegment}`;
+        // Construct the full URL for the phone to fetch the next XML page
+        return `${protocol}://${host}:${port}/directory/zonebranch/${path.basename(pathSegment)}.xml`;
     }
 
-  return `${protocol}://${host}:${port}/${path.join(rootDirName, pathSegment).replace(/\\/g, '/')}`;
+  return `${protocol}://${host}:${port}/directory/${pathSegment.replace(/\\/g, '/')}`;
 }
 
 
@@ -232,12 +232,12 @@ async function repaginateMenuItems(parentFilePath: string, menuName: string) {
 
             if (i > 0) { // Add "<< Anterior" button
                 const prevPageName = `${menuName}${pageNum - 1 > 1 ? pageNum - 1 : ''}`;
-                const prevUrl = constructServiceUrl(protocol, host, port, rootDirName, `zonebranch/${prevPageName}.xml`);
+                const prevUrl = constructServiceUrl(protocol, host, port, 'directory', `zonebranch/${prevPageName}.xml`);
                 pageItems.unshift({ Name: '<< Anterior', URL: prevUrl });
             }
             if (i < totalPages - 1) { // Add "Siguiente >>" button
                 const nextPageName = `${menuName}${pageNum + 1}`;
-                const nextUrl = constructServiceUrl(protocol, host, port, rootDirName, `zonebranch/${nextPageName}.xml`);
+                const nextUrl = constructServiceUrl(protocol, host, port, 'directory', `zonebranch/${nextPageName}.xml`);
                 pageItems.push({ Name: 'Siguiente >>', URL: nextUrl });
             }
 
@@ -281,7 +281,7 @@ export async function addZoneAction(zoneName: string): Promise<{ success: boolea
   const mainMenuPath = paths.MAINMENU_PATH;
   const newZoneBranchFilePath = path.join(paths.ZONE_BRANCH_DIR, `${newZoneId}.xml`);
   const { protocol, host, port, rootDirName } = await getServiceUrlComponents();
-  const newZoneURL = constructServiceUrl(protocol, host, port, rootDirName, `zonebranch/${newZoneId}.xml`);
+  const newZoneURL = constructServiceUrl(protocol, host, port, 'directory', `zonebranch/${newZoneId}.xml`);
 
   try {
     // 1. Create the new zone branch file
@@ -320,62 +320,66 @@ export async function deleteZoneAction(zoneId: string): Promise<{ success: boole
   }
 
   const paths = await getPaths();
-  if (!paths.MAINMENU_PATH) {
-    return { success: false, message: "Main menu file (e.g., MainMenu.xml) not found. Cannot delete zone." };
-  }
-  const mainMenuPath = paths.MAINMENU_PATH;
   
   // Special handling for "MissingExtensionsFromFeed"
   if (zoneId === 'MissingExtensionsFromFeed') {
       const zoneBranchFileToDelete = path.join(paths.ZONE_BRANCH_DIR, `MissingExtensionsFromFeed.xml`);
       const departmentFileToDelete = path.join(paths.DEPARTMENT_DIR, `MissingExtensionsDepartment.xml`);
       try {
+          // Attempt to delete both files, but don't fail if they don't exist
           await fs.unlink(zoneBranchFileToDelete).catch(err => { if(err.code !== 'ENOENT') throw err; });
           await fs.unlink(departmentFileToDelete).catch(err => { if(err.code !== 'ENOENT') throw err; });
+          // No need to touch MainMenu.xml as this zone is not supposed to be there
+          revalidatePath('/');
+          return { success: true, message: `Cleaned up files for zone "${zoneId}".` };
       } catch(err: any) {
           console.error(`Could not delete special zone files:`, err);
           return { success: false, message: `Failed to delete files for zone "${zoneId}".`, error: err.message };
       }
-  } else {
-    // Regular zone deletion logic
-    const zoneBranchFilePath = path.join(paths.ZONE_BRANCH_DIR, `${zoneId}.xml`);
-    try {
-        const zoneBranchContent = await readAndParseXML(zoneBranchFilePath);
-        if (zoneBranchContent?.CiscoIPPhoneMenu?.MenuItem) {
-            const menuItems = ensureArray(zoneBranchContent.CiscoIPPhoneMenu.MenuItem);
-            for (const item of menuItems) {
-                const itemId = extractIdFromUrl(item.URL);
-                const itemType = getItemTypeFromUrl(item.URL);
-                let itemPathToDelete = '';
+  }
 
-                if (itemType === 'branch') {
-                    const branchFilePath = path.join(paths.BRANCH_DIR, `${itemId}.xml`);
-                    const branchContent = await readAndParseXML(branchFilePath);
-                    if(branchContent?.CiscoIPPhoneMenu?.MenuItem) {
-                        const branchItems = ensureArray(branchContent.CiscoIPPhoneMenu.MenuItem);
-                        for (const subItem of branchItems) {
-                            const subItemId = extractIdFromUrl(subItem.URL);
-                            const subItemPath = path.join(paths.DEPARTMENT_DIR, `${subItemId}.xml`);
-                            await fs.unlink(subItemPath).catch(err => console.warn(`Could not delete department file ${subItemPath}: ${err.message}`));
-                        }
-                    }
-                    itemPathToDelete = branchFilePath;
-                } else if (itemType === 'locality') {
-                    itemPathToDelete = path.join(paths.DEPARTMENT_DIR, `${itemId}.xml`);
-                }
+  // Regular zone deletion logic
+  if (!paths.MAINMENU_PATH) {
+    return { success: false, message: "Main menu file (e.g., MainMenu.xml) not found. Cannot delete zone." };
+  }
+  const mainMenuPath = paths.MAINMENU_PATH;
+  const zoneBranchFilePath = path.join(paths.ZONE_BRANCH_DIR, `${zoneId}.xml`);
+  try {
+      const zoneBranchContent = await readAndParseXML(zoneBranchFilePath);
+      if (zoneBranchContent?.CiscoIPPhoneMenu?.MenuItem) {
+          const menuItems = ensureArray(zoneBranchContent.CiscoIPPhoneMenu.MenuItem);
+          for (const item of menuItems) {
+              const itemId = extractIdFromUrl(item.URL);
+              const itemType = getItemTypeFromUrl(item.URL);
+              let itemPathToDelete = '';
 
-                if(itemPathToDelete) {
-                    await fs.unlink(itemPathToDelete).catch(err => console.warn(`Could not delete file ${itemPathToDelete}: ${err.message}`));
-                }
-            }
-        }
-        await fs.unlink(zoneBranchFilePath);
-    } catch (err: any) {
-        if (err.code !== 'ENOENT') {
-          console.error(`Could not delete zone branch file ${zoneBranchFilePath}:`, err);
-          return { success: false, message: `Failed to delete zone "${zoneId}".`, error: err.message };
-        }
-    }
+              if (itemType === 'branch') {
+                  const branchFilePath = path.join(paths.BRANCH_DIR, `${itemId}.xml`);
+                  const branchContent = await readAndParseXML(branchFilePath);
+                  if(branchContent?.CiscoIPPhoneMenu?.MenuItem) {
+                      const branchItems = ensureArray(branchContent.CiscoIPPhoneMenu.MenuItem);
+                      for (const subItem of branchItems) {
+                          const subItemId = extractIdFromUrl(subItem.URL);
+                          const subItemPath = path.join(paths.DEPARTMENT_DIR, `${subItemId}.xml`);
+                          await fs.unlink(subItemPath).catch(err => console.warn(`Could not delete department file ${subItemPath}: ${err.message}`));
+                      }
+                  }
+                  itemPathToDelete = branchFilePath;
+              } else if (itemType === 'locality') {
+                  itemPathToDelete = path.join(paths.DEPARTMENT_DIR, `${itemId}.xml`);
+              }
+
+              if(itemPathToDelete) {
+                  await fs.unlink(itemPathToDelete).catch(err => console.warn(`Could not delete file ${itemPathToDelete}: ${err.message}`));
+              }
+          }
+      }
+      await fs.unlink(zoneBranchFilePath);
+  } catch (err: any) {
+      if (err.code !== 'ENOENT') {
+        console.error(`Could not delete zone branch file ${zoneBranchFilePath}:`, err);
+        return { success: false, message: `Failed to delete zone "${zoneId}".`, error: err.message };
+      }
   }
 
   // Common logic: Remove the zone from MAINMENU.xml for all cases
@@ -428,7 +432,7 @@ export async function addLocalityOrBranchAction(params: {
         revalidationPath = branchId ? `/${zoneId}/branches/${branchId}` : `/${zoneId}`;
     }
     
-    const newUrl = constructServiceUrl(protocol, host, port, rootDirName, newUrlPath);
+    const newUrl = constructServiceUrl(protocol, host, port, 'directory', newUrlPath);
 
     try {
         // 1. Create the new item's own XML file (empty but valid)
@@ -496,7 +500,7 @@ export async function editLocalityOrBranchAction(params: {
         revalidationPath = branchId ? `/${zoneId}/branches/${branchId}` : `/${zoneId}`;
     }
 
-    const newUrl = constructServiceUrl(protocol, host, port, rootDirName, newUrlPath);
+    const newUrl = constructServiceUrl(protocol, host, port, 'directory', newUrlPath);
 
     try {
         // 1. Rename the item's XML file if ID changes
@@ -772,11 +776,11 @@ export async function updateXmlUrlsAction(host: string, port: string): Promise<{
             if (item.Name === 'Siguiente >>' || item.Name === '<< Anterior') {
                 const subDirectory = 'zonebranch';
                 const relativePath = `${subDirectory}/${itemId}.xml`;
-                item.URL = constructServiceUrl(protocol, host, port, rootDirName, relativePath);
+                item.URL = constructServiceUrl(protocol, host, port, 'directory', relativePath);
             } else if (itemType === 'zone' || itemType === 'branch' || itemType === 'locality') {
                 const subDirectory = itemTypeToDir[itemType as 'zone' | 'branch' | 'locality'];
                 let relativePath = `${subDirectory}/${itemId}.xml`;
-                item.URL = constructServiceUrl(protocol, host, port, rootDirName, relativePath);
+                item.URL = constructServiceUrl(protocol, host, port, 'directory', relativePath);
             } else {
                  console.warn(`[updateXmlUrlsAction] Could not process URL: ${item.URL}. It might be malformed or pointing to an unknown type.`);
             }
@@ -945,8 +949,6 @@ export async function syncNamesFromXmlFeedAction(feedUrlsString: string): Promis
       const deptFilePath = path.join(paths.DEPARTMENT_DIR, `${departmentId}.xml`);
       const deptContent = {
           CiscoIPPhoneDirectory: {
-              Title: departmentName,
-              Prompt: 'Extensions found in feeds but not locally',
               DirectoryEntry: missingExtensions.map(ext => ({ Name: ext.name, Telephone: ext.number }))
           }
       };
@@ -954,7 +956,7 @@ export async function syncNamesFromXmlFeedAction(feedUrlsString: string): Promis
 
       // 2. Create ZoneBranch file linking to department
       const zoneFilePath = path.join(paths.ZONE_BRANCH_DIR, `${zoneId}.xml`);
-      const zoneUrl = constructServiceUrl(protocol, host, port, rootDirName, `department/${departmentId}.xml`);
+      const zoneUrl = constructServiceUrl(protocol, host, port, 'directory', `department/${departmentId}.xml`);
       const zoneContent = {
           CiscoIPPhoneMenu: {
               Title: zoneName,
@@ -967,23 +969,8 @@ export async function syncNamesFromXmlFeedAction(feedUrlsString: string): Promis
       };
       await buildAndWriteXML(zoneFilePath, zoneContent);
 
-      // 3. Link Zone in MainMenu.xml
-      if (paths.MAINMENU_PATH) {
-        const mainMenu = await readAndParseXML(paths.MAINMENU_PATH) || { CiscoIPPhoneMenu: { MenuItem: [] } };
-        mainMenu.CiscoIPPhoneMenu.MenuItem = ensureArray(mainMenu.CiscoIPPhoneMenu.MenuItem);
-        
-        const existingZone = mainMenu.CiscoIPPhoneMenu.MenuItem.find((item: any) => extractIdFromUrl(item.URL) === zoneId);
-        if (!existingZone) {
-            const mainMenuZoneUrl = constructServiceUrl(protocol, host, port, rootDirName, `zonebranch/${zoneId}.xml`);
-            mainMenu.CiscoIPPhoneMenu.MenuItem.push({
-                Name: zoneName,
-                URL: mainMenuZoneUrl
-            });
-            // Sort main menu after adding
-            mainMenu.CiscoIPPhoneMenu.MenuItem.sort((a: any, b: any) => a.Name.localeCompare(b.Name));
-        }
-        await buildAndWriteXML(paths.MAINMENU_PATH, mainMenu);
-      }
+      // 3. Link Zone in MainMenu.xml - THIS PART IS NOW REMOVED
+      // This is the key change: do not modify MainMenu.xml
   }
 
 
@@ -1038,19 +1025,10 @@ export async function searchAllDepartmentsAndExtensionsAction(query: string): Pr
             if (!item || !item.URL) continue;
 
             const itemId = extractIdFromUrl(item.URL);
+            const itemType = getItemTypeFromUrl(item.URL);
             
-            let urlPath;
-            try {
-              urlPath = new URL(item.URL).pathname;
-            } catch {
-              urlPath = item.URL;
-            }
-            
-            const pathSegments = urlPath.split('/').filter(Boolean);
-            let itemType = getItemTypeFromUrl(item.URL);
-
             // Handle pagination by recursively processing the next page
-            if (item.Name === 'Siguiente >>' && itemType === 'pagination') {
+            if (item.Name === 'Siguiente >>') {
                 const nextFilePath = path.join(ZONE_BRANCH_DIR, `${itemId}.xml`);
                 await processMenu(nextFilePath, context);
                 continue; // Skip adding the "Siguiente >>" button itself

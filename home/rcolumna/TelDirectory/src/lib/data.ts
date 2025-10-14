@@ -120,30 +120,51 @@ function getItemTypeFromUrl(url: string): 'branch' | 'locality' | 'zone' | 'unkn
 
 export async function getZones(): Promise<Omit<Zone, 'items'>[]> {
   const paths = await getPaths();
-  if (!paths.MAINMENU_PATH) {
+  let zones: Omit<Zone, 'items'>[] = [];
+
+  // 1. Get zones from MainMenu.xml
+  if (paths.MAINMENU_PATH) {
+      const xmlContent = await readFileContent(paths.MAINMENU_PATH);
+      if (xmlContent) {
+          const parsedXml = await parseStringPromise(xmlContent, { explicitArray: false, trim: true });
+          if (parsedXml?.CiscoIPPhoneMenu) {
+              const validated = CiscoIPPhoneMenuSchema.safeParse(parsedXml.CiscoIPPhoneMenu);
+              if (validated.success && validated.data.MenuItem) {
+                  zones = validated.data.MenuItem.map(item => ({
+                      id: extractIdFromUrl(item.URL),
+                      name: item.Name,
+                  }));
+              } else if (!validated.success) {
+                  console.error(`Failed to parse ${paths.MAINMENU_FILENAME}:`, validated.error.issues);
+              }
+          } else {
+              console.error(`Main menu file ${paths.MAINMENU_FILENAME} is malformed. Missing CiscoIPPhoneMenu root element.`);
+          }
+      }
+  } else {
       console.warn("[getZones] Main menu file (e.g., MainMenu.xml) not found in the root directory.");
-      return [];
-  }
-  const xmlContent = await readFileContent(paths.MAINMENU_PATH);
-  if (!xmlContent) return [];
-
-  const parsedXml = await parseStringPromise(xmlContent, { explicitArray: false, trim: true });
-  if (!parsedXml || !parsedXml.CiscoIPPhoneMenu) {
-    console.error(`Main menu file ${paths.MAINMENU_FILENAME} is malformed. Missing CiscoIPPhoneMenu root element.`);
-    return [];
-  }
-  const validated = CiscoIPPhoneMenuSchema.safeParse(parsedXml.CiscoIPPhoneMenu);
-
-  if (!validated.success) {
-    console.error(`Failed to parse ${paths.MAINMENU_FILENAME}:`, validated.error.issues);
-    return [];
   }
 
-  const menuItems = validated.data.MenuItem || [];
-  return menuItems.map(item => ({
-    id: extractIdFromUrl(item.URL),
-    name: item.Name,
-  }));
+  // 2. Manually check for the "Missing Extensions" zone file
+  const missingExtensionsZoneId = 'MissingExtensionsFromFeed';
+  const missingExtensionsZoneFilePath = path.join(paths.ZONE_BRANCH_DIR, `${missingExtensionsZoneId}.xml`);
+
+  try {
+      await fs.access(missingExtensionsZoneFilePath);
+      // If the file exists and the zone isn't already in the list, add it.
+      if (!zones.some(z => z.id === missingExtensionsZoneId)) {
+          zones.push({
+              id: missingExtensionsZoneId,
+              name: 'Missing Extensions from Feed',
+          });
+          // Sort zones alphabetically after adding
+          zones.sort((a, b) => a.name.localeCompare(b.name));
+      }
+  } catch (e) {
+      // File doesn't exist, which is a normal case, so we do nothing.
+  }
+
+  return zones;
 }
 
 export async function getZoneDetails(zoneId: string): Promise<Omit<Zone, 'items'> | undefined> {
@@ -158,7 +179,7 @@ export async function getZoneItems(zoneId: string): Promise<ZoneItem[]> {
   const collectedItemsMap = new Map<string, ZoneItem>();
   const visitedFiles = new Set<string>();
   let fileToRead: string | null = zoneFilePath;
-  const isPaginatedMenu = zoneId.toLowerCase() === 'zonametropolitana';
+  const isPaginatedMenu = zoneId.toLowerCase().includes('zonametropolitana');
 
   while(fileToRead && !visitedFiles.has(fileToRead)) {
       visitedFiles.add(fileToRead);
@@ -176,20 +197,18 @@ export async function getZoneItems(zoneId: string): Promise<ZoneItem[]> {
           if (validated.success && validated.data.MenuItem) {
               const menuItems = ensureArray(validated.data.MenuItem);
               for (const item of menuItems) {
-                if (isPaginatedMenu) {
-                    if (item.Name === 'Siguiente >>') {
+                // For web UI, we follow pagination but DON'T show the pagination buttons themselves.
+                if (isPaginatedMenu && (item.Name === 'Siguiente >>' || item.Name === '<< Anterior')) {
+                    if(item.Name === 'Siguiente >>') {
                         nextFileId = extractIdFromUrl(item.URL);
-                        continue;
                     }
-                    if (item.Name === '<< Anterior') {
-                        continue;
-                    }
+                    continue; // Skip adding pagination buttons to the web list
                 }
                 
                 const itemType = getItemTypeFromUrl(item.URL);
                 if (itemType === 'branch' || itemType === 'locality') {
                     const itemId = extractIdFromUrl(item.URL);
-                    if (!collectedItemsMap.has(itemId)) { // Prevent duplicates
+                    if (!collectedItemsMap.has(itemId)) { // Prevent duplicates across pages
                         collectedItemsMap.set(itemId, {
                             id: itemId,
                             name: item.Name,
@@ -209,7 +228,8 @@ export async function getZoneItems(zoneId: string): Promise<ZoneItem[]> {
       fileToRead = (isPaginatedMenu && nextFileId) ? path.join(ZONE_BRANCH_DIR, `${nextFileId}.xml`) : null;
   }
 
-  return Array.from(collectedItemsMap.values());
+  // Return a sorted list of unique items
+  return Array.from(collectedItemsMap.values()).sort((a,b) => a.name.localeCompare(b.name));
 }
 
 
