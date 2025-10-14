@@ -5,8 +5,8 @@ import fs from 'fs/promises';
 import path from 'path';
 import { parseStringPromise, Builder } from 'xml2js';
 import { revalidatePath } from 'next/cache';
-import type { GlobalSearchResult, MatchedExtension, Extension, CsvImportResult, CsvImportDetails, CsvImportError, SyncResult, ConflictedExtensionInfo, MissingExtensionInfo, AdSyncResult, AdSyncDetails, AdSyncFormValues } from '@/types';
-import { CiscoIPPhoneMenuSchema, CiscoIPPhoneDirectorySchema } from '@/lib/data';
+import type { GlobalSearchResult, MatchedExtension, Extension, CsvImportResult, CsvImportDetails, CsvImportError, SyncResult, ConflictedExtensionInfo, MissingExtensionInfo, AdSyncResult, AdSyncDetails, AdSyncFormValues, Zone, ZoneItem } from '@/types';
+import { CiscoIPPhoneMenuSchema, CiscoIPPhoneDirectorySchema, getZones, getZoneItems } from '@/lib/data';
 import { getResolvedIvoxsRootPath, saveDirectoryConfig as saveDirConfig } from '@/lib/config';
 import { isAuthenticated, getCurrentUser } from '@/lib/auth-actions';
 import { redirect } from 'next/navigation';
@@ -1066,6 +1066,19 @@ export async function syncFromActiveDirectoryAction(params: AdSyncFormValues): P
     }
     return { success: false, message: "This feature is not yet implemented."};
 }
+
+// ===================
+// Actions for Client Components
+// ===================
+
+export async function getZonesAction(): Promise<Omit<Zone, 'items'>[]> {
+    return getZones();
+}
+
+export async function getZoneItemsAction(zoneId: string): Promise<ZoneItem[]> {
+    return getZoneItems(zoneId);
+}
+
 
 // ===================
 // Search Action

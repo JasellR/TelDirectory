@@ -18,8 +18,7 @@ import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
-import { getZones, getZoneItems } from '@/lib/data';
-import { moveExtensionsAction } from '@/lib/actions';
+import { getZonesAction, getZoneItemsAction, moveExtensionsAction } from '@/lib/actions';
 import { Loader2 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 
@@ -49,7 +48,7 @@ export function MoveExtensionsDialog({ isOpen, onClose, extensionsToMove, source
     async function fetchInitialData() {
       setIsLoading(true);
       try {
-        const fetchedZones = await getZones();
+        const fetchedZones = await getZonesAction();
         // Exclude the 'Missing Extensions' zone from the destination options
         setZones(fetchedZones.filter(z => z.id !== 'MissingExtensionsFromFeed'));
       } catch (error) {
@@ -71,7 +70,7 @@ export function MoveExtensionsDialog({ isOpen, onClose, extensionsToMove, source
       }
       setIsLoading(true);
       try {
-        const items = await getZoneItems(selectedZoneId);
+        const items = await getZoneItemsAction(selectedZoneId);
         // We only want localities/branches as potential destinations
         setLocalities(items.filter(item => item.type === 'locality' || item.type === 'branch'));
       } catch (error) {
