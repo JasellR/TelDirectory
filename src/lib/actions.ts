@@ -5,13 +5,12 @@ import fs from 'fs/promises';
 import path from 'path';
 import { parseStringPromise, Builder } from 'xml2js';
 import { revalidatePath } from 'next/cache';
-import type { GlobalSearchResult, MatchedExtension, Extension, CsvImportResult, CsvImportDetails, CsvImportError, SyncResult, ConflictedExtensionInfo, MissingExtensionInfo, AdSyncResult, AdSyncDetails, AdSyncFormValues, Zone, ZoneItem } from '@/types';
+import type { GlobalSearchResult, MatchedExtension, Extension, CsvImportResult, CsvImportDetails, CsvImportError, SyncResult, ConflictedExtensionInfo, MissingExtensionInfo, Zone, ZoneItem } from '@/types';
 import { CiscoIPPhoneMenuSchema, CiscoIPPhoneDirectorySchema, getZones, getZoneItems } from '@/lib/data';
 import { getResolvedIvoxsRootPath, saveDirectoryConfig as saveDirConfig } from '@/lib/config';
 import { isAuthenticated, getCurrentUser } from '@/lib/auth-actions';
 import { redirect } from 'next/navigation';
 import { getDb, bcrypt } from './db';
-import ldap from 'ldapjs';
 
 
 // Case-insensitive file finder
@@ -1079,15 +1078,6 @@ export async function moveExtensionsAction(params: {
     }
 }
 
-
-export async function syncFromActiveDirectoryAction(params: AdSyncFormValues): Promise<AdSyncResult> {
-    const authenticated = await isAuthenticated();
-    if (!authenticated) {
-        return { success: false, message: "Authentication required." };
-    }
-    return { success: false, message: "This feature is not yet implemented."};
-}
-
 // ===================
 // Actions for Client Components
 // ===================
@@ -1114,11 +1104,11 @@ export async function searchAllDepartmentsAndExtensionsAction(query: string): Pr
   const lowerQuery = query.toLowerCase();
   
   const allLocalities = new Map<string, {name: string, zoneId: string, zoneName: string, branchId?: string, branchName?: string}>();
-  const visitedMenus = new Set<string>(); // To prevent infinite loops in paginated menus
+  const visitedFiles = new Set<string>(); // To prevent infinite loops in paginated menus
 
   const processMenu = async (filePath: string, context: {zoneId: string, zoneName: string, branchId?: string, branchName?: string}) => {
-    if (visitedMenus.has(filePath)) return;
-    visitedMenus.add(filePath);
+    if (visitedFiles.has(filePath)) return;
+    visitedFiles.add(filePath);
     
     const menuContent = await readFileContent(filePath);
     if (!menuContent) return;
@@ -1135,9 +1125,14 @@ export async function searchAllDepartmentsAndExtensionsAction(query: string): Pr
             
             // Handle pagination by recursively processing the next page
             if (item.Name === 'Siguiente >>') {
-                const nextFilePath = path.join(ZONE_BRANCH_DIR, `${itemId}.xml`);
-                await processMenu(nextFilePath, context);
-                continue; // Skip adding the "Siguiente >>" button itself
+                const nextFileId = extractIdFromUrl(item.URL);
+                if (nextFileId) {
+                    // Correctly resolve the next file path based on the current file's directory
+                    const currentDir = path.dirname(filePath);
+                    const nextFilePath = path.join(currentDir, `${nextFileId}.xml`);
+                    await processMenu(nextFilePath, context);
+                }
+                continue;
             }
             if (item.Name === '<< Anterior') {
                 continue; // Skip "Anterior" button

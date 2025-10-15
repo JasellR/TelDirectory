@@ -5,10 +5,9 @@ import { useState, useEffect, useTransition } from 'react';
 import { Breadcrumbs } from '@/components/layout/Breadcrumbs';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { UploadCloud, Palette, Languages, Settings as SettingsIcon, FileCode, Info, FolderCog, CheckCircle, AlertCircleIcon, UserCog, Rss, RefreshCw, ListChecks, AlertTriangle, FileWarning, FileUp, Tv, Users } from 'lucide-react';
-import { FileUploadForm } from '@/components/import/FileUploadForm';
-import { syncNamesFromXmlFeedAction, updateDirectoryRootPathAction, updateXmlUrlsAction, importExtensionsFromCsvAction, syncFromActiveDirectoryAction } from '@/lib/actions';
-import type { SyncResult, AdSyncResult, CsvImportResult, AdSyncFormValues, UserSession } from '@/types';
+import { UploadCloud, Palette, Languages, Settings as SettingsIcon, Info, FolderCog, CheckCircle, AlertCircleIcon, UserCog, Rss, RefreshCw, FileWarning, FileUp, Tv } from 'lucide-react';
+import { syncNamesFromXmlFeedAction, updateDirectoryRootPathAction, updateXmlUrlsAction, importExtensionsFromCsvAction } from '@/lib/actions';
+import type { SyncResult, CsvImportResult, UserSession } from '@/types';
 import { ThemeToggle } from '@/components/settings/ThemeToggle';
 import { LanguageToggle } from '@/components/settings/LanguageToggle';
 import { Separator } from '@/components/ui/separator';
@@ -22,7 +21,6 @@ import { Loader2 } from 'lucide-react';
 import { logoutAction, getCurrentUser } from '@/lib/auth-actions';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { CsvUploadForm } from '@/components/import/CsvUploadForm';
-import { ActiveDirectorySyncForm } from '@/components/import/ActiveDirectorySyncForm';
 
 
 export default function SettingsPage() {
@@ -317,21 +315,6 @@ export default function SettingsPage() {
         </Card>
 
         <Separator />
-        
-        <Card>
-            <CardHeader>
-                <div className="flex items-center gap-3">
-                    <Users className="h-6 w-6 text-primary" />
-                    <CardTitle className="text-2xl">{t('syncFromAdTitle')}</CardTitle>
-                </div>
-                <CardDescription>{t('syncFromAdDescription')}</CardDescription>
-            </CardHeader>
-            <CardContent>
-                <ActiveDirectorySyncForm syncAction={syncFromActiveDirectoryAction} />
-            </CardContent>
-        </Card>
-
-        <Separator />
 
         <Card>
             <CardHeader>
@@ -365,7 +348,7 @@ export default function SettingsPage() {
                             <p>{syncResults.message}</p>
                             {syncResults.conflictedExtensions && syncResults.conflictedExtensions.length > 0 && (
                                 <Alert variant="warning" className="mt-4">
-                                  <AlertTriangle className="h-4 w-4" />
+                                  <AlertCircleIcon className="h-4 w-4" />
                                   <AlertTitle>{t('syncConflictedExtensionsTitle')}</AlertTitle>
                                   <AlertDescription>{t('syncConflictedExtensionsDescription')}</AlertDescription>
                                   <ScrollArea className="mt-2 h-40 rounded-md border p-2">
@@ -410,5 +393,3 @@ export default function SettingsPage() {
     </div>
   );
 }
-
-    

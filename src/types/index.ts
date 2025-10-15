@@ -117,40 +117,6 @@ export interface CsvImportResult {
   error?: string;
 }
 
-// Types for Active Directory Sync
-export interface AdSyncFormValues {
-  ldapServerUrl: string;
-  bindDn: string;
-  bindPassword: string;
-  searchBase: string;
-  searchFilter?: string;
-  displayNameAttribute: string;
-  extensionAttribute: string;
-  departmentAttribute: string;
-  emailAttribute: string;
-  phoneAttribute: string;
-  organizationAttribute: string; // New
-  jobTitleAttribute: string;   // New
-}
-
-export interface AdSyncDetails {
-  usersProcessed: number;
-  extensionsAdded: number; 
-  dbRecordsAdded: number; // New
-  dbRecordsUpdated: number; // New
-  localitiesCreated: number; 
-  localitiesUpdated: number; 
-  zoneCreated: boolean; 
-  errorsEncountered: number;
-}
-
-export interface AdSyncResult {
-  success: boolean;
-  message: string;
-  details?: AdSyncDetails;
-  error?: string;
-}
-
 // Type for Move Extensions Action
 export interface MoveExtensionsParams {
   extensionsToMove: Extension[];
