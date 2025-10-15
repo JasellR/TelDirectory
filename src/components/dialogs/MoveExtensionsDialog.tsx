@@ -25,6 +25,13 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 
 type MoveMode = 'existing' | 'create';
 
+interface MoveExtensionsDialogProps {
+  isOpen: boolean;
+  onClose: () => void;
+  extensionsToMove: Extension[];
+  sourceLocalityId: string;
+}
+
 export function MoveExtensionsDialog({ isOpen, onClose, extensionsToMove, sourceLocalityId }: MoveExtensionsDialogProps) {
   const { t } = useTranslation();
   const { toast } = useToast();
@@ -245,11 +252,4 @@ export function MoveExtensionsDialog({ isOpen, onClose, extensionsToMove, source
       </DialogContent>
     </Dialog>
   );
-}
-
-interface MoveExtensionsDialogProps {
-  isOpen: boolean;
-  onClose: () => void;
-  extensionsToMove: Extension[];
-  sourceLocalityId: string;
 }
