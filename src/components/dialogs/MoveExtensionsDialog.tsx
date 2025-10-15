@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useEffect, useTransition } from 'react';
@@ -56,7 +55,7 @@ export function MoveExtensionsDialog({ isOpen, onClose, extensionsToMove, source
       setIsLoading(false);
     }
     fetchInitialData();
-  }, [isOpen]);
+  }, [isOpen, t, toast]);
 
   useEffect(() => {
     async function fetchZoneItems() {
@@ -75,7 +74,7 @@ export function MoveExtensionsDialog({ isOpen, onClose, extensionsToMove, source
       setIsLoading(false);
     }
     fetchZoneItems();
-  }, [selectedZoneId]);
+  }, [selectedZoneId, t, toast]);
 
   useEffect(() => {
     if (moveMode === 'create' && newLocalityName.trim()) {
@@ -183,7 +182,7 @@ export function MoveExtensionsDialog({ isOpen, onClose, extensionsToMove, source
 
           {selectedZoneId && (
             <div className="space-y-4 animate-in fade-in-0 duration-300">
-                <RadioGroup value={moveMode} onValueChange={handleModeChange} className="grid grid-cols-2 gap-4">
+                <RadioGroup value={moveMode} onValueChange={(value) => handleModeChange(value as MoveMode)} className="grid grid-cols-2 gap-4">
                     <div>
                         <RadioGroupItem value="existing" id="mode-existing" className="peer sr-only" />
                         <Label htmlFor="mode-existing" className="flex flex-col items-center justify-between rounded-md border-2 border-muted bg-popover p-4 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary">
