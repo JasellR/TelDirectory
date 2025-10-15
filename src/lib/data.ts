@@ -100,9 +100,15 @@ function getItemTypeFromUrl(url: string): 'branch' | 'locality' | 'zone' | 'unkn
     const lowerUrl = url.toLowerCase();
     
     // Check for explicit directory paths first, which are used for Cisco phones
+    if (lowerUrl.includes('/ivoxsdir/branch/')) return 'branch';
+    if (lowerUrl.includes('/ivoxsdir/department/')) return 'locality';
+    if (lowerUrl.includes('/ivoxsdir/zonebranch/')) return 'zone';
+
+    // Fallback for older URL formats if necessary
     if (lowerUrl.includes('/branch/')) return 'branch';
     if (lowerUrl.includes('/department/')) return 'locality';
     if (lowerUrl.includes('/zonebranch/')) return 'zone';
+
 
     // Then, check for the "clean" URL pattern used by the web app for pagination
     // e.g., /ZonaMetropolitana/ZonaMetropolitana2

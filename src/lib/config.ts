@@ -10,6 +10,8 @@ const DIRECTORY_CONFIG_PATH = path.join(CONFIG_DIR, 'directory.config.json');
 
 export interface DirectoryConfig {
   ivoxsRootPath: string | null;
+  serviceHost?: string;
+  servicePort?: string;
 }
 
 export async function getDirectoryConfig(): Promise<DirectoryConfig> {
@@ -19,7 +21,7 @@ export async function getDirectoryConfig(): Promise<DirectoryConfig> {
     const parsedData = JSON.parse(data);
     // Basic validation to ensure the object has the expected key
     if (parsedData && typeof parsedData.ivoxsRootPath !== 'undefined') {
-      return { ivoxsRootPath: parsedData.ivoxsRootPath };
+      return parsedData;
     }
     // If structure is unexpected, return default
     return { ivoxsRootPath: null };

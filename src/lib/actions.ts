@@ -112,10 +112,10 @@ function getItemTypeFromUrl(url: string): 'branch' | 'locality' | 'zone' | 'unkn
     if (!url) return 'unknown';
     const lowerUrl = url.toLowerCase();
     
-    // Check for explicit directory paths first, which are used for Cisco phones
-    if (lowerUrl.includes('/branch/')) return 'branch';
-    if (lowerUrl.includes('/department/')) return 'locality';
-    if (lowerUrl.includes('/zonebranch/')) return 'zone';
+    // The key is that the directory structure is now served from `public/ivoxsdir`
+    if (lowerUrl.includes('/ivoxsdir/branch/')) return 'branch';
+    if (lowerUrl.includes('/ivoxsdir/department/')) return 'locality';
+    if (lowerUrl.includes('/ivoxsdir/zonebranch/')) return 'zone';
 
     const urlParts = url.split('/').filter(p => p && !p.startsWith('http'));
     const isPaginationPath = urlParts.length >= 1 && urlParts[0].toLowerCase().startsWith('zonametropolitana');
@@ -135,29 +135,37 @@ const itemTypeToDir: Record<'zone' | 'branch' | 'locality', string> = {
 
 
 // Helper to get configured service URL components
-async function getServiceUrlComponents(): Promise<{ protocol: string, host: string, port: string, rootDirName: string }> {
-  // This is now simplified as the root directory is always 'ivoxsdir' inside 'public'
-  const rootDirName = 'ivoxsdir';
+async function getServiceUrlComponents(): Promise<{ protocol: string, host: string, port: string }> {
   // These can be configured via environment variables in a real production setup
   let protocol = 'http';
   let host = '127.0.0.1';
   let port = '3000';
   
-  return { protocol, host, port, rootDirName };
+  const configPath = path.join(process.cwd(), '.config', 'directory.config.json');
+    try {
+        const configData = await fs.readFile(configPath, 'utf-8');
+        const config = JSON.parse(configData);
+        if (config.serviceHost) host = config.serviceHost;
+        if (config.servicePort) port = config.servicePort;
+    } catch (error: any) {
+        if (error.code !== 'ENOENT') {
+            console.warn(`[getServiceUrlComponents] Could not read config file: ${error.message}`);
+        }
+        // File not found is normal, just use defaults
+    }
+  
+  return { protocol, host, port };
 }
 
-function constructServiceUrl(protocol: string, host: string, port: string, rootDirName: string, pathSegment: string): string {
+
+function constructServiceUrl(protocol: string, host: string, port: string, pathSegment: string): string {
     if (pathSegment.startsWith('/')) {
         pathSegment = pathSegment.substring(1);
     }
+    const portPart = port ? `:${port}` : '';
     
-    const isPaginationPath = pathSegment.toLowerCase().startsWith('zonametropolitana') && !pathSegment.toLowerCase().endsWith('.xml');
-    if (isPaginationPath) {
-        // Construct the full URL for the phone to fetch the next XML page
-        return `${protocol}://${host}:${port}/directory/zonebranch/${path.basename(pathSegment)}.xml`;
-    }
-
-  return `${protocol}://${host}:${port}/directory/${pathSegment.replace(/\\/g, '/')}`;
+    // All XML files are served from the root under the `ivoxsdir` directory.
+    return `${protocol}://${host}${portPart}/ivoxsdir/${pathSegment.replace(/\\/g, '/')}`;
 }
 
 
@@ -220,7 +228,7 @@ async function repaginateMenuItems(parentFilePath: string, menuName: string) {
     const allItems = Array.from(allItemsMap.values()).sort((a, b) => a.Name.localeCompare(b.Name));
 
     // 3. Repaginate if necessary
-    const { protocol, host, port, rootDirName } = await getServiceUrlComponents();
+    const { protocol, host, port } = await getServiceUrlComponents();
     if (allItems.length > PAGINATION_LIMIT) {
         const totalPages = Math.ceil(allItems.length / PAGINATION_LIMIT);
         for (let i = 0; i < totalPages; i++) {
@@ -231,12 +239,12 @@ async function repaginateMenuItems(parentFilePath: string, menuName: string) {
 
             if (i > 0) { // Add "<< Anterior" button
                 const prevPageName = `${menuName}${pageNum - 1 > 1 ? pageNum - 1 : ''}`;
-                const prevUrl = constructServiceUrl(protocol, host, port, 'directory', `zonebranch/${prevPageName}.xml`);
+                const prevUrl = constructServiceUrl(protocol, host, port, `zonebranch/${prevPageName}.xml`);
                 pageItems.unshift({ Name: '<< Anterior', URL: prevUrl });
             }
             if (i < totalPages - 1) { // Add "Siguiente >>" button
                 const nextPageName = `${menuName}${pageNum + 1}`;
-                const nextUrl = constructServiceUrl(protocol, host, port, 'directory', `zonebranch/${nextPageName}.xml`);
+                const nextUrl = constructServiceUrl(protocol, host, port, `zonebranch/${nextPageName}.xml`);
                 pageItems.push({ Name: 'Siguiente >>', URL: nextUrl });
             }
 
@@ -279,8 +287,8 @@ export async function addZoneAction(zoneName: string): Promise<{ success: boolea
   }
   const mainMenuPath = paths.MAINMENU_PATH;
   const newZoneBranchFilePath = path.join(paths.ZONE_BRANCH_DIR, `${newZoneId}.xml`);
-  const { protocol, host, port, rootDirName } = await getServiceUrlComponents();
-  const newZoneURL = constructServiceUrl(protocol, host, port, 'directory', `zonebranch/${newZoneId}.xml`);
+  const { protocol, host, port } = await getServiceUrlComponents();
+  const newZoneURL = constructServiceUrl(protocol, host, port, `zonebranch/${newZoneId}.xml`);
 
   try {
     // 1. Create the new zone branch file
@@ -421,7 +429,7 @@ export async function addLocalityOrBranchAction(params: {
     const { zoneId, branchId, itemName, itemType } = params;
     const newItemId = generateIdFromName(itemName);
     const paths = await getPaths();
-    const { protocol, host, port, rootDirName } = await getServiceUrlComponents();
+    const { protocol, host, port } = await getServiceUrlComponents();
     
     let parentMenuPath, newItemPath, newUrlPath, revalidationPath;
     const subDir = itemTypeToDir[itemType];
@@ -440,7 +448,7 @@ export async function addLocalityOrBranchAction(params: {
         revalidationPath = branchId ? `/${zoneId}/branches/${branchId}` : `/${zoneId}`;
     }
     
-    const newUrl = constructServiceUrl(protocol, host, port, 'directory', newUrlPath);
+    const newUrl = constructServiceUrl(protocol, host, port, newUrlPath);
 
     try {
         // --- START VALIDATION ---
@@ -498,7 +506,7 @@ export async function editLocalityOrBranchAction(params: {
     const { zoneId, branchId, oldItemId, newItemName, itemType } = params;
     const newItemId = generateIdFromName(newItemName);
     const paths = await getPaths();
-    const { protocol, host, port, rootDirName } = await getServiceUrlComponents();
+    const { protocol, host, port } = await getServiceUrlComponents();
     const subDir = itemTypeToDir[itemType];
 
     let parentMenuPath, oldItemPath, newItemPath, newUrlPath, revalidationPath;
@@ -510,7 +518,7 @@ export async function editLocalityOrBranchAction(params: {
         newUrlPath = `branch/${newItemId}.xml`;
         revalidationPath = `/${zoneId}`;
     } else { // It's a locality
-        parentMenuPath = branchId
+        parentMenuPath = branchId 
             ? path.join(paths.BRANCH_DIR, `${branchId}.xml`)
             : path.join(paths.ZONE_BRANCH_DIR, `${zoneId}.xml`);
         oldItemPath = path.join(paths.DEPARTMENT_DIR, `${oldItemId}.xml`);
@@ -519,7 +527,7 @@ export async function editLocalityOrBranchAction(params: {
         revalidationPath = branchId ? `/${zoneId}/branches/${branchId}` : `/${zoneId}`;
     }
 
-    const newUrl = constructServiceUrl(protocol, host, port, 'directory', newUrlPath);
+    const newUrl = constructServiceUrl(protocol, host, port, newUrlPath);
 
     try {
         // 1. Rename the item's XML file if ID changes
@@ -775,9 +783,15 @@ export async function updateXmlUrlsAction(host: string, port: string): Promise<{
     if (!authenticated) {
         return { success: false, message: "Authentication required." };
     }
+    
+    // Save the config for future use by other functions
+    const configPath = path.join(process.cwd(), '.config', 'directory.config.json');
+    await fs.mkdir(path.dirname(configPath), { recursive: true });
+    await fs.writeFile(configPath, JSON.stringify({ serviceHost: host, servicePort: port }, null, 2));
+
 
     const paths = await getPaths();
-    const { protocol, rootDirName } = await getServiceUrlComponents();
+    const { protocol } = await getServiceUrlComponents();
     
     const updateUrlsInFile = async (filePath: string | null) => {
         if (!filePath) {
@@ -789,19 +803,20 @@ export async function updateXmlUrlsAction(host: string, port: string): Promise<{
 
         fileContent.CiscoIPPhoneMenu.MenuItem = ensureArray(fileContent.CiscoIPPhoneMenu.MenuItem).map((item: any) => {
             const urlString = item.URL || '';
-            const itemType = getItemTypeFromUrl(urlString);
             const itemId = extractIdFromUrl(urlString);
 
             if (item.Name === 'Siguiente >>' || item.Name === '<< Anterior') {
-                const subDirectory = 'zonebranch';
-                const relativePath = `${subDirectory}/${itemId}.xml`;
-                item.URL = constructServiceUrl(protocol, host, port, 'directory', relativePath);
-            } else if (itemType === 'zone' || itemType === 'branch' || itemType === 'locality') {
-                const subDirectory = itemTypeToDir[itemType as 'zone' | 'branch' | 'locality'];
-                let relativePath = `${subDirectory}/${itemId}.xml`;
-                item.URL = constructServiceUrl(protocol, host, port, 'directory', relativePath);
+                const relativePath = `zonebranch/${itemId}.xml`;
+                item.URL = constructServiceUrl(protocol, host, port, relativePath);
             } else {
-                 console.warn(`[updateXmlUrlsAction] Could not process URL: ${item.URL}. It might be malformed or pointing to an unknown type.`);
+                // Heuristic to determine the subdirectory
+                const urlLower = urlString.toLowerCase();
+                let subDirectory = 'zonebranch'; // default
+                if (urlLower.includes('/branch/')) subDirectory = 'branch';
+                else if (urlLower.includes('/department/')) subDirectory = 'department';
+
+                const relativePath = `${subDirectory}/${itemId}.xml`;
+                item.URL = constructServiceUrl(protocol, host, port, relativePath);
             }
             return item;
         });
@@ -966,7 +981,7 @@ export async function syncNamesFromXmlFeedAction(feedUrlsString: string): Promis
       const zoneName = 'Missing Extensions from Feed';
       const departmentId = 'MissingExtensionsDepartment';
       const departmentName = 'Missing Extensions';
-      const { protocol, host, port, rootDirName } = await getServiceUrlComponents();
+      const { protocol, host, port } = await getServiceUrlComponents();
       
       const deptFilePath = path.join(paths.DEPARTMENT_DIR, `${departmentId}.xml`);
       const deptContent = {
@@ -977,7 +992,7 @@ export async function syncNamesFromXmlFeedAction(feedUrlsString: string): Promis
       await buildAndWriteXML(deptFilePath, deptContent);
 
       const zoneFilePath = path.join(paths.ZONE_BRANCH_DIR, `${zoneId}.xml`);
-      const zoneUrl = constructServiceUrl(protocol, host, port, 'directory', `department/${departmentId}.xml`);
+      const zoneUrl = constructServiceUrl(protocol, host, port, `department/${departmentId}.xml`);
       const zoneContent = {
           CiscoIPPhoneMenu: {
               Title: zoneName,
@@ -1100,14 +1115,14 @@ export async function searchAllDepartmentsAndExtensionsAction(query: string): Pr
     return [];
   }
   
-  const { IVOXS_DIR, MAINMENU_PATH, ZONE_BRANCH_DIR } = await getPaths();
+  const { IVOXS_DIR, MAINMENU_PATH, ZONE_BRANCH_DIR, BRANCH_DIR } = await getPaths();
   const lowerQuery = query.toLowerCase();
   
   const allLocalities = new Map<string, {name: string, zoneId: string, zoneName: string, branchId?: string, branchName?: string}>();
   const visitedFiles = new Set<string>(); // To prevent infinite loops in paginated menus
 
   const processMenu = async (filePath: string, context: {zoneId: string, zoneName: string, branchId?: string, branchName?: string}) => {
-    if (visitedFiles.has(filePath)) return;
+    if (!filePath || visitedFiles.has(filePath)) return;
     visitedFiles.add(filePath);
     
     const menuContent = await readFileContent(filePath);
@@ -1123,11 +1138,9 @@ export async function searchAllDepartmentsAndExtensionsAction(query: string): Pr
             const itemId = extractIdFromUrl(item.URL);
             const itemType = getItemTypeFromUrl(item.URL);
             
-            // Handle pagination by recursively processing the next page
             if (item.Name === 'Siguiente >>') {
                 const nextFileId = extractIdFromUrl(item.URL);
                 if (nextFileId) {
-                    // Correctly resolve the next file path based on the current file's directory
                     const currentDir = path.dirname(filePath);
                     const nextFilePath = path.join(currentDir, `${nextFileId}.xml`);
                     await processMenu(nextFilePath, context);
@@ -1135,7 +1148,7 @@ export async function searchAllDepartmentsAndExtensionsAction(query: string): Pr
                 continue;
             }
             if (item.Name === '<< Anterior') {
-                continue; // Skip "Anterior" button
+                continue; 
             }
 
             if (itemType === 'locality') {
@@ -1144,13 +1157,8 @@ export async function searchAllDepartmentsAndExtensionsAction(query: string): Pr
                 }
             } else if (itemType === 'branch') {
                 const newContext = { ...context, branchId: itemId, branchName: item.Name };
-                const nextFilePath = path.join(IVOXS_DIR, 'branch', `${itemId}.xml`);
-                try {
-                  await fs.access(nextFilePath);
-                  await processMenu(nextFilePath, newContext);
-                } catch {
-                  console.warn(`[Search] Branch file not found, skipping: ${nextFilePath}`);
-                }
+                const nextFilePath = path.join(BRANCH_DIR, `${itemId}.xml`);
+                await processMenu(nextFilePath, newContext);
             }
         }
     } catch(e) {
@@ -1176,12 +1184,7 @@ export async function searchAllDepartmentsAndExtensionsAction(query: string): Pr
           const zoneContext = { zoneId: zoneId, zoneName: zoneMenuItem.Name };
           
           const zoneFilePath = path.join(ZONE_BRANCH_DIR, `${zoneId}.xml`);
-          try {
-            await fs.access(zoneFilePath);
-            await processMenu(zoneFilePath, zoneContext);
-          } catch {
-            console.warn(`[Search] Zone file not found, skipping: ${zoneFilePath}`);
-          }
+          await processMenu(zoneFilePath, zoneContext);
       }
     } catch(e) {
       console.error(`[Search] Fatal: Could not process main menu file:`, e);
