@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useEffect, useTransition, useMemo } from 'react';
@@ -38,6 +37,7 @@ export function MoveExtensionsDialog({ isOpen, onClose, extensionsToMove, source
   const { t } = useTranslation();
   const { toast } = useToast();
   const router = useRouter();
+  
   const [isPending, startTransition] = useTransition();
   const [isLoading, setIsLoading] = useState(true);
 
@@ -49,9 +49,9 @@ export function MoveExtensionsDialog({ isOpen, onClose, extensionsToMove, source
   const [selectedItemId, setSelectedItemId] = useState('');
   const [newLocalityName, setNewLocalityName] = useState('');
 
+  // Fetch initial zones when the dialog opens
   useEffect(() => {
     async function fetchInitialData() {
-      if (!isOpen) return;
       setIsLoading(true);
       try {
         const fetchedZones = await getZonesAction();
@@ -62,12 +62,16 @@ export function MoveExtensionsDialog({ isOpen, onClose, extensionsToMove, source
       }
       setIsLoading(false);
     }
-    fetchInitialData();
-  }, [isOpen, toast, t]);
 
+    if (isOpen) {
+        fetchInitialData();
+    }
+  }, [isOpen]); 
+
+  // Fetch zone items when a zone is selected
   useEffect(() => {
     async function fetchZoneItems() {
-      if (!selectedZoneId || !isOpen) {
+      if (!selectedZoneId) {
         setZoneItems([]);
         return;
       }
@@ -81,10 +85,12 @@ export function MoveExtensionsDialog({ isOpen, onClose, extensionsToMove, source
       }
       setIsLoading(false);
     }
-    fetchZoneItems();
-  }, [selectedZoneId, isOpen, toast, t]);
-  
-  // Use useMemo for derived state to prevent re-renders from causing loops
+    
+    if (isOpen) {
+      fetchZoneItems();
+    }
+  }, [selectedZoneId, isOpen]);
+
   const nameError = useMemo(() => {
     if (moveMode === 'create' && newLocalityName.trim()) {
         const nameExists = zoneItems.some(item => item.name.toLowerCase() === newLocalityName.trim().toLowerCase());
