@@ -31,7 +31,7 @@ interface MoveExtensionsDialogProps {
   onClose: () => void;
   extensionsToMove: Extension[];
   sourceLocalityId: string;
-  onMoveSuccess: () => void; // New callback prop
+  onMoveSuccess: () => void;
 }
 
 export function MoveExtensionsDialog({ isOpen, onClose, extensionsToMove, sourceLocalityId, onMoveSuccess }: MoveExtensionsDialogProps) {
@@ -60,13 +60,11 @@ export function MoveExtensionsDialog({ isOpen, onClose, extensionsToMove, source
         setZones(fetchedZones.filter(z => z.id !== 'MissingExtensionsFromFeed'));
       } catch (error) {
         console.error("Failed to fetch zones:", error);
-        toast({ title: t('fetchZonesError'), description: t('fetchZonesError'), variant: 'destructive' });
+        toast({ title: t('fetchZonesError'), description: String(error) || t('fetchZonesError'), variant: 'destructive' });
       }
       setIsLoading(false);
     }
-    if (isOpen) {
-      fetchInitialData();
-    }
+    fetchInitialData();
   }, [isOpen, toast, t]);
 
   useEffect(() => {
@@ -81,13 +79,11 @@ export function MoveExtensionsDialog({ isOpen, onClose, extensionsToMove, source
         setZoneItems(items.filter(item => item.type === 'locality' || item.type === 'branch'));
       } catch (error) {
         console.error(`Failed to fetch items for zone ${selectedZoneId}:`, error);
-        toast({ title: t('fetchLocalitiesError'), description: t('fetchLocalitiesError'), variant: 'destructive' });
+        toast({ title: t('fetchLocalitiesError'), description: String(error) || t('fetchLocalitiesError'), variant: 'destructive' });
       }
       setIsLoading(false);
     }
-    if (isOpen) {
-      fetchZoneItems();
-    }
+    fetchZoneItems();
   }, [selectedZoneId, isOpen, toast, t]);
 
   useEffect(() => {
@@ -173,7 +169,7 @@ export function MoveExtensionsDialog({ isOpen, onClose, extensionsToMove, source
     (moveMode === 'existing' && !selectedItemId) ||
     (moveMode === 'create' && (!newLocalityName.trim() || !!nameError));
   
-  // Early return after all hooks have been called
+  // CONDITIONAL RENDER MUST BE AFTER ALL HOOKS
   if (!isOpen) {
     return null;
   }
