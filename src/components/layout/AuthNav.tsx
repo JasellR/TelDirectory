@@ -31,10 +31,17 @@ export function AuthNav() {
   if (isAuthPage) {
     return null;
   }
+  
+  // When the login button is part of the general header (not on a specific page trying to access protected content),
+  // we can decide where it should lead. A sensible default is to try to go to settings after login.
+  // However, if the user clicked the "Settings" icon, that link should have priority.
+  // The logic in the component that renders the button should pass the correct redirect.
+  // Here, we provide a sensible default if the user just clicks a generic "Login" button.
+  const loginRedirectPath = pathname === '/' ? '/import-xml' : pathname;
 
   return (
     <Button variant="outline" asChild size="sm">
-      <Link href={`/login?redirect_to=${encodeURIComponent(pathname)}`}>
+      <Link href={`/login?redirect_to=${encodeURIComponent(loginRedirectPath)}`}>
         <LogIn className="mr-2 h-4 w-4" />
         {t('loginButton')}
       </Link>
