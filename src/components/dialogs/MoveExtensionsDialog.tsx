@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState, useEffect, useTransition } from 'react';
+import { useState, useEffect, useTransition, useMemo } from 'react';
 import type { Extension, Zone, ZoneItem } from '@/types';
 import { useTranslation } from '@/hooks/useTranslation';
 import { Button } from '@/components/ui/button';
@@ -20,9 +20,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { useToast } from '@/hooks/use-toast';
 import { getZonesAction, getZoneItemsAction, moveExtensionsAction } from '@/lib/actions';
 import { Loader2, AlertTriangle } from 'lucide-react';
-import { useRouter } from 'next/navigation';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { useRouter } from 'next/navigation';
 
 type MoveMode = 'existing' | 'create';
 
@@ -35,7 +35,6 @@ interface MoveExtensionsDialogProps {
 }
 
 export function MoveExtensionsDialog({ isOpen, onClose, extensionsToMove, sourceLocalityId, onMoveSuccess }: MoveExtensionsDialogProps) {
-  // HOOKS MUST BE CALLED UNCONDITIONALLY AT THE TOP LEVEL
   const { t } = useTranslation();
   const { toast } = useToast();
   const router = useRouter();
@@ -49,7 +48,6 @@ export function MoveExtensionsDialog({ isOpen, onClose, extensionsToMove, source
   const [moveMode, setMoveMode] = useState<MoveMode>('existing');
   const [selectedItemId, setSelectedItemId] = useState('');
   const [newLocalityName, setNewLocalityName] = useState('');
-  const [nameError, setNameError] = useState<string | null>(null);
 
   useEffect(() => {
     async function fetchInitialData() {
@@ -85,32 +83,29 @@ export function MoveExtensionsDialog({ isOpen, onClose, extensionsToMove, source
     }
     fetchZoneItems();
   }, [selectedZoneId, isOpen, toast, t]);
-
-  useEffect(() => {
-      if (moveMode === 'create' && newLocalityName.trim()) {
+  
+  // Use useMemo for derived state to prevent re-renders from causing loops
+  const nameError = useMemo(() => {
+    if (moveMode === 'create' && newLocalityName.trim()) {
         const nameExists = zoneItems.some(item => item.name.toLowerCase() === newLocalityName.trim().toLowerCase());
         if (nameExists) {
-          setNameError(t('localityExistsError', { localityName: newLocalityName.trim() }));
-        } else {
-          setNameError(null);
+          return t('localityExistsError', { localityName: newLocalityName.trim() });
         }
-      } else {
-        setNameError(null);
-      }
+    }
+    return null;
   }, [newLocalityName, moveMode, zoneItems, t]);
+
 
   const handleZoneChange = (zoneId: string) => {
     setSelectedZoneId(zoneId);
     setSelectedItemId('');
     setNewLocalityName('');
-    setNameError(null);
   };
   
   const handleModeChange = (mode: MoveMode) => {
       setMoveMode(mode);
       setSelectedItemId('');
       setNewLocalityName('');
-      setNameError(null);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -168,8 +163,7 @@ export function MoveExtensionsDialog({ isOpen, onClose, extensionsToMove, source
     !selectedZoneId ||
     (moveMode === 'existing' && !selectedItemId) ||
     (moveMode === 'create' && (!newLocalityName.trim() || !!nameError));
-  
-  // CONDITIONAL RENDER MUST BE AFTER ALL HOOKS
+
   if (!isOpen) {
     return null;
   }
