@@ -35,6 +35,10 @@ export function MoveExtensionsManager({ extensions, sourceLocalityId }: { extens
     }
   };
 
+  const handleMoveSuccess = () => {
+    setSelectedExtensions([]); // Reset selection on success
+  };
+
   if (!extensions || extensions.length === 0) {
     return (
       <Card>
@@ -108,6 +112,7 @@ export function MoveExtensionsManager({ extensions, sourceLocalityId }: { extens
             onClose={() => setIsDialogOpen(false)}
             extensionsToMove={selectedExtensions}
             sourceLocalityId={sourceLocalityId}
+            onMoveSuccess={handleMoveSuccess}
         />
     )}
     </>

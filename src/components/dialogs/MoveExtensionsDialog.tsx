@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect, useTransition } from 'react';
@@ -30,9 +31,10 @@ interface MoveExtensionsDialogProps {
   onClose: () => void;
   extensionsToMove: Extension[];
   sourceLocalityId: string;
+  onMoveSuccess: () => void; // New callback prop
 }
 
-export function MoveExtensionsDialog({ isOpen, onClose, extensionsToMove, sourceLocalityId }: MoveExtensionsDialogProps) {
+export function MoveExtensionsDialog({ isOpen, onClose, extensionsToMove, sourceLocalityId, onMoveSuccess }: MoveExtensionsDialogProps) {
   // HOOKS MUST BE CALLED UNCONDITIONALLY AT THE TOP LEVEL
   const { t } = useTranslation();
   const { toast } = useToast();
@@ -62,8 +64,10 @@ export function MoveExtensionsDialog({ isOpen, onClose, extensionsToMove, source
       }
       setIsLoading(false);
     }
-    fetchInitialData();
-  }, [isOpen]); // Removed t, toast as they are stable
+    if (isOpen) {
+      fetchInitialData();
+    }
+  }, [isOpen, toast, t]);
 
   useEffect(() => {
     async function fetchZoneItems() {
@@ -81,8 +85,10 @@ export function MoveExtensionsDialog({ isOpen, onClose, extensionsToMove, source
       }
       setIsLoading(false);
     }
-    fetchZoneItems();
-  }, [selectedZoneId, isOpen]); // Removed t, toast
+    if (isOpen) {
+      fetchZoneItems();
+    }
+  }, [selectedZoneId, isOpen, toast, t]);
 
   useEffect(() => {
       if (moveMode === 'create' && newLocalityName.trim()) {
@@ -95,12 +101,7 @@ export function MoveExtensionsDialog({ isOpen, onClose, extensionsToMove, source
       } else {
         setNameError(null);
       }
-  }, [newLocalityName, moveMode, zoneItems, t]); // `t` is needed here for the error message
-
-  // Early return after all hooks have been called
-  if (!isOpen) {
-    return null;
-  }
+  }, [newLocalityName, moveMode, zoneItems, t]);
 
   const handleZoneChange = (zoneId: string) => {
     setSelectedZoneId(zoneId);
@@ -156,8 +157,9 @@ export function MoveExtensionsDialog({ isOpen, onClose, extensionsToMove, source
 
         if (result.success) {
             toast({ title: t('successTitle'), description: result.message });
-            router.refresh();
+            onMoveSuccess(); // Call the success callback
             onClose();
+            router.refresh();
         } else {
             toast({ title: t('errorTitle'), description: result.message + (result.error ? ` ${t('detailsLabel')}: ${result.error}`: ''), variant: 'destructive', duration: 8000 });
         }
@@ -170,6 +172,11 @@ export function MoveExtensionsDialog({ isOpen, onClose, extensionsToMove, source
     !selectedZoneId ||
     (moveMode === 'existing' && !selectedItemId) ||
     (moveMode === 'create' && (!newLocalityName.trim() || !!nameError));
+  
+  // Early return after all hooks have been called
+  if (!isOpen) {
+    return null;
+  }
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
