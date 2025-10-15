@@ -2,7 +2,7 @@
 'use client';
 
 import { useState, useTransition } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -21,6 +21,7 @@ export default function LoginForm() {
   const { t } = useTranslation();
   const { setUser } = useAuth();
   const router = useRouter();
+  const searchParams = useSearchParams();
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -43,8 +44,10 @@ export default function LoginForm() {
               title: t('loginSucceededTitle'),
               description: t('loginSucceededDescription'),
           });
-          // The action now handles the redirect, but we can push if needed.
-          // router.push('/import-xml');
+          // Client-side redirect after state is updated
+          const redirectTo = searchParams.get('redirect_to') || '/import-xml';
+          router.push(redirectTo);
+          router.refresh(); // Force a refresh to ensure server components get the new session
       }
     });
   };
