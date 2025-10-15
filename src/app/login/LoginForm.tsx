@@ -2,7 +2,7 @@
 'use client';
 
 import { useState, useTransition } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useSearchParams } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -12,43 +12,35 @@ import { useToast } from '@/hooks/use-toast';
 import { AlertCircle, LogIn } from 'lucide-react';
 import { useTranslation } from '@/hooks/useTranslation';
 import Link from 'next/link';
-import { useAuth } from '@/context/AuthContext';
 
 export default function LoginForm() {
   const { toast } = useToast();
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
   const { t } = useTranslation();
-  const { setUser } = useAuth();
-  const router = useRouter();
   const searchParams = useSearchParams();
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setError(null);
     const formData = new FormData(event.currentTarget);
+    const redirectTo = searchParams.get('redirect_to');
     
     startTransition(async () => {
-      const result = await loginAction(formData);
+      // The loginAction will now handle the redirect on success.
+      // We only expect it to return if there is an error.
+      const result = await loginAction(formData, redirectTo);
 
-      if (result.error) {
+      if (result?.error) {
         setError(result.error);
         toast({
           title: t('loginFailedTitle'),
           description: result.error,
           variant: 'destructive',
         });
-      } else if (result.user) {
-          setUser(result.user);
-          toast({
-              title: t('loginSucceededTitle'),
-              description: t('loginSucceededDescription'),
-          });
-          // Client-side redirect after state is updated
-          const redirectTo = searchParams.get('redirect_to') || '/import-xml';
-          router.push(redirectTo);
-          router.refresh(); // Force a refresh to ensure server components get the new session
       }
+      // No 'else' block is needed because a successful login will trigger a server-side redirect,
+      // and this component will be unmounted.
     });
   };
 

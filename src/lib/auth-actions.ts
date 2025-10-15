@@ -17,7 +17,7 @@ const UserSessionSchema = z.object({
 });
 
 
-export async function loginAction(formData: FormData): Promise<{ error?: string; user?: UserSession }> {
+export async function loginAction(formData: FormData, redirectTo: string | null): Promise<{ error?: string; user?: UserSession }> {
   const username = formData.get('username') as string;
   const password = formData.get('password') as string;
 
@@ -53,13 +53,13 @@ export async function loginAction(formData: FormData): Promise<{ error?: string;
     // Revalidate the layout to ensure session changes are picked up everywhere.
     revalidatePath('/', 'layout');
 
-    // Return the user data instead of redirecting from the server action
-    return { user: { userId: userRecord.id, username: userRecord.username } };
-
   } catch (error: any) {
     console.error('[Login Action] Error:', error);
     return { error: 'An unexpected server error occurred.' };
   }
+
+  // Server-side redirect after successful login
+  redirect(redirectTo || '/import-xml');
 }
 
 
