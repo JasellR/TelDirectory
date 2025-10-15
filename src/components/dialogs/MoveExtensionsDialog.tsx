@@ -33,6 +33,7 @@ interface MoveExtensionsDialogProps {
 }
 
 export function MoveExtensionsDialog({ isOpen, onClose, extensionsToMove, sourceLocalityId }: MoveExtensionsDialogProps) {
+  // HOOKS MUST BE CALLED UNCONDITIONALLY AT THE TOP LEVEL
   const { t } = useTranslation();
   const { toast } = useToast();
   const router = useRouter();
@@ -57,16 +58,16 @@ export function MoveExtensionsDialog({ isOpen, onClose, extensionsToMove, source
         setZones(fetchedZones.filter(z => z.id !== 'MissingExtensionsFromFeed'));
       } catch (error) {
         console.error("Failed to fetch zones:", error);
-        toast({ title: t('errorTitle'), description: t('fetchZonesError'), variant: 'destructive' });
+        toast({ title: t('fetchZonesError'), description: t('fetchZonesError'), variant: 'destructive' });
       }
       setIsLoading(false);
     }
     fetchInitialData();
-  }, [isOpen, t, toast]);
+  }, [isOpen]); // Removed t, toast as they are stable
 
   useEffect(() => {
     async function fetchZoneItems() {
-      if (!selectedZoneId) {
+      if (!selectedZoneId || !isOpen) {
         setZoneItems([]);
         return;
       }
@@ -76,26 +77,30 @@ export function MoveExtensionsDialog({ isOpen, onClose, extensionsToMove, source
         setZoneItems(items.filter(item => item.type === 'locality' || item.type === 'branch'));
       } catch (error) {
         console.error(`Failed to fetch items for zone ${selectedZoneId}:`, error);
-        toast({ title: t('errorTitle'), description: t('fetchLocalitiesError'), variant: 'destructive' });
+        toast({ title: t('fetchLocalitiesError'), description: t('fetchLocalitiesError'), variant: 'destructive' });
       }
       setIsLoading(false);
     }
     fetchZoneItems();
-  }, [selectedZoneId, t, toast]);
+  }, [selectedZoneId, isOpen]); // Removed t, toast
 
   useEffect(() => {
-    if (moveMode === 'create' && newLocalityName.trim()) {
-      const nameExists = zoneItems.some(item => item.name.toLowerCase() === newLocalityName.trim().toLowerCase());
-      if (nameExists) {
-        setNameError(t('localityExistsError', { localityName: newLocalityName.trim() }));
+      if (moveMode === 'create' && newLocalityName.trim()) {
+        const nameExists = zoneItems.some(item => item.name.toLowerCase() === newLocalityName.trim().toLowerCase());
+        if (nameExists) {
+          setNameError(t('localityExistsError', { localityName: newLocalityName.trim() }));
+        } else {
+          setNameError(null);
+        }
       } else {
         setNameError(null);
       }
-    } else {
-      setNameError(null);
-    }
-  }, [newLocalityName, moveMode, zoneItems, t]);
+  }, [newLocalityName, moveMode, zoneItems, t]); // `t` is needed here for the error message
 
+  // Early return after all hooks have been called
+  if (!isOpen) {
+    return null;
+  }
 
   const handleZoneChange = (zoneId: string) => {
     setSelectedZoneId(zoneId);
@@ -136,7 +141,6 @@ export function MoveExtensionsDialog({ isOpen, onClose, extensionsToMove, source
         let destinationLocalityId = (moveMode === 'existing' && !isBranch) ? selectedItemId : undefined;
         let destinationBranchId = (moveMode === 'existing' && isBranch) ? selectedItemId : undefined;
         
-        // If creating a new locality under an existing branch (if a branch was selected in the 'existing' dropdown before switching to create)
         if (moveMode === 'create' && selectedItemId && isBranch) {
             destinationBranchId = selectedItemId;
         }
@@ -162,6 +166,7 @@ export function MoveExtensionsDialog({ isOpen, onClose, extensionsToMove, source
   
   const isSubmitDisabled = 
     isPending ||
+    isLoading || // Also disable while loading zone items
     !selectedZoneId ||
     (moveMode === 'existing' && !selectedItemId) ||
     (moveMode === 'create' && (!newLocalityName.trim() || !!nameError));
@@ -187,7 +192,7 @@ export function MoveExtensionsDialog({ isOpen, onClose, extensionsToMove, source
             </Select>
           </div>
 
-          {selectedZoneId && (
+          {selectedZoneId && !isLoading && (
             <div className="space-y-4 animate-in fade-in-0 duration-300">
                 <RadioGroup value={moveMode} onValueChange={(value) => handleModeChange(value as MoveMode)} className="grid grid-cols-2 gap-4">
                     <div>
@@ -237,6 +242,12 @@ export function MoveExtensionsDialog({ isOpen, onClose, extensionsToMove, source
                   </div>
                 )}
             </div>
+          )}
+
+          {selectedZoneId && isLoading && (
+              <div className="flex items-center justify-center p-4">
+                  <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+              </div>
           )}
 
           <DialogFooter className="pt-4">
