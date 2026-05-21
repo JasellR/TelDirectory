@@ -2,28 +2,23 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import type { UserSession } from '@/types';
-import { getDb } from './lib/db';
 
 const AUTH_COOKIE_NAME = 'teldirectory-session';
 const PROTECTED_ROUTES = ['/import-xml'];
 const LOGIN_PATH = '/login';
 
-// This check now only validates the cookie's content, without a DB call.
-// This is safe to run in the middleware's lightweight environment.
 async function checkAuth(request: NextRequest): Promise<boolean> {
     const cookie = request.cookies.get(AUTH_COOKIE_NAME);
-    if (!cookie?.value) {
+    if (!cookie?.value || cookie.value.trim() === '') {
         return false;
     }
     try {
         const session = JSON.parse(cookie.value) as UserSession;
-        // Simple structural validation
-        if (typeof session.userId !== 'number' || session.userId <= 0 || !session.username) {
-            return false;
+        if (session && typeof session.userId === 'number' && session.userId > 0 && session.username) {
+            return true;
         }
-        return true;
+        return false;
     } catch (e) {
-        console.error('[Middleware Auth Check] Error parsing cookie:', e);
         return false;
     }
 }
@@ -49,7 +44,5 @@ export async function middleware(request: NextRequest) {
 }
 
 export const config = {
-  // The matcher is updated to correctly exclude static files and API routes
-  // while covering all other pages.
   matcher: ['/((?!api|_next/static|_next/image|favicon.ico|.*\\.xml$).*)'],
 };

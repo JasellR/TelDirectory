@@ -2,7 +2,6 @@
 import type {NextConfig} from 'next';
 
 const nextConfig: NextConfig = {
-  /* config options here */
   typescript: {
     ignoreBuildErrors: true,
   },
@@ -10,7 +9,6 @@ const nextConfig: NextConfig = {
     ignoreDuringBuilds: true,
   },
   experimental: {
-    // This is the new property to allow cross-origin requests in development.
     allowedDevOrigins: [
         "https://*.cloudworkstations.dev",
         "https://*.firebase.studio"
@@ -26,7 +24,7 @@ const nextConfig: NextConfig = {
       },
     ],
   },
-  serverExternalPackages: ['sqlite3', 'ldapjs', 'bcrypt'],
+  serverExternalPackages: ['sqlite3', 'bcrypt'],
 };
 
 export default nextConfig;

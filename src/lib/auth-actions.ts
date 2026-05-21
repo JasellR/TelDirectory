@@ -8,14 +8,12 @@ import type { UserSession } from '@/types';
 import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
 
-
 const AUTH_COOKIE_NAME = 'teldirectory-session';
 
 const UserSessionSchema = z.object({
   userId: z.number().int().positive(),
   username: z.string().min(1),
 });
-
 
 export async function loginAction(formData: FormData, redirectTo: string | null): Promise<{ error?: string; user?: UserSession }> {
   const username = formData.get('username') as string;
@@ -25,10 +23,9 @@ export async function loginAction(formData: FormData, redirectTo: string | null)
     return { error: 'Username and password are required.' };
   }
 
-  let userRecord;
   try {
     const db = await getDb();
-    userRecord = await db.get('SELECT * FROM users WHERE username = ?', username);
+    const userRecord = await db.get('SELECT * FROM users WHERE username = ?', username);
 
     if (!userRecord) {
       return { error: 'Invalid username or password.' };
@@ -47,21 +44,17 @@ export async function loginAction(formData: FormData, redirectTo: string | null)
       secure: process.env.NODE_ENV === 'production',
       path: '/',
       sameSite: 'lax',
-      maxAge: 60 * 60 * 24 * 7, // 1 week
+      maxAge: 60 * 60 * 24 * 7,
     });
     
-    // Revalidate the layout to ensure session changes are picked up everywhere.
     revalidatePath('/', 'layout');
-
   } catch (error: any) {
     console.error('[Login Action] Error:', error);
     return { error: 'An unexpected server error occurred.' };
   }
 
-  // Server-side redirect after successful login
   redirect(redirectTo || '/import-xml');
 }
-
 
 export async function logoutAction(): Promise<void> {
   const cookieStore = await cookies();
@@ -78,8 +71,7 @@ export async function getCurrentUser(): Promise<UserSession | null> {
   const cookieStore = await cookies();
   const cookieValue = cookieStore.get(AUTH_COOKIE_NAME)?.value;
   
-  // Prevent parsing if cookie is empty or undefined
-  if (!cookieValue) {
+  if (!cookieValue || cookieValue.trim() === '') {
     return null;
   }
 
@@ -88,23 +80,18 @@ export async function getCurrentUser(): Promise<UserSession | null> {
     const validation = UserSessionSchema.safeParse(sessionData);
 
     if (validation.success) {
-      // Database validation: Ensure the user from the cookie still exists.
       const db = await getDb();
       const user = await db.get('SELECT id FROM users WHERE id = ?', validation.data.userId);
       
       if (!user) {
-        // User does not exist, invalidate session by returning null.
-        // Optionally, delete the invalid cookie.
         cookieStore.delete(AUTH_COOKIE_NAME);
         return null;
       }
       return validation.data;
-    } else {
-      console.warn('[Auth - getCurrentUser] Session data in cookie failed validation:', validation.error);
-      return null;
     }
+    return null;
   } catch (error) {
-    console.error(`[Auth - getCurrentUser] Error parsing session cookie:`, error);
+    console.error(`[Auth] Error parsing session cookie:`, error);
     return null;
   }
 }
