@@ -89,6 +89,14 @@ function extractIdFromUrl(url: string): string {
   return fileName.replace(/\.xml$/i, '');
 }
 
+function getFolderSegmentFromUrl(url: string): string {
+    const lowerUrl = url.toLowerCase();
+    if (lowerUrl.includes('/zonebranch/')) return 'zonebranch';
+    if (lowerUrl.includes('/branch/')) return 'branch';
+    if (lowerUrl.includes('/department/')) return 'department';
+    return 'department'; // Fallback
+}
+
 async function getServiceUrlComponents(): Promise<{ protocol: string, host: string, port: string }> {
   let protocol = 'http';
   let host = '127.0.0.1';
@@ -107,7 +115,6 @@ async function getServiceUrlComponents(): Promise<{ protocol: string, host: stri
 function constructServiceUrl(protocol: string, host: string, port: string, pathSegment: string): string {
     if (pathSegment.startsWith('/')) pathSegment = pathSegment.substring(1);
     const portPart = port ? `:${port}` : '';
-    // Apuntamos directamente a /ivoxsdir/ que es servido desde /public/ivoxsdir/
     return `${protocol}://${host}${portPart}/ivoxsdir/${pathSegment.replace(/\\/g, '/')}`;
 }
 
@@ -376,7 +383,7 @@ export async function editExtensionAction(params: {
     const authenticated = await isAuthenticated();
     if (!authenticated) return { success: false, message: "Auth required." };
     const paths = await getPaths();
-    const filePath = path.join(paths.DEPARTMENT_DIR, `${localityId}.xml`);
+    const filePath = path.join(paths.DEPARTMENT_DIR, `${params.localityId}.xml`);
     try {
         const department = await readAndParseXML(filePath);
         department.CiscoIPPhoneDirectory.DirectoryEntry = ensureArray(department.CiscoIPPhoneDirectory.DirectoryEntry).map((entry: any) => {
@@ -550,7 +557,7 @@ export async function updateXmlUrlsAction(host: string, port: string): Promise<{
     const currentHost = host;
     const currentPort = port;
 
-    // 1. Update MainMenu.xml
+    // 1. Update MainMenu.xml - Todo aquí siempre va a zonebranch/
     const mainMenu = await readAndParseXML(paths.MAINMENU_PATH);
     if (mainMenu?.CiscoIPPhoneMenu?.MenuItem) {
       const items = ensureArray(mainMenu.CiscoIPPhoneMenu.MenuItem);
@@ -561,7 +568,7 @@ export async function updateXmlUrlsAction(host: string, port: string): Promise<{
       await buildAndWriteXML(paths.MAINMENU_PATH, mainMenu);
     }
 
-    // 2. Update ZoneBranch files
+    // 2. Update ZoneBranch files - Preservar carpeta original (zonebranch, branch o department)
     const zoneFiles = await fs.readdir(paths.ZONE_BRANCH_DIR).catch(() => []);
     for (const file of zoneFiles) {
         if (!file.endsWith('.xml')) continue;
@@ -571,15 +578,14 @@ export async function updateXmlUrlsAction(host: string, port: string): Promise<{
             const items = ensureArray(menu.CiscoIPPhoneMenu.MenuItem);
             menu.CiscoIPPhoneMenu.MenuItem = items.map(item => {
                 const id = extractIdFromUrl(item.URL);
-                const isBranch = item.URL.includes('/branch/');
-                const segment = isBranch ? 'branch' : 'department';
+                const segment = getFolderSegmentFromUrl(item.URL);
                 return { ...item, URL: constructServiceUrl(protocol, currentHost, currentPort, `${segment}/${id}.xml`) };
             });
             await buildAndWriteXML(filePath, menu);
         }
     }
 
-    // 3. Update Branch files
+    // 3. Update Branch files - Normalmente apuntan a department/
     const branchFiles = await fs.readdir(paths.BRANCH_DIR).catch(() => []);
     for (const file of branchFiles) {
         if (!file.endsWith('.xml')) continue;
@@ -587,10 +593,11 @@ export async function updateXmlUrlsAction(host: string, port: string): Promise<{
         const menu = await readAndParseXML(filePath);
         if (menu?.CiscoIPPhoneMenu?.MenuItem) {
             const items = ensureArray(menu.CiscoIPPhoneMenu.MenuItem);
-            menu.CiscoIPPhoneMenu.MenuItem = items.map(item => ({
-                ...item,
-                URL: constructServiceUrl(protocol, currentHost, currentPort, `department/${extractIdFromUrl(item.URL)}.xml`)
-            }));
+            menu.CiscoIPPhoneMenu.MenuItem = items.map(item => {
+                const id = extractIdFromUrl(item.URL);
+                const segment = getFolderSegmentFromUrl(item.URL);
+                return { ...item, URL: constructServiceUrl(protocol, currentHost, currentPort, `${segment}/${id}.xml`) };
+            });
             await buildAndWriteXML(filePath, menu);
         }
     }
